@@ -1,0 +1,44 @@
+import { Router, type IRouter } from "express";
+import healthRouter from "./health";
+import jobsRouter from "./jobs";
+import photosRouter from "./photos";
+import leadsRouter from "./leads";
+import jobMaterialsRouter from "./job-materials";
+import laborEntriesRouter from "./labor-entries";
+import materialUsageRouter from "./material-usage";
+import materialsRouter from "./materials";
+import proposalsRouter from "./proposals";
+import salespeopleRouter from "./salespeople";
+import invoicesRouter from "./invoices";
+import productsRouter from "./products";
+import communicationsRouter from "./communications";
+import measurementsRouter from "./measurements";
+import settingsRouter from "./settings";
+import tasksRouter from "./tasks";
+import googleCalendarRouter from "./google-calendar";
+import publicRouter from "./public";
+import storageRouter from "./storage";
+
+const router: IRouter = Router();
+
+router.use(healthRouter);
+router.use(jobsRouter);
+router.use(photosRouter);
+router.use(leadsRouter);
+router.use(jobMaterialsRouter);
+router.use(laborEntriesRouter);
+router.use(materialUsageRouter);
+router.use(materialsRouter);
+router.use(proposalsRouter);
+router.use(salespeopleRouter);
+router.use(invoicesRouter);
+router.use(productsRouter);
+router.use(communicationsRouter);
+router.use(measurementsRouter);
+router.use(settingsRouter);
+router.use(tasksRouter);
+router.use(googleCalendarRouter);
+router.use(publicRouter);
+router.use(storageRouter);
+
+export default router;

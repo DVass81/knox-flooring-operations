@@ -1,0 +1,13 @@
+- [Customer CRM aggregation](knox-customer-crm.md) — Knox has no customer entity; customers are derived from jobs/proposals/invoices by normalized name, so links must use one shared key helper.
+- [Invoice totals ownership](knox-invoice-totals.md) — Knox invoice subtotal/total are server-computed; clients must omit them on create/update.
+- [Job costing & commissions](knox-job-costing.md) — actuals vs estimate, true profit/margin, and commission all derive from one helper (`lib/costing.ts`); reuse it everywhere.
+- [Inventory products catalog](knox-inventory-catalog.md) — catalog (master product list) is a separate table from per-job materials readiness; don't merge them.
+- [Communications send/log](knox-communications.md) — email/SMS send routes persist a record on success AND provider-failure (status failed + errorMessage); connections need proposeIntegration binding or sends 503.
+- [Knox DB schema drift](knox-schema-drift.md) — isolated-env DB can lag the code schema; if a query 500s with "column does not exist", run `pnpm --filter @workspace/db run push`.
+- [Quote→job conversion](knox-quote-to-job.md) — convert (Accepted quotes only) is idempotent on convertedJobId; one endpoint fans out into job + job_materials + readiness row + draft invoice.
+- [Knox navigation & command palette](knox-navigation.md) — sidebar + global Cmd+K palette both render from one shared `components/layout/nav.ts`; update it, not the components.
+- [Leads CRM design](knox-leads-crm.md) — lead child-collections are JSONB arrays edited via updateLead PATCH; stages configurable in settings.leadStages; don't pass generic type args to <CollectionTab> in JSX.
+- [Chart/theme color tokens](knox-chart-theming.md) — theme HSL vars are space-separated; use `hsl(var(--x) / alpha)`, never `+"cc"`; dashboard funnel top = open leads + all jobs for monotonicity.
+- [Measurements & Measure Square sync](knox-measurements.md) — measurements use a standalone cross-cutting table (not JSONB); Measure Square is enterprise-only so sync degrades to not-connected (never 500s); demo data on lead-1/job-1, not lead-demo.
+- [Knox ad audio pipeline](knox-ad-audio.md) — narration/music mix into one composite_audio.mp3; VO must fit scene durations (ffprobe every clip); music duck 0.15; voice = Adam.
+- [Task Calendar](knox-task-calendar.md) — /tasks (separate from /calendar) aggregates tasks + read-only lead follow-ups, colored by salesperson.color; two-way Google sync via google-calendar connector proxy, echo-safe via extendedProperties.

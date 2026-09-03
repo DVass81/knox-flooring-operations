@@ -1,0 +1,97 @@
+uploads = []
+
+[[generated]]
+id = "pUmFJtIjUMOCZFE61pL8i"
+uri = "file://artifacts/knox-flooring/public/images/abstract-dashboard.png"
+type = "image"
+title = "SaaS abstract dashboard UI"
+
+[[generated]]
+id = "XP3bq4ZPD2-1-CNtVM5iL"
+uri = "file://artifacts/knox-ad/public/images/messy-desk-bright.png"
+type = "image"
+title = "Messy desk on bright floor"
+
+[[generated]]
+id = "9l3lyTzEK2fHZyn33p4L5"
+uri = "file://artifacts/knox-ad/public/images/bright-hardwood.png"
+type = "image"
+title = "Bright hardwood floor"
+
+[[generated]]
+id = "VvtevwChUpGtaLOGaKPMO"
+uri = "file://artifacts/knox-ad/public/images/bright-craftsman.png"
+type = "image"
+title = "Bright craftsman workshop"
+
+[[generated]]
+id = "EFIsBb_M0nZi7Y_FQHWMR"
+uri = "file://artifacts/knox-ad/public/images/bright-showroom.png"
+type = "image"
+title = "Bright flooring showroom"
+
+[[outputs]]
+id = "wXk3h--BLuf7GLjXwp_Vd"
+uri = "file://artifacts/knox-flooring/public/flooring-placeholder.jpg"
+type = "image"
+title = "beautiful living room hardwood flooring"
+
+[[outputs]]
+id = "CEHpdaEMQa5VFvAXR3Ge6"
+uri = "file://artifacts/knox-flooring/public/images/wood-texture.jpg"
+type = "image"
+title = "beautiful modern wood flooring texture close up"
+
+[[outputs]]
+id = "VolGgZAbmZjFali5cx_4_"
+uri = "file://artifacts/knox-ad/public/images/messy-desk.jpg"
+type = "image"
+title = "messy desk with spreadsheets and sticky notes overhead view"
+
+[[outputs]]
+id = "FAwPXjoEuHSeIbItZTUej"
+uri = "file://artifacts/knox-ad/public/images/craftsman.jpg"
+type = "image"
+title = "craftsman installing hardwood floor, wide shot"
+
+[[outputs]]
+id = "zSeI1zwweXUXhS2NtQHZz"
+uri = "file://artifacts/knox-ad/public/images/luxury-floor.jpg"
+type = "image"
+title = "beautiful modern living room with pristine hardwood floors, wide shot, architectural photography"
+
+[[outputs]]
+id = "0vBGNE04jrKh0SCI4hbbb"
+uri = "file://artifacts/knox-ad/public/audio/bg_music.mp3"
+type = "audio"
+title = "epic trailer music"
+
+[[outputs]]
+id = "OSv7fDwyJ9joP_EnOAu5d"
+uri = "file://artifacts/knox-ad/public/audio/vo_solution.mp3"
+type = "audio"
+title = "solution narration (tightened, Adam)"
+
+[[outputs]]
+id = "gOpG5Io77buIYY3hL67iE"
+uri = "file://artifacts/knox-ad/public/audio/vo_problem.mp3"
+type = "audio"
+title = "problem narration (Adam)"
+
+[[outputs]]
+id = "fCIKl7jzaM3eJxLPzyqOt"
+uri = "file://artifacts/knox-ad/public/audio/vo_features.mp3"
+type = "audio"
+title = "features narration (Adam)"
+
+[[outputs]]
+id = "7b3I1FbAcZAemU_tnsVeT"
+uri = "file://artifacts/knox-ad/public/audio/vo_craftsman.mp3"
+type = "audio"
+title = "craftsman narration (Adam)"
+
+[[outputs]]
+id = "Y7tJhOeETuJ0PtKKstzM2"
+uri = "file://artifacts/knox-ad/public/audio/vo_outro.mp3"
+type = "audio"
+title = "outro narration (Adam)"
