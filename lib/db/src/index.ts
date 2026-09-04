@@ -10,7 +10,10 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const databaseUrl = new URL(process.env.DATABASE_URL);
+databaseUrl.searchParams.set("uselibpqcompat", "true");
+
+export const pool = new Pool({ connectionString: databaseUrl.toString() });
 export const db = drizzle(pool, { schema });
 
 export * from "./schema";
