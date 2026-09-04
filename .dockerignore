@@ -1,0 +1,12 @@
+.git
+.github
+.cache
+.local
+.pnpm-store
+node_modules
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+npm-debug.log
+screenshots
+*.tar.gz
