@@ -20,6 +20,19 @@ function daysFromNow(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+const FICTIONAL_LEAD_NAMES = ["Maya Brooks","Ethan Caldwell","Nora Fleming","Caleb Monroe","Ava Patterson","Miles Bennett","Elena Harper","Owen Carlisle","Lucy Hart","Theo Griffin","Ivy Dawson","Noah Mercer","Grace Holloway","Liam Spencer","Chloe Barrett","Henry Walsh","Ella Rhodes","Jack Whitaker","Mia Sutton","Leo Chandler","Sofia Grant","Wyatt Palmer","Lily Foster","Isaac Webb","Zoe Marshall","Finn Lawson","Ruby Kendall","Cole Ramsey","Anna Pierce"];
+const GENERATED_LEADS: LeadInsert[] = FICTIONAL_LEAD_NAMES.map((customerName, index) => ({
+  id: `demo-lead-${index + 8}`, customerName, phone: `865-555-${String(1200 + index)}`, email: `${customerName.toLowerCase().replace(/\s+/g, ".")}@example.com`, address: `${110 + index} Demo Ridge Lane`, city: ["Knoxville","Farragut","Maryville","Oak Ridge","Powell"][index % 5], flooringInterest: ["Luxury Vinyl Plank (LVP)","Carpet","Hardwood","Tile","Laminate"][index % 5], estimatedValue: 4800 + (index % 7) * 1750, source: ["Website","Referral","Walk-in","Repeat Customer","Google"][index % 5], stage: ["New Lead","Contacted","Measurement Scheduled","Estimate Completed","Proposal Sent","Won","Lost"][index % 7], salesperson: index % 2 ? "Jenn Hedley" : "Will Hedley", followUpDate: daysFromNow((index % 14) - 4), estimatedSqft: 450 + (index % 8) * 175, interestLevel: index % 3 === 0 ? "High" : "Medium", notes: "Fictional demonstration lead for the rolling 90-day business view.", createdAt: new Date(Date.now() - (index + 3) * 2 * 86400000).toISOString(), updatedAt: now,
+}));
+
+const GENERATED_PRODUCTS: ProductInsert[] = [
+  ["PetShield Premium Pad","Padding","PAD-PET-08","sqft",0.68,1.35], ["QuietStep LVP Underlayment","Underlayment","UND-QS-100","sqft",0.54,1.15], ["Oak Stair Nose","Trim","TRM-OAK-SN","piece",24,49], ["Waterproof Quarter Round","Trim","TRM-WP-QR","piece",9,19], ["Commercial Pressure Adhesive","Installation","ADH-COM-4G","each",82,145], ["Floor Preparation Service","Installation","SVC-PREP","sqft",0.85,1.95],
+].map(([name,category,sku,unit,cost,price], index) => ({ id:`demo-product-${19+index}`, name:String(name), category:String(category), sku:String(sku), supplier:index < 2 ? "Demo Flooring Supply" : "East Tennessee Materials", unit:String(unit), cost:Number(cost), price:Number(price), quantityOnHand:index === 5 ? 0 : 120 + index * 25, inventoryType:index === 5 ? "Service" : "Inventory", active:true, notes:"Fictional demo catalog item.", createdAt:now, updatedAt:now }));
+
+const GENERATED_PROPOSALS: ProposalInsert[] = Array.from({ length: 12 }, (_, index) => ({ id:`demo-proposal-${index+3}`, jobId:String(index+9), customerName:FICTIONAL_LEAD_NAMES[index], projectLocation:`${118+index} Demo Ridge Lane, Knoxville, TN`, flooringType:["Luxury Vinyl Plank (LVP)","Carpet","Hardwood","Tile"][index%4], roomList:[{id:`dp-room-${index}`,name:"Main Living Area",length:24+index,width:18}], lineItems:[], salespersonId:index%2?"1":"2", totalSqFt:(24+index)*18, scopeOfWork:"Remove existing flooring, prepare substrate, install selected flooring and transitions, and complete final cleanup.", estimatedPrice:6200+index*975, expectedTimeline:`${2+(index%3)} working days`, materialAssumptions:"Final quantities subject to field verification.", exclusions:"Structural repair and concealed moisture damage.", warrantyNote:"Manufacturer and installation warranties apply.", depositType:"percent" as const, depositValue:50, paymentTerms:"50% deposit; balance at substantial completion.", status:["Draft","Sent","Viewed","Accepted","Declined","Expired"][index%6], shareToken:`demo-proposal-token-${index+3}`, sentAt:index%6===0?null:daysFromNow(-index-5), createdAt:new Date(Date.now()-(index+8)*4*86400000).toISOString() }));
+
+const GENERATED_INVOICES: InvoiceInsert[] = Array.from({ length: 6 }, (_, index) => { const total=7200+index*1850, paid=index===0?0:index===1?total/2:index===2?total:index===3?total-750:index===4?total:total-1200; return { id:`demo-invoice-${index+7}`, invoiceNumber:`INV-${1107+index}`, jobId:String(index+9), jobNumber:`J-${1009+index}`, customerName:FICTIONAL_LEAD_NAMES[index], lineItems:[{id:`di-${index}-1`,description:"Flooring materials and professional installation",category:"Materials" as const,quantity:1,unitPrice:total/1.0975}], subtotal:Number((total/1.0975).toFixed(2)), taxableAmount:Number((total/1.0975).toFixed(2)), taxAmount:Number((total-total/1.0975).toFixed(2)), total, depositAmount:index?1000:0, paidAmount:paid, balanceAmount:total-paid, refundedAmount:index===4?350:0, taxCode:"TN-KNOX", paymentReference:paid?`DEMO-PMT-${index+1}`:"", paidAt:paid===total?daysFromNow(-index-2):null, status:index===0?"Draft":index===1?"Partial":index===2?"Paid":index===3?"Overdue":index===4?"Refunded":"Sent", issueDate:daysFromNow(-index*8-8), dueDate:daysFromNow(14-index*8), notes:"Fictional invoice for executive demonstration.", createdAt:new Date(Date.now()-(index+3)*9*86400000).toISOString(), updatedAt:now }; });
+
 export const SEED_JOBS: JobInsert[] = [
   {
     id: "1",
@@ -722,6 +735,7 @@ export const SEED_MATERIALS: MaterialInsert[] = [
 ];
 
 export const SEED_PROPOSALS: ProposalInsert[] = [
+  ...GENERATED_PROPOSALS,
   {
     id: "p1",
     jobId: "6",
@@ -890,6 +904,7 @@ export const SEED_TASKS: TaskInsert[] = [
 ];
 
 export const SEED_INVOICES: InvoiceInsert[] = [
+  ...GENERATED_INVOICES,
   {
     id: "inv1",
     invoiceNumber: "INV-1001",
@@ -1013,6 +1028,7 @@ export const SEED_INVOICES: InvoiceInsert[] = [
 ];
 
 export const SEED_PRODUCTS: ProductInsert[] = [
+  ...GENERATED_PRODUCTS,
   {
     id: "prod1",
     name: "Coretec Pro Plus 7\" Oak",
@@ -1347,6 +1363,7 @@ const dateOffset = (days: number): string => {
 };
 
 export const SEED_LEADS: LeadInsert[] = [
+  ...GENERATED_LEADS,
   {
     id: "lead-demo",
     customerName: "Marcus & Elena Whitfield",

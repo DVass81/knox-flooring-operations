@@ -20,7 +20,10 @@ import publicRouter from "./public";
 import storageRouter from "./storage";
 import authRouter from "./auth";
 import quickbooksRouter, { quickBooksWebhook } from "./quickbooks";
-import { requireAuth } from "../middlewares/auth";
+import { enforceRoleAccess, requireAuth } from "../middlewares/auth";
+import demoRouter from "./demo";
+import aiEstimatesRouter from "./ai-estimates";
+import integrationHealthRouter from "./integration-health";
 
 const router: IRouter = Router();
 
@@ -29,6 +32,10 @@ router.post("/quickbooks/webhook", quickBooksWebhook);
 router.use(authRouter);
 router.use(publicRouter);
 router.use(requireAuth);
+router.use(enforceRoleAccess);
+router.use(demoRouter);
+router.use(aiEstimatesRouter);
+router.use(integrationHealthRouter);
 router.use(jobsRouter);
 router.use(photosRouter);
 router.use(leadsRouter);

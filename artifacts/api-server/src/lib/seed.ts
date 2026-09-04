@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import {
   db,
@@ -13,6 +13,8 @@ import {
   communicationsTable,
   measurementsTable,
   tasksTable,
+  demoBaselinesTable,
+  demoRecordOriginsTable,
   type JobInsert,
 } from "@workspace/db";
 import { logger } from "./logger";
@@ -248,5 +250,26 @@ export async function seedDatabase(): Promise<void> {
       { count: SEED_MEASUREMENTS.length },
       "Seeded measurements",
     );
+  }
+
+  const baselineVersion = "2026.1";
+  const [baseline] = await db.select().from(demoBaselinesTable).where(eq(demoBaselinesTable.version, baselineVersion)).limit(1);
+  if (!baseline) {
+    const counts = { leads: SEED_LEADS.length, jobs: SEED_JOBS.length, proposals: SEED_PROPOSALS.length, invoices: SEED_INVOICES.length, products: SEED_PRODUCTS.length };
+    await db.insert(demoBaselinesTable).values({ id: randomUUID(), version: baselineVersion, label: "Will Hedley executive demo", active: true, recordCounts: counts, createdAt: new Date().toISOString() });
+    const scenarioFor = (entityType: string, entityId: string) => {
+      if (entityType === "job" && entityId === "1") return "residential-lvp";
+      if (entityType === "job" && entityId === "2") return "pet-carpet";
+      if (entityType === "job" && entityId === "3") return "hardwood-risk";
+      if (entityType === "job" && entityId === "4") return "commercial-lvt";
+      return null;
+    };
+    const origins = [
+      ...SEED_LEADS.map((row) => ["lead", row.id]), ...SEED_JOBS.map((row) => ["job", row.id]),
+      ...SEED_PROPOSALS.map((row) => ["proposal", row.id]), ...SEED_INVOICES.map((row) => ["invoice", row.id]),
+      ...SEED_PRODUCTS.map((row) => ["product", row.id]),
+    ].map(([entityType, entityId]) => ({ id: randomUUID(), entityType: String(entityType), entityId: String(entityId), dataOrigin: "demo", scenarioKey: scenarioFor(String(entityType), String(entityId)), baselineVersion, createdAt: new Date().toISOString() }));
+    await db.insert(demoRecordOriginsTable).values(origins);
+    logger.info({ counts }, "Registered versioned executive demo baseline");
   }
 }

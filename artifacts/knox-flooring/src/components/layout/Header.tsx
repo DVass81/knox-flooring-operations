@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
-import { Search, Menu, LogOut } from "lucide-react";
+import { Search, Menu, LogOut, Plus, BookOpen, UserRoundCog, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { SidebarBody } from "./Sidebar";
 import { NotificationCenter } from "./NotificationCenter";
 import { CommandPalette } from "./CommandPalette";
 import { useAuth } from "@/contexts/auth";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useLocation } from "wouter";
 
 export function Header() {
-  const { logout } = useAuth();
+  const { logout, user, switchPersona } = useAuth();
+  const [, navigate] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
@@ -49,6 +52,9 @@ export function Header() {
         </button>
       </div>
       <div className="flex items-center gap-4">
+        <DropdownMenu><DropdownMenuTrigger asChild><Button size="sm" className="hidden sm:flex"><Plus className="mr-1.5 h-4 w-4" />Create<ChevronDown className="ml-1.5 h-3.5 w-3.5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuLabel>Start new</DropdownMenuLabel>{[["Lead","/leads"],["AI estimate","/estimator"],["Job","/jobs"],["Appointment","/calendar"],["Task","/tasks"],["Invoice","/invoices"]].map(([label,href]) => <DropdownMenuItem key={label} onClick={() => navigate(href)}>{label}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu>
+        <Button variant="ghost" size="icon" title="Open Demo Center" aria-label="Open Demo Center" onClick={() => window.dispatchEvent(new Event("knox:demo-center"))}><BookOpen className="h-4 w-4" /></Button>
+        {(user?.actualRole === "owner" || user?.role === "owner") && <DropdownMenu><DropdownMenuTrigger asChild><Button variant={user?.previewRole ? "secondary" : "ghost"} size="sm" className="hidden md:flex"><UserRoundCog className="mr-1.5 h-4 w-4" />{user?.previewRole ? `${user.role} preview` : "Preview role"}</Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuLabel>View the app as…</DropdownMenuLabel>{["sales","operations","installer"].map((role) => <DropdownMenuItem key={role} onClick={() => void switchPersona(role as "sales" | "operations" | "installer")}>{role[0].toUpperCase()+role.slice(1)}</DropdownMenuItem>)}{user?.previewRole && <><DropdownMenuSeparator/><DropdownMenuItem onClick={() => void switchPersona(null)}>Exit preview</DropdownMenuItem></>}</DropdownMenuContent></DropdownMenu>}
         <NotificationCenter />
         <Button variant="ghost" size="icon" title="Sign out" aria-label="Sign out" onClick={() => void logout()}><LogOut className="h-4 w-4" /></Button>
       </div>

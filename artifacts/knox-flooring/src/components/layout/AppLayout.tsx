@@ -1,6 +1,6 @@
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
-import { GuidedTour } from "@/components/tour/GuidedTour";
+import { DemoCenter } from "@/components/demo/DemoCenter";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -10,7 +10,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <Header />
         <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">{children}</main>
       </div>
-      <GuidedTour />
+      <DemoCenter />
     </div>
   );
 }

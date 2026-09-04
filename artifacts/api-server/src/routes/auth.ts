@@ -34,6 +34,17 @@ router.post("/auth/login", async (req, res) => {
 
 router.get("/auth/session", requireAuth, (req, res) => res.json({ user: req.auth, csrfToken: req.auth!.csrfToken }));
 
+router.post("/auth/persona", requireAuth, async (req, res) => {
+  if (req.auth!.actualRole !== "owner") { res.status(403).json({ error: "Only the owner can preview another role" }); return; }
+  const requested = req.body?.role === null ? null : String(req.body?.role ?? "");
+  const allowed = ["sales", "operations", "installer"];
+  if (requested !== null && !allowed.includes(requested)) { res.status(400).json({ error: "Invalid preview role" }); return; }
+  const token = req.cookies?.[SESSION_COOKIE];
+  await db.update(sessionsTable).set({ previewRole: requested }).where(eq(sessionsTable.tokenHash, hashToken(token)));
+  await audit(requested ? "auth.persona_preview_started" : "auth.persona_preview_ended", { userId: req.auth!.userId, entityType: "session", ip: req.ip, details: { role: requested } });
+  res.json({ user: { id: req.auth!.userId, email: req.auth!.email, name: req.auth!.name, role: requested ?? "owner", actualRole: "owner", previewRole: requested }, csrfToken: req.auth!.csrfToken });
+});
+
 router.post("/auth/logout", requireAuth, async (req, res) => {
   const token = req.cookies?.[SESSION_COOKIE];
   if (token) await db.delete(sessionsTable).where(eq(sessionsTable.tokenHash, hashToken(token)));

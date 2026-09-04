@@ -1,0 +1,10 @@
+import { useEffect, useState } from "react";
+import { Mail, MessageSquareText, ShieldCheck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+type Message = { id:string; channel:"email"|"sms"; recipient:string; subject?:string; body:string; status:string; createdAt:string };
+export default function DemoOutbox() {
+  const [messages,setMessages]=useState<Message[]>([]); useEffect(()=>{fetch("/api/demo/outbox",{credentials:"include"}).then(r=>r.json()).then(setMessages)},[]);
+  return <div className="mx-auto max-w-5xl space-y-6"><div><h1 className="text-3xl font-bold">Demo Outbox</h1><p className="mt-1 text-muted-foreground">A safe preview of customer communication. Nothing shown here was delivered externally.</p></div><div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/[.06] p-4 text-sm text-emerald-800"><ShieldCheck className="h-5 w-5" />External delivery is locked unless an owner explicitly enables an allowlisted test recipient.</div>{messages.length===0?<Card><CardHeader><CardTitle>No demo messages yet</CardTitle><CardDescription>Send an email or text from a lead or customer to see it captured here.</CardDescription></CardHeader></Card>:<div className="space-y-3">{messages.map(message=>{const Icon=message.channel==="email"?Mail:MessageSquareText;return <Card key={message.id}><CardHeader className="pb-3"><div className="flex items-start justify-between"><div className="flex gap-3"><div className="rounded-lg bg-primary/10 p-2 text-primary"><Icon className="h-4 w-4"/></div><div><CardTitle className="text-sm">{message.subject||"Text message"}</CardTitle><CardDescription>To {message.recipient} · {new Date(message.createdAt).toLocaleString()}</CardDescription></div></div><Badge variant="secondary">Captured</Badge></div></CardHeader><CardContent><p className="whitespace-pre-wrap text-sm text-muted-foreground">{message.body}</p></CardContent></Card>})}</div>}</div>;
+}

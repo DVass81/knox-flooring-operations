@@ -15,3 +15,4 @@ export * from "./measurements";
 export * from "./tasks";
 export * from "./security";
 export * from "./quickbooks";
+export * from "./demo";

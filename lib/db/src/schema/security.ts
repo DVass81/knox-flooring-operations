@@ -22,6 +22,7 @@ export const sessionsTable = pgTable("sessions", {
   expiresAt: text("expires_at").notNull(),
   ipAddress: text("ip_address").notNull().default(""),
   userAgent: text("user_agent").notNull().default(""),
+  previewRole: text("preview_role"),
   createdAt: text("created_at").notNull(),
 }, (table) => [uniqueIndex("sessions_token_hash_unique").on(table.tokenHash)]);
 
@@ -44,3 +45,5 @@ export const auditEventsTable = pgTable("audit_events", {
   details: jsonb("details").$type<Record<string, unknown>>().notNull().default({}),
   createdAt: text("created_at").notNull(),
 });
+
+export type AppRole = "owner" | "sales" | "operations" | "installer";

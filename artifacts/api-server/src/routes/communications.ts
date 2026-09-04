@@ -4,6 +4,7 @@ import { and, desc, eq } from "drizzle-orm";
 import {
   db,
   communicationsTable,
+  demoOutboxTable,
   type CommunicationInsert,
 } from "@workspace/db";
 import {
@@ -18,6 +19,18 @@ import { CommsError, sendEmail, sendSms } from "../lib/comms";
 import { customerKey } from "../lib/customer-key";
 
 const router: IRouter = Router();
+
+function canDeliverExternally(recipient: string): boolean {
+  if (process.env.DEMO_MODE !== "false") return false;
+  const allowed = (process.env.COMMS_ALLOWLIST ?? "").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
+  return allowed.includes(recipient.trim().toLowerCase());
+}
+
+async function captureDemoMessage(input: { channel: "email" | "sms"; recipient: string; subject?: string; body: string; userId?: string }) {
+  const id = randomUUID();
+  await db.insert(demoOutboxTable).values({ id, channel: input.channel, recipient: input.recipient, subject: input.subject, body: input.body, status: "captured", externalDelivery: false, createdBy: input.userId, createdAt: new Date().toISOString() });
+  return id;
+}
 
 router.get("/communications", async (req, res): Promise<void> => {
   const query = ListCommunicationsQueryParams.safeParse(req.query);
@@ -57,6 +70,11 @@ router.post("/communications/email", async (req, res): Promise<void> => {
     ckey ?? (customerName ? customerKey(customerName) : undefined);
 
   try {
+    if (!canDeliverExternally(to)) {
+      const demoId = await captureDemoMessage({ channel: "email", recipient: to, subject, body, userId: req.auth?.userId });
+      const row = await persist({ leadId, customerKey: resolvedKey, customerName: customerName ?? "", channel: "email", direction: "outbound", toAddress: to, fromAddress: "Demo Outbox", subject, body, status: "sent", providerMessageId: `demo:${demoId}` });
+      res.status(201).json(ListCommunicationsResponseItem.parse(stripNulls(row))); return;
+    }
     const result = await sendEmail({ to, subject, body });
     const row = await persist({
       leadId,
@@ -100,6 +118,11 @@ router.post("/communications/sms", async (req, res): Promise<void> => {
     ckey ?? (customerName ? customerKey(customerName) : undefined);
 
   try {
+    if (!canDeliverExternally(to)) {
+      const demoId = await captureDemoMessage({ channel: "sms", recipient: to, body, userId: req.auth?.userId });
+      const row = await persist({ leadId, customerKey: resolvedKey, customerName: customerName ?? "", channel: "sms", direction: "outbound", toAddress: to, fromAddress: "Demo Outbox", subject: "", body, status: "sent", providerMessageId: `demo:${demoId}` });
+      res.status(201).json(ListCommunicationsResponseItem.parse(stripNulls(row))); return;
+    }
     const result = await sendSms({ to, body });
     const row = await persist({
       leadId,

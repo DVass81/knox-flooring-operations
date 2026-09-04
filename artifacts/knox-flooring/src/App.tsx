@@ -32,6 +32,8 @@ import Welcome, { hasEnteredDemo } from "@/pages/welcome";
 import VideoPage from "@/pages/video";
 import { AuthProvider, useAuth } from "@/contexts/auth";
 import { Loader2 } from "lucide-react";
+import IntegrationHealth from "@/pages/integration-health";
+import DemoOutbox from "@/pages/demo-outbox";
 
 const queryClient = new QueryClient();
 
@@ -59,6 +61,8 @@ function AdminRouter() {
         <Route path="/inventory" component={Inventory} />
         <Route path="/reports" component={Reports} />
         <Route path="/settings" component={Settings} />
+        <Route path="/integration-health" component={IntegrationHealth} />
+        <Route path="/demo-outbox" component={DemoOutbox} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

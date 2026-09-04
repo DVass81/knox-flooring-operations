@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/hooks/use-store";
 import { navGroups } from "./nav";
+import { useAuth } from "@/contexts/auth";
 
 function getInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -13,17 +14,16 @@ function getInitials(name: string) {
 export function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   const [location] = useLocation();
   const { settings } = useStore();
+  const { user } = useAuth();
 
   return (
     <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
       <div className="flex items-center h-16 px-6 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-serif text-lg font-semibold shadow-sm">
-            K
-          </div>
+          <img src="/kfc-logo.png" alt="Knoxville Flooring Center" className="h-10 w-10 rounded-md bg-white object-contain p-1" />
           <div className="flex flex-col leading-none">
             <span className="font-serif text-lg font-semibold text-white tracking-tight">
-              Knox Ops
+              KFC Operations
             </span>
             <span className="text-[10px] uppercase tracking-[0.18em] text-sidebar-foreground/50">
               Flooring Center
@@ -32,7 +32,7 @@ export function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
         </div>
       </div>
       <nav className="flex-1 py-5 px-3 space-y-5 overflow-y-auto">
-        {navGroups.map((group) => (
+        {navGroups.map((group) => ({ ...group, items: group.items.filter((item) => !item.roles || item.roles.includes(user?.role ?? "owner")) })).filter((group) => group.items.length > 0).map((group) => (
           <div key={group.label}>
             <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/40">
               {group.label}
@@ -76,14 +76,14 @@ export function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
       <div className="p-3 border-t border-sidebar-border">
         <div className="flex items-center gap-3 px-3 py-2">
           <div className="w-9 h-9 rounded-full bg-sidebar-accent flex items-center justify-center text-sm font-semibold text-sidebar-accent-foreground border border-sidebar-border">
-            {getInitials(settings.ownerName)}
+            {getInitials(user?.name || settings.ownerName)}
           </div>
           <div className="flex flex-col min-w-0">
             <span className="text-sm font-medium text-white truncate">
-              {settings.ownerName || "Knox Ops"}
+              {user?.name || settings.ownerName || "Will Hedley"}
             </span>
             <span className="text-xs text-sidebar-foreground/50 truncate">
-              {settings.ownerRole || "Owner"}
+              {user?.previewRole ? `Previewing ${user.role}` : (user?.role || settings.ownerRole || "Owner")}
             </span>
           </div>
         </div>

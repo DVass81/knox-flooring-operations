@@ -9,9 +9,12 @@ import { ROOM_NAMES } from "@/lib/options";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, Lightbulb, AlertTriangle, CheckCircle, Calculator, FileText, Briefcase, Package } from "lucide-react";
+import { Plus, Trash2, Lightbulb, AlertTriangle, CheckCircle, Calculator, FileText, Briefcase, Package, Sparkles, Loader2, ShieldCheck } from "lucide-react";
 import { FlooringType, ProductCategory, ProductUnit, ProposalLineItem, Product } from "@/lib/types";
 import { useLocation } from "wouter";
+import { customFetch } from "@workspace/api-client-react";
+
+type CopilotResult = { mode: "live" | "fallback"; scopeOfWork: string; wasteFactor: number; wasteExplanation: string; labor: { hours: number; crewSize: number; durationDays: number }; preparation: string[]; risks: string[]; missingInformation: string[]; marginWarnings: string[]; proposalSummary: string; internalNotes: string; confidence: string; assumptions: string[]; model?: string | null; fallbackReason?: string };
 
 const FLOORING_CATEGORY_MAP: Record<FlooringType, ProductCategory[]> = {
   Carpet: ["Carpet"],
@@ -65,6 +68,18 @@ export default function Estimator() {
   const [subfloorRepair, setSubfloorRepair] = useState(false);
   const [moistureBarrier, setMoistureBarrier] = useState(false);
   const [complexityNotes, setComplexityNotes] = useState("");
+  const [copilot, setCopilot] = useState<CopilotResult | null>(null);
+  const [copilotLoading, setCopilotLoading] = useState(false);
+  const [copilotError, setCopilotError] = useState("");
+
+  const runCopilot = async () => {
+    setCopilotLoading(true); setCopilotError("");
+    try {
+      const result = await customFetch<CopilotResult>("/api/ai/estimate", { method: "POST", responseType: "json", body: JSON.stringify({ customer: { name: customerName, city }, flooringType, rooms, complexityNotes, options: { furnitureMoving, subfloorRepair, moistureBarrier, stairCount }, catalog: products.filter((product) => product.active).slice(0, 40).map(({ id, name, sku, category, unit, price }) => ({ id, name, sku, category, unit, price })), policies: { targetMarginPercent: 35, currentWasteFactor: wasteFactor }, deterministicTotals: { rawSquareFeet: rawSqFt, suggestedPrice: suggestedSellingPrice, grossMarginPercent: grossMargin } }) });
+      setCopilot(result);
+    } catch (error) { setCopilotError(error instanceof Error ? error.message : "Unable to reach the copilot"); }
+    finally { setCopilotLoading(false); }
+  };
 
   const addRoom = () => {
     setRooms([...rooms, { id: Math.random().toString(), name: "", length: 10, width: 10 }]);
@@ -319,8 +334,8 @@ export default function Estimator() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">AI Estimator</h1>
-          <p className="text-muted-foreground mt-1">Configure project details to generate intelligent estimates.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">AI Quote Copilot</h1>
+          <p className="text-muted-foreground mt-1">Grounded recommendations from your measurements and catalog; Knox Ops remains authoritative for every price and total.</p>
         </div>
       </div>
 
@@ -562,6 +577,19 @@ export default function Estimator() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <Button onClick={runCopilot} disabled={copilotLoading || rawSqFt <= 0} className="w-full bg-gradient-to-r from-primary to-sky-500 text-white">
+                {copilotLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}{copilotLoading ? "Analyzing project…" : "Generate AI recommendations"}
+              </Button>
+              <div className="flex items-start gap-2 rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" /><span>Human approval required. AI cannot change products, prices, measurements, taxes, or send a proposal.</span></div>
+              {copilotError && <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{copilotError}</div>}
+              {copilot && <div className="space-y-4 rounded-xl border border-primary/20 bg-primary/[.03] p-4">
+                <div className="flex items-center justify-between"><span className="text-sm font-semibold">Copilot analysis</span><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${copilot.mode === "live" ? "bg-emerald-500/15 text-emerald-700" : "bg-amber-500/15 text-amber-700"}`}>{copilot.mode === "live" ? "Live AI" : "Fallback mode"}</span></div>
+                <div><h4 className="text-sm font-medium">Scope draft</h4><p className="mt-1 text-sm text-muted-foreground">{copilot.scopeOfWork}</p></div>
+                <div className="grid grid-cols-2 gap-2"><div className="rounded-lg bg-background p-3"><p className="text-xs text-muted-foreground">Suggested waste</p><p className="text-lg font-bold">{copilot.wasteFactor}%</p></div><div className="rounded-lg bg-background p-3"><p className="text-xs text-muted-foreground">Crew plan</p><p className="text-lg font-bold">{copilot.labor.crewSize} · {copilot.labor.durationDays}d</p></div></div>
+                {copilot.risks.length > 0 && <div><h4 className="text-sm font-medium">Risks to review</h4><ul className="mt-1 list-disc space-y-1 pl-4 text-sm text-muted-foreground">{copilot.risks.map((risk) => <li key={risk}>{risk}</li>)}</ul></div>}
+                {copilot.missingInformation.length > 0 && <div><h4 className="text-sm font-medium">Before finalizing</h4><ul className="mt-1 list-disc space-y-1 pl-4 text-sm text-muted-foreground">{copilot.missingInformation.map((item) => <li key={item}>{item}</li>)}</ul></div>}
+                <div className="flex gap-2"><Button size="sm" onClick={() => { setWasteFactor(copilot.wasteFactor); setComplexityNotes((previous) => `${previous}${previous ? "\n\n" : ""}${copilot.internalNotes}`); }}>Apply approved guidance</Button><Button size="sm" variant="outline" onClick={() => setCopilot(null)}>Dismiss</Button></div>
+              </div>}
               {aiRecommendations.map((rec, i) => (
                 <div key={i} className={`p-3 rounded-md text-sm flex gap-3 items-start ${
                   rec.type === 'alert' ? 'bg-destructive/10 text-destructive' :

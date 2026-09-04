@@ -18,6 +18,7 @@ import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { resolveStages } from "@/lib/lead-links";
 import { WON_STAGE, LOST_STAGE, type CommissionBasis } from "@/lib/types";
 import { QuickBooksSettings } from "@/components/settings/QuickBooksSettings";
+import { DemoSettings } from "@/components/settings/DemoSettings";
 
 export default function Settings() {
   const { settings, updateSettings } = useStore();
@@ -173,6 +174,7 @@ export default function Settings() {
       </Card>
 
       <QuickBooksSettings />
+      <DemoSettings />
 
       <Card>
         <CardHeader>

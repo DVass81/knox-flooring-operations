@@ -15,6 +15,8 @@ import {
   Boxes,
   BarChart3,
   Settings,
+  Activity,
+  Send,
   Target,
   type LucideIcon,
 } from "lucide-react";
@@ -25,6 +27,7 @@ export interface NavItem {
   icon: LucideIcon;
   /** Extra terms to help fuzzy search in the command palette */
   keywords?: string;
+  roles?: string[];
 }
 
 export interface NavGroup {
@@ -44,7 +47,7 @@ export const navGroups: NavGroup[] = [
     items: [
       { name: "Leads", href: "/leads", icon: Target, keywords: "prospects inquiries crm" },
       { name: "Pipeline", href: "/pipeline", icon: KanbanSquare, keywords: "stages board funnel" },
-      { name: "AI Estimator", href: "/estimator", icon: Calculator, keywords: "quote estimate measure" },
+      { name: "AI Quote Copilot", href: "/estimator", icon: Calculator, keywords: "quote estimate measure", roles: ["owner", "sales"] },
       { name: "Proposals", href: "/proposals", icon: FileText, keywords: "quotes contracts sign" },
     ],
   },
@@ -62,22 +65,24 @@ export const navGroups: NavGroup[] = [
   {
     label: "Finance",
     items: [
-      { name: "Invoices", href: "/invoices", icon: Receipt, keywords: "billing payments balance" },
-      { name: "Commissions", href: "/commissions", icon: Wallet, keywords: "payouts rep pay" },
-      { name: "Sales Performance", href: "/sales", icon: Trophy, keywords: "leaderboard reps ranking" },
+      { name: "Invoices", href: "/invoices", icon: Receipt, keywords: "billing payments balance", roles: ["owner"] },
+      { name: "Commissions", href: "/commissions", icon: Wallet, keywords: "payouts rep pay", roles: ["owner"] },
+      { name: "Sales Performance", href: "/sales", icon: Trophy, keywords: "leaderboard reps ranking", roles: ["owner", "sales"] },
     ],
   },
   {
     label: "Records",
     items: [
-      { name: "Customers", href: "/customers", icon: Contact, keywords: "clients people accounts" },
-      { name: "Reports", href: "/reports", icon: BarChart3, keywords: "analytics insights charts" },
+      { name: "Customers", href: "/customers", icon: Contact, keywords: "clients people accounts", roles: ["owner", "sales"] },
+      { name: "Reports", href: "/reports", icon: BarChart3, keywords: "analytics insights charts", roles: ["owner"] },
     ],
   },
   {
     label: "System",
     items: [
-      { name: "Settings", href: "/settings", icon: Settings, keywords: "config company preferences" },
+      { name: "Settings", href: "/settings", icon: Settings, keywords: "config company preferences", roles: ["owner"] },
+      { name: "Integration Health", href: "/integration-health", icon: Activity, keywords: "connections quickbooks ai calendar demo", roles: ["owner", "operations"] },
+      { name: "Demo Outbox", href: "/demo-outbox", icon: Send, keywords: "email sms messages safe preview", roles: ["owner", "sales"] },
     ],
   },
 ];

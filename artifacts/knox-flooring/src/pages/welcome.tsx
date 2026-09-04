@@ -119,12 +119,10 @@ export default function Welcome() {
 
         {/* brand */}
         <div className="relative flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary font-serif text-xl font-semibold text-primary-foreground shadow-sm">
-            K
-          </div>
+          <img src="/kfc-logo.png" alt="Knoxville Flooring Center" className="h-12 w-12 rounded-xl bg-white object-contain p-1.5 shadow-sm" />
           <div className="flex flex-col leading-none">
             <span className="font-serif text-xl font-semibold tracking-tight text-white">
-              Knox Ops
+              KFC Operations
             </span>
             <span className="text-[10px] uppercase tracking-[0.18em] text-sidebar-foreground/50">
               Flooring Center
