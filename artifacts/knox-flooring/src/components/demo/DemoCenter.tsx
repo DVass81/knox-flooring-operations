@@ -179,7 +179,8 @@ export function DemoCenter() {
       update();
       if (target) {
         const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        target.scrollIntoView({ block: "center", inline: "center", behavior: reducedMotion ? "auto" : "smooth" });
+        const compactViewport = window.innerWidth < 640;
+        target.scrollIntoView({ block: compactViewport ? "start" : "center", inline: "center", behavior: reducedMotion ? "auto" : "smooth" });
         window.setTimeout(update, reducedMotion ? 0 : 350);
       } else retryTimer = window.setTimeout(discover, 250);
     };
@@ -361,6 +362,8 @@ export function DemoCenter() {
     finally { setBusy(false); }
   };
 
+  const panelOnLeft = Boolean(targetRect && typeof window !== "undefined" && targetRect.left + (targetRect.width / 2) > window.innerWidth / 2);
+
   const overlay = activeStep ? createPortal(<>
     {targetRect && <div
       aria-hidden="true"
@@ -369,7 +372,7 @@ export function DemoCenter() {
     />}
     {!targetRect && !targetMissing && <div className="pointer-events-none fixed inset-0 z-[60] bg-[#07142F]/70" aria-hidden="true" />}
     <aside
-      className="fixed bottom-3 right-3 z-[70] max-h-[calc(100vh-1.5rem)] w-[min(430px,calc(100vw-1.5rem))] overflow-y-auto rounded-2xl border border-violet-300/40 bg-card shadow-2xl"
+      className={`fixed bottom-3 z-[70] max-h-[45vh] w-[min(430px,calc(100vw-1.5rem))] overflow-y-auto rounded-2xl border border-violet-300/40 bg-card shadow-2xl sm:max-h-[calc(100vh-1.5rem)] ${panelOnLeft ? "left-3" : "right-3"}`}
       role="dialog"
       aria-modal="true"
       aria-labelledby="training-step-title"
