@@ -142,7 +142,7 @@ export interface MaterialRecord {
 }
 
 export type DepositType = 'none' | 'percent' | 'amount';
-export type ProposalStatus = 'Draft' | 'Sent' | 'Viewed' | 'Accepted' | 'Declined';
+export type ProposalStatus = 'Draft' | 'Sent' | 'Viewed' | 'Accepted' | 'Declined' | 'Expired';
 
 export interface ProposalLineItem {
   id: string;
@@ -186,7 +186,7 @@ export interface Proposal {
   createdAt: string;
 }
 
-export type InvoiceStatus = 'Draft' | 'Sent' | 'Paid' | 'Overdue';
+export type InvoiceStatus = 'Draft' | 'Sent' | 'Partial' | 'Paid' | 'Overdue' | 'Credited' | 'Refunded' | 'Voided';
 export type InvoiceLineCategory = 'Labor' | 'Materials' | 'Add-on';
 
 export interface InvoiceLineItem {

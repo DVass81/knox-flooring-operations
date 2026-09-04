@@ -29,7 +29,7 @@ export function customerKey(name: string): string {
 }
 
 const PAID = "Paid";
-const OUTSTANDING_STATUSES = ["Sent", "Overdue"];
+const OUTSTANDING_STATUSES = ["Sent", "Partial", "Overdue"];
 
 export function aggregateCustomers(
   jobs: Job[],

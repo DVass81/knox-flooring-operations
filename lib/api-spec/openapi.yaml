@@ -1533,13 +1533,13 @@ components:
         - Missing Items
     ProposalStatus:
       type: string
-      enum: [Draft, Sent, Viewed, Accepted, Declined]
+      enum: [Draft, Sent, Viewed, Accepted, Declined, Expired]
     DepositType:
       type: string
       enum: [none, percent, amount]
     InvoiceStatus:
       type: string
-      enum: [Draft, Sent, Paid, Overdue]
+      enum: [Draft, Sent, Partial, Paid, Overdue, Credited, Refunded, Voided]
     InvoiceLineCategory:
       type: string
       enum: [Labor, Materials, Add-on]

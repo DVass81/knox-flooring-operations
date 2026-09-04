@@ -15,4 +15,5 @@ export const ProposalStatus = {
   Viewed: 'Viewed',
   Accepted: 'Accepted',
   Declined: 'Declined',
+  Expired: 'Expired',
 } as const;
