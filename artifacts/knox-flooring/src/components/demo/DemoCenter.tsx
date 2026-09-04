@@ -183,15 +183,19 @@ export function DemoCenter() {
         window.setTimeout(update, reducedMotion ? 0 : 350);
       } else retryTimer = window.setTimeout(discover, 250);
     };
-    const onTargetClick = (event: Event) => {
-      if (target && target.contains(event.target as Node)) setTargetInteracted(true);
+    const onTargetInteraction = (event: Event) => {
+      const eventTarget = event.target;
+      if (eventTarget instanceof Element && eventTarget.closest(`[data-training-id="${CSS.escape(activeStep.target)}"]`)) {
+        setTargetInteracted(true);
+      }
     };
     missingTimer = window.setTimeout(() => setTargetMissing(true), 8000);
     const observer = new MutationObserver(update);
     observer.observe(document.body, { childList: true, subtree: true, attributes: true });
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
-    document.addEventListener("click", onTargetClick, true);
+    document.addEventListener("pointerdown", onTargetInteraction, true);
+    document.addEventListener("click", onTargetInteraction, true);
     discover();
     return () => {
       disposed = true;
@@ -200,7 +204,8 @@ export function DemoCenter() {
       window.clearTimeout(retryTimer);
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
-      document.removeEventListener("click", onTargetClick, true);
+      document.removeEventListener("pointerdown", onTargetInteraction, true);
+      document.removeEventListener("click", onTargetInteraction, true);
     };
   }, [activeStep?.id, location]);
 

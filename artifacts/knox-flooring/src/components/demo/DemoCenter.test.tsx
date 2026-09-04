@@ -61,6 +61,18 @@ describe("DemoCenter", () => {
     expect(verify).toBeEnabled();
   });
 
+  it("captures pointer interaction before an action control can re-render", async () => {
+    installApi("action");
+    render(<><button data-training-id="nav-dashboard">Generate AI recommendations</button><DemoCenter /></>);
+    await waitFor(() => expect(mocks.api).toHaveBeenCalled());
+    fireEvent(window, new Event("knox:demo-center"));
+    fireEvent.click(await screen.findByRole("button", { name: /start silently/i }));
+    const target = await screen.findByRole("button", { name: "Generate AI recommendations" });
+    fireEvent.pointerDown(target);
+    expect(await screen.findByText(/highlighted control used/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /verify & complete/i })).toBeEnabled();
+  });
+
   it("keeps a contextual Page Guide available outside missions", async () => {
     installApi();
     render(<><button data-training-id="nav-dashboard">Dashboard</button><DemoCenter /></>);
