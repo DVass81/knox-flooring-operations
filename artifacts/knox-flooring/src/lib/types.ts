@@ -279,6 +279,7 @@ export type LeadSource =
   | 'Social Media'
   | 'Home Show'
   | 'Repeat Customer'
+  | 'Google'
   | 'Other';
 
 export type LeadActivityType = 'Note' | 'Call' | 'Email' | 'Stage Change' | 'Follow-up';

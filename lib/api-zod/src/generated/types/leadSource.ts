@@ -17,5 +17,6 @@ export const LeadSource = {
   Social_Media: 'Social Media',
   Home_Show: 'Home Show',
   Repeat_Customer: 'Repeat Customer',
+  Google: 'Google',
   Other: 'Other',
 } as const;

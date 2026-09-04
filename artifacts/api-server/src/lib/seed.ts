@@ -252,9 +252,33 @@ export async function seedDatabase(): Promise<void> {
     );
   }
 
-  const baselineVersion = "2026.1";
+  const baselineVersion = "2026.2";
   const [baseline] = await db.select().from(demoBaselinesTable).where(eq(demoBaselinesTable.version, baselineVersion)).limit(1);
   if (!baseline) {
+    // One-time baseline migration: normalize the curated accounting records without
+    // touching team-created invoices or requiring a destructive demo reset.
+    for (const invoice of SEED_INVOICES) {
+      await db
+        .update(invoicesTable)
+        .set({
+          subtotal: invoice.subtotal ?? 0,
+          taxableAmount: invoice.taxableAmount ?? 0,
+          taxAmount: invoice.taxAmount ?? 0,
+          discountAmount: invoice.discountAmount ?? 0,
+          total: invoice.total ?? 0,
+          depositAmount: invoice.depositAmount ?? 0,
+          paidAmount: invoice.paidAmount ?? 0,
+          balanceAmount: invoice.balanceAmount ?? 0,
+          refundedAmount: invoice.refundedAmount ?? 0,
+          taxCode: invoice.taxCode ?? "",
+          paymentReference: invoice.paymentReference ?? "",
+          paidAt: invoice.paidAt ?? null,
+          status: invoice.status,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(invoicesTable.id, invoice.id));
+    }
+    await db.update(demoBaselinesTable).set({ active: false });
     const counts = { leads: SEED_LEADS.length, jobs: SEED_JOBS.length, proposals: SEED_PROPOSALS.length, invoices: SEED_INVOICES.length, products: SEED_PRODUCTS.length };
     await db.insert(demoBaselinesTable).values({ id: randomUUID(), version: baselineVersion, label: "Will Hedley executive demo", active: true, recordCounts: counts, createdAt: new Date().toISOString() });
     const scenarioFor = (entityType: string, entityId: string) => {
@@ -269,7 +293,9 @@ export async function seedDatabase(): Promise<void> {
       ...SEED_PROPOSALS.map((row) => ["proposal", row.id]), ...SEED_INVOICES.map((row) => ["invoice", row.id]),
       ...SEED_PRODUCTS.map((row) => ["product", row.id]),
     ].map(([entityType, entityId]) => ({ id: randomUUID(), entityType: String(entityType), entityId: String(entityId), dataOrigin: "demo", scenarioKey: scenarioFor(String(entityType), String(entityId)), baselineVersion, createdAt: new Date().toISOString() }));
-    await db.insert(demoRecordOriginsTable).values(origins);
+    const [existingOrigin] = await db.select({ id: demoRecordOriginsTable.id }).from(demoRecordOriginsTable).limit(1);
+    if (existingOrigin) await db.update(demoRecordOriginsTable).set({ baselineVersion });
+    else await db.insert(demoRecordOriginsTable).values(origins);
     logger.info({ counts }, "Registered versioned executive demo baseline");
   }
 }
