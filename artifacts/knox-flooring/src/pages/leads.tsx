@@ -292,7 +292,7 @@ export default function Leads() {
     .reduce((acc, l) => acc + (l.estimatedValue || 0), 0);
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 max-w-full space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
@@ -370,8 +370,8 @@ export default function Leads() {
         </Card>
       </div>
 
-      <div className="overflow-x-auto pb-4">
-        <div className="flex gap-4 min-w-max">
+      <div className="h-[calc(100dvh-17rem)] min-h-[360px] max-h-[720px] w-full max-w-full overflow-auto overscroll-contain pb-4">
+        <div className="flex w-max min-w-full gap-4 pr-4">
           {stages.map((stage, stageIndex) => {
             const stageLeads = leads
               .filter((l) => l.stage === stage)
@@ -400,7 +400,7 @@ export default function Leads() {
                   void placeLead(stage, stageLeads.length);
                 }}
               >
-                <div className="p-3 border-b bg-card/50 rounded-t-md">
+                <div className="sticky top-0 z-10 rounded-t-md border-b bg-card/95 p-3 backdrop-blur-sm">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-sm">{stage}</span>
                     <Badge variant="secondary">{stageLeads.length}</Badge>
