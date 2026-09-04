@@ -67,6 +67,7 @@ export function DemoCenter() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const lastFocusRef = useRef<HTMLElement | null>(null);
+  const isActualOwner = user?.actualRole === "owner" || (!user?.actualRole && user?.role === "owner");
 
   const refresh = useCallback(async () => {
     const next = await api<TrainingStatus>("/demo/status");
@@ -228,7 +229,7 @@ export function DemoCenter() {
   const startMission = async (item: MissionDefinition, withVoice: boolean) => {
     setBusy(true); setError("");
     try {
-      if (user?.actualRole === "owner" && item.role !== user.role) await switchPersona(item.role === "owner" ? null : item.role);
+      if (isActualOwner && item.role !== user?.role) await switchPersona(item.role === "owner" ? null : item.role);
       const run = await api<TrainingRun>(`/demo/missions/${item.key}/start`, { method: "POST", body: JSON.stringify({ voiceEnabled: withVoice }) });
       setVoiceEnabled(withVoice);
       setActiveRun(run);
@@ -245,7 +246,7 @@ export function DemoCenter() {
     if (!item) return;
     setBusy(true); setError("");
     try {
-      if (user?.actualRole === "owner" && item.role !== user.role) await switchPersona(item.role === "owner" ? null : item.role);
+      if (isActualOwner && item.role !== user?.role) await switchPersona(item.role === "owner" ? null : item.role);
       const resumed = await api<TrainingRun>(`/demo/missions/${run.missionKey}`, { method: "PUT", body: JSON.stringify({ runId: run.id, status: "active", currentStep: run.currentStep }) });
       setActiveRun(resumed); setVoiceEnabled(resumed.voiceEnabled); setCenterOpen(false); navigate(item.steps[resumed.currentStep]?.route ?? "/");
     } catch (nextError) { setError(errorText(nextError)); }
@@ -257,7 +258,7 @@ export function DemoCenter() {
     setBusy(true); setError("");
     try {
       const item = status?.missions.find((candidate) => candidate.key === run.missionKey);
-      if (user?.actualRole === "owner" && item && item.role !== user.role) await switchPersona(item.role === "owner" ? null : item.role);
+      if (isActualOwner && item && item.role !== user?.role) await switchPersona(item.role === "owner" ? null : item.role);
       const restarted = await api<TrainingRun>(`/demo/missions/${run.missionKey}/restart`, { method: "POST", body: JSON.stringify({ runId: run.id }) });
       setActiveRun(restarted); setActiveGuide(null); setCenterOpen(false);
       navigate(item?.steps[0]?.route ?? "/");
@@ -272,7 +273,7 @@ export function DemoCenter() {
     try {
       const paused = await api<TrainingRun>(`/demo/missions/${activeRun.missionKey}/exit`, { method: "POST", body: JSON.stringify({ runId: activeRun.id }) });
       setActiveRun(null); setStatus((current) => current ? { ...current, runs: [paused, ...current.runs.filter((run) => run.id !== paused.id)] } : current); stopAudio();
-      if (user?.actualRole === "owner" && user.previewRole) await switchPersona(null);
+      if (isActualOwner && user?.previewRole) await switchPersona(null);
     } catch (nextError) { setError(errorText(nextError)); }
     finally { setBusy(false); }
   };
@@ -284,7 +285,7 @@ export function DemoCenter() {
     try {
       const exited = await api<TrainingRun>(`/demo/missions/${activeRun.missionKey}/exit`, { method: "POST", body: JSON.stringify({ runId: activeRun.id, discard: true }) });
       setActiveRun(null); setStatus((current) => current ? { ...current, runs: [exited, ...current.runs.filter((run) => run.id !== exited.id)] } : current); stopAudio();
-      if (user?.actualRole === "owner" && user.previewRole) await switchPersona(null);
+      if (isActualOwner && user?.previewRole) await switchPersona(null);
       setCenterOpen(true);
     } catch (nextError) { setError(errorText(nextError)); }
     finally { setBusy(false); }
@@ -297,7 +298,7 @@ export function DemoCenter() {
     try {
       const updated = await api<TrainingRun & { complete?: boolean }>(`/demo/missions/${activeRun.missionKey}/verify`, { method: "POST", body: JSON.stringify({ runId: activeRun.id, stepId: missionStep.id, targetInteracted, skipped }) });
       setStatus((current) => current ? { ...current, runs: [updated, ...current.runs.filter((run) => run.id !== updated.id)] } : current);
-      if (updated.complete) { setActiveRun(null); stopAudio(); if (user?.actualRole === "owner" && user.previewRole) await switchPersona(null); setCenterOpen(true); }
+      if (updated.complete) { setActiveRun(null); stopAudio(); if (isActualOwner && user?.previewRole) await switchPersona(null); setCenterOpen(true); }
       else {
         setActiveRun(updated);
         const nextStep = mission?.steps[updated.currentStep];
@@ -465,7 +466,7 @@ export function DemoCenter() {
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
           <p className="max-w-2xl text-xs leading-5 text-muted-foreground">Training narration is generated by AI. Practice activity is isolated from accounting, calendar sync, and external communications.</p>
-          {user?.actualRole === "owner" && !user.previewRole && <Button variant="ghost" size="sm" onClick={() => void resetTraining()} disabled={busy}><RotateCcw className="mr-1.5 h-4 w-4" />Reset my training</Button>}
+          {isActualOwner && !user?.previewRole && <Button variant="ghost" size="sm" onClick={() => void resetTraining()} disabled={busy}><RotateCcw className="mr-1.5 h-4 w-4" />Reset my training</Button>}
         </div>
       </DialogContent>
     </Dialog>

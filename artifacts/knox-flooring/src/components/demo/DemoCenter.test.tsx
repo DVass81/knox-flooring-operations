@@ -3,10 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DemoCenter } from "./DemoCenter";
 import type { TrainingStatus } from "./training-types";
 
-const mocks = vi.hoisted(() => ({ api: vi.fn(), navigate: vi.fn(), switchPersona: vi.fn() }));
+const mocks = vi.hoisted(() => ({ api: vi.fn(), navigate: vi.fn(), switchPersona: vi.fn(), user: { role: "owner" as const, actualRole: "owner" as "owner" | undefined, previewRole: null as null | "sales" } }));
 vi.mock("@workspace/api-client-react", () => ({ customFetch: mocks.api }));
 vi.mock("wouter", () => ({ useLocation: () => ["/", mocks.navigate] }));
-vi.mock("@/contexts/auth", () => ({ useAuth: () => ({ user: { role: "owner", actualRole: "owner", previewRole: null }, switchPersona: mocks.switchPersona }) }));
+vi.mock("@/contexts/auth", () => ({ useAuth: () => ({ user: mocks.user, switchPersona: mocks.switchPersona }) }));
 
 const preferences = { userId: "owner", voiceEnabled: false, captionsEnabled: true as const, welcomeDismissed: true };
 const mission = {
@@ -32,7 +32,7 @@ function installApi(kind: "info" | "action" = "info") {
 }
 
 describe("DemoCenter", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => { vi.clearAllMocks(); mocks.user.actualRole = "owner"; mocks.user.previewRole = null; });
   afterEach(() => cleanup());
 
   it("opens from the persistent Training control and completes an informational step", async () => {
@@ -67,5 +67,20 @@ describe("DemoCenter", () => {
     fireEvent.click(await screen.findByRole("button", { name: /open dashboard page guide/i }));
     expect(await screen.findByText("Dashboard Page Guide")).toBeInTheDocument();
     expect(screen.getByText("Daily priorities")).toBeInTheDocument();
+  });
+
+  it("switches a password-free owner session into the sales perspective before starting sales training", async () => {
+    mocks.user.actualRole = undefined;
+    const salesMission = { ...mission, key: "sales", name: "Sales & Estimating Mission", role: "sales" as const };
+    mocks.api.mockImplementation((path: string) => {
+      if (path === "/api/demo/status") return Promise.resolve({ ...status(), missions: [salesMission] });
+      if (path.endsWith("/start")) return Promise.resolve({ id: "run-sales", userId: "owner", missionKey: "sales", manifestVersion: "test", status: "active", currentStep: 0, voiceEnabled: false, checkpoints: [], startedAt: "now", updatedAt: "now" });
+      throw new Error(`Unexpected request: ${path}`);
+    });
+    render(<><button data-training-id="nav-dashboard">Dashboard</button><DemoCenter /></>);
+    fireEvent(window, new Event("knox:demo-center"));
+    fireEvent.click(await screen.findByRole("button", { name: /start silently/i }));
+    await waitFor(() => expect(mocks.switchPersona).toHaveBeenCalledWith("sales"));
+    await waitFor(() => expect(mocks.api).toHaveBeenCalledWith("/api/demo/missions/sales/start", expect.objectContaining({ method: "POST" })));
   });
 });
