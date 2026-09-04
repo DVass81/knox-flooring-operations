@@ -363,6 +363,7 @@ export function DemoCenter() {
   };
 
   const panelOnLeft = Boolean(targetRect && typeof window !== "undefined" && targetRect.left + (targetRect.width / 2) > window.innerWidth / 2);
+  const unresolvedTargetMissing = targetMissing && !targetInteracted;
 
   const overlay = activeStep ? createPortal(<>
     {targetRect && <div
@@ -370,7 +371,7 @@ export function DemoCenter() {
       className="pointer-events-none fixed z-[60] rounded-xl ring-4 ring-sky-400 ring-offset-4 ring-offset-transparent transition-all duration-200"
       style={{ left: targetRect.left - 6, top: targetRect.top - 6, width: targetRect.width + 12, height: targetRect.height + 12, boxShadow: "0 0 0 9999px rgba(7, 20, 47, .72)" }}
     />}
-    {!targetRect && !targetMissing && <div className="pointer-events-none fixed inset-0 z-[60] bg-[#07142F]/70" aria-hidden="true" />}
+    {!targetRect && !unresolvedTargetMissing && <div className="pointer-events-none fixed inset-0 z-[60] bg-[#07142F]/70" aria-hidden="true" />}
     <aside
       className={`fixed bottom-3 z-[70] max-h-[45vh] w-[min(430px,calc(100vw-1.5rem))] overflow-y-auto rounded-2xl border border-violet-300/40 bg-card shadow-2xl sm:max-h-[calc(100vh-1.5rem)] ${panelOnLeft ? "left-3" : "right-3"}`}
       role="dialog"
@@ -384,14 +385,14 @@ export function DemoCenter() {
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />{mission ? mission.name : `${activeGuide?.name} guide`}
             </div>
-            <h2 id="training-step-title" className="mt-1.5 text-lg font-semibold text-foreground">{targetMissing ? "This control is not available" : activeStep.title}</h2>
+            <h2 id="training-step-title" className="mt-1.5 text-lg font-semibold text-foreground">{unresolvedTargetMissing ? "This control is not available" : activeStep.title}</h2>
           </div>
           <Button variant="ghost" size="icon" onClick={() => void exitMission()} aria-label="Exit training"><X className="h-4 w-4" /></Button>
         </div>
         {mission && activeRun && <><Progress value={((activeRun.currentStep + 1) / mission.steps.length) * 100} className="mt-3 h-2" /><p className="mt-1.5 text-xs text-muted-foreground">Step {activeRun.currentStep + 1} of {mission.steps.length} · about {activeStep.seconds} seconds</p></>}
       </div>
       <div className="space-y-4 p-4">
-        {targetMissing ? <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
+        {unresolvedTargetMissing ? <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
           The page may have changed, the control may be hidden for this role, or the page is still loading. Training will never trap you here.
         </div> : <>
           <p id="training-step-caption" className="text-sm leading-6 text-foreground">{activeStep.explanation}</p>
@@ -422,10 +423,10 @@ export function DemoCenter() {
             {mission && <Button variant="ghost" size="sm" onClick={() => void restartMission()} disabled={busy}><RotateCcw className="mr-1 h-3.5 w-3.5" />Restart</Button>}
           </div>
           <div className="flex gap-1">
-            {targetMissing && <Button variant="outline" size="sm" onClick={retryTarget}>Retry</Button>}
+            {unresolvedTargetMissing && <Button variant="outline" size="sm" onClick={retryTarget}>Retry</Button>}
             {mission && <Button variant="ghost" size="sm" onClick={() => void verifyStep(true)} disabled={busy}><SkipForward className="mr-1 h-3.5 w-3.5" />Skip</Button>}
-            <Button size="sm" onClick={() => void verifyStep(false)} disabled={busy || (!targetMissing && activeStep.kind === "action" && !targetInteracted)}>
-              {busy && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}{activeGuide ? "Close guide" : targetMissing ? "Skip safely" : activeRun && mission && activeRun.currentStep === mission.steps.length - 1 ? activeStep.kind === "action" ? "Verify & complete" : "Complete mission" : activeStep.kind === "action" ? "Verify & continue" : "Next"}<ChevronRight className="ml-1 h-3.5 w-3.5" />
+            <Button size="sm" onClick={() => void verifyStep(false)} disabled={busy || (!unresolvedTargetMissing && activeStep.kind === "action" && !targetInteracted)}>
+              {busy && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}{activeGuide ? "Close guide" : unresolvedTargetMissing ? "Skip safely" : activeRun && mission && activeRun.currentStep === mission.steps.length - 1 ? activeStep.kind === "action" ? "Verify & complete" : "Complete mission" : activeStep.kind === "action" ? "Verify & continue" : "Next"}<ChevronRight className="ml-1 h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
