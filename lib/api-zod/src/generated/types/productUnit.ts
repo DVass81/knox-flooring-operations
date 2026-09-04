@@ -14,4 +14,5 @@ export const ProductUnit = {
   box: 'box',
   lineal_ft: 'lineal ft',
   each: 'each',
+  piece: 'piece',
 } as const;

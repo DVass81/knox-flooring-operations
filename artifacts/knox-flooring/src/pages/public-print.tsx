@@ -4,6 +4,7 @@ import { useGetPublicJob, getGetPublicJobQueryKey } from "@workspace/api-client-
 import type { PublicJob, PublicPortalQuote, PublicInvoice } from "@workspace/api-client-react";
 import { Loader2, Printer } from "lucide-react";
 import { money, formatDate } from "@/lib/portal";
+import { invoiceBalance } from "@/lib/invoices";
 
 export default function PublicPrint() {
   const params = useParams();
@@ -199,7 +200,7 @@ function QuoteDoc({ job, quote }: { job: PublicJob; quote: PublicPortalQuote }) 
 }
 
 function InvoiceDoc({ job, invoice }: { job: PublicJob; invoice: PublicInvoice }) {
-  const balanceDue = Math.max(0, invoice.total - invoice.depositAmount);
+  const balanceDue = invoiceBalance(invoice);
   return (
     <div>
       <DocHeader job={job} title="Invoice" />

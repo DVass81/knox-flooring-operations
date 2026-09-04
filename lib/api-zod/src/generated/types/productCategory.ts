@@ -19,4 +19,8 @@ export const ProductCategory = {
   Waterproof: 'Waterproof',
   Commercial: 'Commercial',
   'Trim/Supplies': 'Trim/Supplies',
+  Padding: 'Padding',
+  Underlayment: 'Underlayment',
+  Trim: 'Trim',
+  Installation: 'Installation',
 } as const;

@@ -64,7 +64,7 @@ async function importInvoice(quickbooksId: string) {
     return;
   }
   const total = Number(remote.TotalAmt ?? local.total); const balance = Number(remote.Balance ?? total); const paid = Math.max(0, total - balance); const now = new Date().toISOString();
-  await db.update(invoicesTable).set({ total, paidAmount: paid, balanceAmount: balance, status: balance <= 0 ? "Paid" : paid > 0 ? "Sent" : local.status, paidAt: balance <= 0 ? now : local.paidAt, updatedAt: now }).where(eq(invoicesTable.id, local.id));
+  await db.update(invoicesTable).set({ total, paidAmount: paid, balanceAmount: balance, status: balance <= 0 ? "Paid" : paid > 0 || local.depositAmount > 0 ? "Partial" : local.status, paidAt: balance <= 0 ? now : local.paidAt, updatedAt: now }).where(eq(invoicesTable.id, local.id));
   await db.update(quickbooksEntityMappingsTable).set({ syncToken: String(remote.SyncToken ?? link.syncToken), fingerprint: fingerprint(remote), lastSyncedAt: now, updatedAt: now }).where(eq(quickbooksEntityMappingsTable.id, link.id));
 }
 

@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { stageIndex } from "@/lib/stages";
 import { computeCosting, fmtMoney } from "@/lib/costing";
-import { OUTSTANDING_STATUSES } from "@/lib/invoices";
+import { invoiceBalance, OUTSTANDING_STATUSES } from "@/lib/invoices";
 
 const COLORS = [
   "hsl(var(--chart-1))",
@@ -99,7 +99,7 @@ export function KpiSection() {
     const winRate = proposalsSent > 0 ? (soldJobs.length / proposalsSent) * 100 : 0;
     const outstanding = invoices
       .filter((i) => OUTSTANDING_STATUSES.includes(i.status))
-      .reduce((acc, i) => acc + i.total, 0);
+      .reduce((acc, i) => acc + invoiceBalance(i), 0);
 
     // Monthly sold-revenue trend (last 6 months by job createdAt)
     const now = new Date();

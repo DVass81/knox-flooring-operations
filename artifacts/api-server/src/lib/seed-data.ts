@@ -22,7 +22,7 @@ function daysFromNow(days: number): string {
 
 const FICTIONAL_LEAD_NAMES = ["Maya Brooks","Ethan Caldwell","Nora Fleming","Caleb Monroe","Ava Patterson","Miles Bennett","Elena Harper","Owen Carlisle","Lucy Hart","Theo Griffin","Ivy Dawson","Noah Mercer","Grace Holloway","Liam Spencer","Chloe Barrett","Henry Walsh","Ella Rhodes","Jack Whitaker","Mia Sutton","Leo Chandler","Sofia Grant","Wyatt Palmer","Lily Foster","Isaac Webb","Zoe Marshall","Finn Lawson","Ruby Kendall","Cole Ramsey","Anna Pierce"];
 const GENERATED_LEADS: LeadInsert[] = FICTIONAL_LEAD_NAMES.map((customerName, index) => ({
-  id: `demo-lead-${index + 8}`, customerName, phone: `865-555-${String(1200 + index)}`, email: `${customerName.toLowerCase().replace(/\s+/g, ".")}@example.com`, address: `${110 + index} Demo Ridge Lane`, city: ["Knoxville","Farragut","Maryville","Oak Ridge","Powell"][index % 5], flooringInterest: ["Luxury Vinyl Plank (LVP)","Carpet","Hardwood","Tile","Laminate"][index % 5], estimatedValue: 4800 + (index % 7) * 1750, source: ["Website","Referral","Walk-in","Repeat Customer","Google"][index % 5], stage: ["New Lead","Contacted","Measurement Scheduled","Estimate Completed","Proposal Sent","Won","Lost"][index % 7], salesperson: index % 2 ? "Jenn Hedley" : "Will Hedley", followUpDate: daysFromNow((index % 14) - 4), estimatedSqft: 450 + (index % 8) * 175, interestLevel: index % 3 === 0 ? "High" : "Medium", notes: "Fictional demonstration lead for the rolling 90-day business view.", createdAt: new Date(Date.now() - (index + 3) * 2 * 86400000).toISOString(), updatedAt: now,
+  id: `demo-lead-${index + 8}`, customerName, phone: `865-555-${String(1200 + index)}`, email: `${customerName.toLowerCase().replace(/\s+/g, ".")}@example.com`, address: `${110 + index} Demo Ridge Lane`, city: ["Knoxville","Farragut","Maryville","Oak Ridge","Powell"][index % 5], flooringInterest: ["Luxury Vinyl Plank (LVP)","Carpet","Hardwood","Tile","Laminate"][index % 5], estimatedValue: 4800 + (index % 7) * 1750, source: ["Website","Referral","Walk-in","Repeat Customer","Phone Call"][index % 5], stage: ["New Lead","Contacted","Measurement Scheduled","Estimate Completed","Proposal Sent","Won","Lost"][index % 7], salesperson: index % 2 ? "Jenn Hedley" : "Will Hedley", followUpDate: daysFromNow((index % 14) - 4), estimatedSqft: 450 + (index % 8) * 175, interestLevel: index % 3 === 0 ? "High" : "Medium", notes: "Fictional demonstration lead for the rolling 90-day business view.", createdAt: new Date(Date.now() - (index + 3) * 2 * 86400000).toISOString(), updatedAt: now,
 }));
 
 const GENERATED_PRODUCTS: ProductInsert[] = [
@@ -31,7 +31,37 @@ const GENERATED_PRODUCTS: ProductInsert[] = [
 
 const GENERATED_PROPOSALS: ProposalInsert[] = Array.from({ length: 12 }, (_, index) => ({ id:`demo-proposal-${index+3}`, jobId:String(index+9), customerName:FICTIONAL_LEAD_NAMES[index], projectLocation:`${118+index} Demo Ridge Lane, Knoxville, TN`, flooringType:["Luxury Vinyl Plank (LVP)","Carpet","Hardwood","Tile"][index%4], roomList:[{id:`dp-room-${index}`,name:"Main Living Area",length:24+index,width:18}], lineItems:[], salespersonId:index%2?"1":"2", totalSqFt:(24+index)*18, scopeOfWork:"Remove existing flooring, prepare substrate, install selected flooring and transitions, and complete final cleanup.", estimatedPrice:6200+index*975, expectedTimeline:`${2+(index%3)} working days`, materialAssumptions:"Final quantities subject to field verification.", exclusions:"Structural repair and concealed moisture damage.", warrantyNote:"Manufacturer and installation warranties apply.", depositType:"percent" as const, depositValue:50, paymentTerms:"50% deposit; balance at substantial completion.", status:["Draft","Sent","Viewed","Accepted","Declined","Expired"][index%6], shareToken:`demo-proposal-token-${index+3}`, sentAt:index%6===0?null:daysFromNow(-index-5), createdAt:new Date(Date.now()-(index+8)*4*86400000).toISOString() }));
 
-const GENERATED_INVOICES: InvoiceInsert[] = Array.from({ length: 6 }, (_, index) => { const total=7200+index*1850, paid=index===0?0:index===1?total/2:index===2?total:index===3?total-750:index===4?total:total-1200; return { id:`demo-invoice-${index+7}`, invoiceNumber:`INV-${1107+index}`, jobId:String(index+9), jobNumber:`J-${1009+index}`, customerName:FICTIONAL_LEAD_NAMES[index], lineItems:[{id:`di-${index}-1`,description:"Flooring materials and professional installation",category:"Materials" as const,quantity:1,unitPrice:total/1.0975}], subtotal:Number((total/1.0975).toFixed(2)), taxableAmount:Number((total/1.0975).toFixed(2)), taxAmount:Number((total-total/1.0975).toFixed(2)), total, depositAmount:index?1000:0, paidAmount:paid, balanceAmount:total-paid, refundedAmount:index===4?350:0, taxCode:"TN-KNOX", paymentReference:paid?`DEMO-PMT-${index+1}`:"", paidAt:paid===total?daysFromNow(-index-2):null, status:index===0?"Draft":index===1?"Partial":index===2?"Paid":index===3?"Overdue":index===4?"Refunded":"Sent", issueDate:daysFromNow(-index*8-8), dueDate:daysFromNow(14-index*8), notes:"Fictional invoice for executive demonstration.", createdAt:new Date(Date.now()-(index+3)*9*86400000).toISOString(), updatedAt:now }; });
+const GENERATED_INVOICES: InvoiceInsert[] = Array.from({ length: 6 }, (_, index) => {
+  const total = 7200 + index * 1850;
+  const depositAmount = index === 0 ? 0 : 1000;
+  const targetBalance = [total, total / 2 - depositAmount, 0, 750, 0, 1200][index];
+  const paidAmount = Math.max(0, total - depositAmount - targetBalance);
+  return {
+    id: `demo-invoice-${index + 7}`,
+    invoiceNumber: `INV-${1107 + index}`,
+    jobId: String(index + 9),
+    jobNumber: `J-${1009 + index}`,
+    customerName: FICTIONAL_LEAD_NAMES[index],
+    lineItems: [{ id: `di-${index}-1`, description: "Flooring materials and professional installation", category: "Materials" as const, quantity: 1, unitPrice: total / 1.0975 }],
+    subtotal: Number((total / 1.0975).toFixed(2)),
+    taxableAmount: Number((total / 1.0975).toFixed(2)),
+    taxAmount: Number((total - total / 1.0975).toFixed(2)),
+    total,
+    depositAmount,
+    paidAmount,
+    balanceAmount: targetBalance,
+    refundedAmount: index === 4 ? 350 : 0,
+    taxCode: "TN-KNOX",
+    paymentReference: paidAmount ? `DEMO-PMT-${index + 1}` : "",
+    paidAt: targetBalance === 0 ? daysFromNow(-index - 2) : null,
+    status: index === 0 ? "Draft" : index === 1 ? "Partial" : index === 2 ? "Paid" : index === 3 ? "Overdue" : index === 4 ? "Refunded" : "Sent",
+    issueDate: daysFromNow(-index * 8 - 8),
+    dueDate: daysFromNow(14 - index * 8),
+    notes: "Fictional invoice for executive demonstration.",
+    createdAt: new Date(Date.now() - (index + 3) * 9 * 86400000).toISOString(),
+    updatedAt: now,
+  };
+});
 
 export const SEED_JOBS: JobInsert[] = [
   {
@@ -917,7 +947,10 @@ export const SEED_INVOICES: InvoiceInsert[] = [
       { id: "li3", description: "Furniture moving", category: "Add-on", quantity: 1, unitPrice: 500 },
     ],
     subtotal: 7250,
+    taxableAmount: 7250,
     total: 7250,
+    paidAmount: 7250,
+    balanceAmount: 0,
     status: "Paid",
     issueDate: daysFromNow(-30),
     dueDate: daysFromNow(-15),
@@ -937,7 +970,10 @@ export const SEED_INVOICES: InvoiceInsert[] = [
       { id: "li3", description: "Quarter-round molding", category: "Add-on", quantity: 1, unitPrice: 500 },
     ],
     subtotal: 10500,
+    taxableAmount: 10500,
     total: 10500,
+    paidAmount: 10500,
+    balanceAmount: 0,
     status: "Paid",
     issueDate: daysFromNow(-20),
     dueDate: daysFromNow(-5),
@@ -957,7 +993,10 @@ export const SEED_INVOICES: InvoiceInsert[] = [
       { id: "li3", description: "After-hours scheduling", category: "Add-on", quantity: 1, unitPrice: 1500 },
     ],
     subtotal: 31500,
+    taxableAmount: 31500,
     total: 31500,
+    paidAmount: 0,
+    balanceAmount: 31500,
     status: "Sent",
     issueDate: daysFromNow(-7),
     dueDate: daysFromNow(23),
@@ -977,7 +1016,10 @@ export const SEED_INVOICES: InvoiceInsert[] = [
       { id: "li3", description: "Quiet underlayment upgrade", category: "Add-on", quantity: 1, unitPrice: 850 },
     ],
     subtotal: 11850,
+    taxableAmount: 11850,
     total: 11850,
+    paidAmount: 0,
+    balanceAmount: 11850,
     status: "Overdue",
     issueDate: daysFromNow(-45),
     dueDate: daysFromNow(-15),
@@ -997,7 +1039,10 @@ export const SEED_INVOICES: InvoiceInsert[] = [
       { id: "li3", description: "Stair nosing", category: "Add-on", quantity: 1, unitPrice: 500 },
     ],
     subtotal: 15000,
+    taxableAmount: 15000,
     total: 15000,
+    paidAmount: 0,
+    balanceAmount: 15000,
     status: "Overdue",
     issueDate: daysFromNow(-40),
     dueDate: daysFromNow(-10),
@@ -1017,7 +1062,10 @@ export const SEED_INVOICES: InvoiceInsert[] = [
       { id: "li3", description: "Old flooring disposal", category: "Add-on", quantity: 1, unitPrice: 1600 },
     ],
     subtotal: 29600,
+    taxableAmount: 29600,
     total: 29600,
+    paidAmount: 0,
+    balanceAmount: 29600,
     status: "Draft",
     issueDate: daysFromNow(0),
     dueDate: daysFromNow(30),

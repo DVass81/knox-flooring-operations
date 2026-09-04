@@ -15,22 +15,28 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
   "Waterproof",
   "Commercial",
   "Trim/Supplies",
+  "Padding",
+  "Underlayment",
+  "Trim",
+  "Installation",
 ];
 
-export const PRODUCT_UNITS: ProductUnit[] = ["sqft", "box", "lineal ft", "each"];
+export const PRODUCT_UNITS: ProductUnit[] = ["sqft", "box", "lineal ft", "each", "piece"];
 
 export const PRODUCT_INVENTORY_TYPES: ProductInventoryType[] = [
   "Inventory",
   "Special Order",
+  "Service",
 ];
 
 /** On-hand quantity at or below this is flagged "Low Stock". */
 export const LOW_STOCK_THRESHOLD = 100;
 
-export type StockStatus = "In Stock" | "Low Stock" | "Out of Stock" | "Special Order";
+export type StockStatus = "In Stock" | "Low Stock" | "Out of Stock" | "Special Order" | "Service";
 
 export function stockStatus(product: Product): StockStatus {
   if (product.inventoryType === "Special Order") return "Special Order";
+  if (product.inventoryType === "Service") return "Service";
   if (product.quantityOnHand <= 0) return "Out of Stock";
   if (product.quantityOnHand <= LOW_STOCK_THRESHOLD) return "Low Stock";
   return "In Stock";
@@ -46,6 +52,8 @@ export function stockStatusClass(status: StockStatus): string {
       return "bg-red-100 text-red-800 hover:bg-red-100";
     case "Special Order":
       return "bg-violet-100 text-violet-800 hover:bg-violet-100";
+    case "Service":
+      return "bg-blue-100 text-blue-800 hover:bg-blue-100";
     default:
       return "";
   }

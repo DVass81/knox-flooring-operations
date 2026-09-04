@@ -6,12 +6,13 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Search, Receipt } from "lucide-react";
 import type { Invoice, InvoiceStatus } from "@/lib/types";
+import { invoiceBalance } from "@/lib/invoices";
 
 const currency = (n: number) =>
   `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
-/** Invoices that are not fully paid count as "open". */
-const OPEN_STATUSES: InvoiceStatus[] = ["Draft", "Sent", "Partial", "Overdue"];
+/** Billed invoices with a remaining customer balance count as open A/R. */
+const OPEN_STATUSES: InvoiceStatus[] = ["Sent", "Partial", "Overdue"];
 
 const STATUS_STYLES: Record<InvoiceStatus, string> = {
   Draft: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
@@ -77,7 +78,7 @@ export function OpenInvoicesTracker() {
       .sort((a, b) => (b.issueDate || "").localeCompare(a.issueDate || ""));
   }, [invoices, search, repByJob]);
 
-  const openTotal = openInvoices.reduce((acc, inv) => acc + inv.total, 0);
+  const openTotal = openInvoices.reduce((acc, inv) => acc + invoiceBalance(inv), 0);
 
   return (
     <Card>
@@ -142,7 +143,7 @@ export function OpenInvoicesTracker() {
                     {repByJob(inv)}
                   </td>
                   <td className="px-4 py-3 text-right font-medium">
-                    {currency(inv.total)}
+                    {currency(invoiceBalance(inv))}
                   </td>
                   <td className="px-4 py-3 text-right font-semibold">
                     {currency(inv.total)}

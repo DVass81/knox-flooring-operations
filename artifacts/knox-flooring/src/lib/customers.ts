@@ -1,4 +1,5 @@
 import type { Job, Proposal, Invoice } from "@/lib/types";
+import { invoiceBalance } from "@/lib/invoices";
 
 export interface CustomerRecord {
   /** URL-safe key derived from the normalized name */
@@ -12,7 +13,7 @@ export interface CustomerRecord {
   invoices: Invoice[];
   /** Sum of paid invoice totals */
   lifetimeValue: number;
-  /** Outstanding (Sent + Overdue) invoice totals */
+  /** Remaining balance on sent, partially paid, and overdue invoices. */
   outstanding: number;
   /** A customer is "repeat" when they have more than one job */
   isRepeat: boolean;
@@ -89,7 +90,7 @@ export function aggregateCustomers(
     rec.invoices.push(invoice);
     if (invoice.status === PAID) rec.lifetimeValue += invoice.total;
     if (OUTSTANDING_STATUSES.includes(invoice.status))
-      rec.outstanding += invoice.total;
+      rec.outstanding += invoiceBalance(invoice);
     bumpActivity(rec, invoice.updatedAt || invoice.createdAt);
   }
 

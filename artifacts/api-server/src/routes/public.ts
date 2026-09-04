@@ -168,13 +168,12 @@ router.get("/public/jobs/:token", async (req, res): Promise<void> => {
 
   // Payment balances are imported from QuickBooks when connected.
   const invoicedTotal = sortedInvoices
-    .filter((inv) => inv.status !== "Draft")
+    .filter((inv) => inv.status !== "Draft" && inv.status !== "Voided")
     .reduce((sum, inv) => sum + (inv.total || 0), 0);
-  const paidTotal = sortedInvoices.reduce(
-    (sum, inv) => sum + (inv.paidAmount || 0) + (inv.depositAmount || 0) - (inv.refundedAmount || 0),
-    0,
-  );
-  const outstanding = Math.max(0, invoicedTotal - paidTotal);
+  const outstanding = sortedInvoices
+    .filter((inv) => inv.status !== "Draft" && inv.status !== "Voided")
+    .reduce((sum, inv) => sum + Math.max(0, inv.balanceAmount || 0), 0);
+  const paidTotal = Math.max(0, invoicedTotal - outstanding);
 
   const publicJob = stripNulls({
     jobNumber: job.jobNumber,

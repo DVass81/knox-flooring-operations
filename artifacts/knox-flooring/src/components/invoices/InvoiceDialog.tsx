@@ -130,7 +130,7 @@ export function InvoiceDialog({
     (acc, li) => acc + (li.quantity || 0) * (li.unitPrice || 0),
     0,
   );
-  const balance = total - depositAmount;
+  const balance = Math.max(0, total - depositAmount - (invoice?.paidAmount || 0));
 
   const handleJobChange = (value: string) => {
     setJobId(value);

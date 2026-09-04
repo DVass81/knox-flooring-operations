@@ -144,6 +144,10 @@ export const ProductCategory = {
   Waterproof: 'Waterproof',
   Commercial: 'Commercial',
   'Trim/Supplies': 'Trim/Supplies',
+  Padding: 'Padding',
+  Underlayment: 'Underlayment',
+  Trim: 'Trim',
+  Installation: 'Installation',
 } as const;
 
 export type ProductUnit = typeof ProductUnit[keyof typeof ProductUnit];
@@ -154,6 +158,7 @@ export const ProductUnit = {
   box: 'box',
   lineal_ft: 'lineal ft',
   each: 'each',
+  piece: 'piece',
 } as const;
 
 export type ProductInventoryType = typeof ProductInventoryType[keyof typeof ProductInventoryType];
@@ -162,6 +167,7 @@ export type ProductInventoryType = typeof ProductInventoryType[keyof typeof Prod
 export const ProductInventoryType = {
   Inventory: 'Inventory',
   Special_Order: 'Special Order',
+  Service: 'Service',
 } as const;
 
 export type CommissionBasis = typeof CommissionBasis[keyof typeof CommissionBasis];

@@ -12,4 +12,5 @@ export type ProductInventoryType = typeof ProductInventoryType[keyof typeof Prod
 export const ProductInventoryType = {
   Inventory: 'Inventory',
   Special_Order: 'Special Order',
+  Service: 'Service',
 } as const;

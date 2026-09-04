@@ -11,7 +11,7 @@ import { StageTimeline } from "@/components/jobs/StageTimeline";
 import { StagePhotos } from "@/components/jobs/StagePhotos";
 import { InvoiceDialog } from "@/components/invoices/InvoiceDialog";
 import { JobCostingDialog } from "@/components/jobs/JobCostingDialog";
-import { invoiceStatusVariant } from "@/lib/invoices";
+import { invoiceBalance, invoiceStatusVariant } from "@/lib/invoices";
 import { RoomsScopeEditor } from "@/components/jobs/RoomsScopeEditor";
 import { MaterialsNeeded } from "@/components/jobs/MaterialsNeeded";
 import { MeasurementsPanel } from "@/components/measurements/measurements-panel";
@@ -54,12 +54,12 @@ export default function JobDetail() {
     (linkedProposal.status === "Sent" || linkedProposal.status === "Viewed");
 
   const invoicedTotal = jobInvoices
-    .filter((inv) => inv.status !== "Draft")
+    .filter((inv) => inv.status !== "Draft" && inv.status !== "Voided")
     .reduce((sum, inv) => sum + (inv.total || 0), 0);
-  const paidTotal = jobInvoices
-    .filter((inv) => inv.status === "Paid")
-    .reduce((sum, inv) => sum + (inv.total || 0), 0);
-  const outstanding = Math.max(0, invoicedTotal - paidTotal);
+  const outstanding = jobInvoices
+    .filter((inv) => inv.status !== "Draft" && inv.status !== "Voided")
+    .reduce((sum, inv) => sum + invoiceBalance(inv), 0);
+  const paidTotal = Math.max(0, invoicedTotal - outstanding);
 
   const costing = computeCosting(job);
   const salesperson = salespeople.find((s) => s.id === job.salespersonId) ?? null;

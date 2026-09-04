@@ -38,6 +38,7 @@ import { InvoiceDialog } from "@/components/invoices/InvoiceDialog";
 import { customerKey } from "@/lib/customers";
 import {
   INVOICE_STATUSES,
+  invoiceBalance,
   invoiceStatusVariant,
   OUTSTANDING_STATUSES,
 } from "@/lib/invoices";
@@ -72,8 +73,13 @@ export default function Invoices() {
     let outstanding = 0;
     let overdue = 0;
     for (const inv of invoices) {
-      const balance = inv.total - (inv.depositAmount || 0);
-      if (inv.status === "Paid") paid += inv.total;
+      const balance = invoiceBalance(inv);
+      paid += Math.max(
+        0,
+        (inv.depositAmount || 0) +
+          (inv.paidAmount || 0) -
+          (inv.refundedAmount || 0),
+      );
       if (OUTSTANDING_STATUSES.includes(inv.status)) outstanding += balance;
       if (inv.status === "Overdue") overdue += balance;
     }
@@ -251,7 +257,7 @@ export default function Invoices() {
                     )}
                   </TableCell>
                   <TableCell className="text-right font-semibold">
-                    {currency(inv.total - (inv.depositAmount || 0))}
+                    {currency(invoiceBalance(inv))}
                   </TableCell>
                   <TableCell>
                     <Badge variant={invoiceStatusVariant(inv.status)}>

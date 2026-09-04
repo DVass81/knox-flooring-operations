@@ -136,7 +136,7 @@ export function ProductDialog({ open, onOpenChange, product }: Props) {
       unit,
       cost,
       price,
-      quantityOnHand: inventoryType === "Special Order" ? 0 : quantityOnHand,
+      quantityOnHand: inventoryType === "Special Order" || inventoryType === "Service" ? 0 : quantityOnHand,
       inventoryType,
       active,
       notes: notes.trim(),
@@ -342,7 +342,7 @@ export function ProductDialog({ open, onOpenChange, product }: Props) {
                 min={0}
                 step="any"
                 value={quantityOnHand}
-                disabled={inventoryType === "Special Order"}
+                disabled={inventoryType === "Special Order" || inventoryType === "Service"}
                 onChange={(e) => setQuantityOnHand(Number(e.target.value))}
               />
             </div>

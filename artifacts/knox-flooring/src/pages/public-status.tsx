@@ -40,6 +40,7 @@ import {
   PenLine,
   ArrowRight,
 } from "lucide-react";
+import { invoiceBalance } from "@/lib/invoices";
 import { stageProgressPct } from "@/lib/stages";
 import { money, formatDate, nextStepMessage, publicInvoiceVariant } from "@/lib/portal";
 import type { JobPhoto } from "@/lib/types";
@@ -509,7 +510,7 @@ function InvoicesTab({
       </div>
 
       {invoices.map((inv) => {
-        const balanceDue = Math.max(0, inv.total - inv.depositAmount);
+        const balanceDue = invoiceBalance(inv);
         return (
           <Card key={inv.id} className="space-y-3">
             <div className="flex items-start justify-between gap-4">

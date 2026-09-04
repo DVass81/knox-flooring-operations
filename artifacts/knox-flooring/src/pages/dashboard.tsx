@@ -23,6 +23,7 @@ import { getFollowUpStatus } from "./leads";
 import { KpiSection } from "@/components/dashboard/KpiSection";
 import { OpenInvoicesTracker } from "@/components/dashboard/OpenInvoicesTracker";
 import { DashboardCharts } from "@/components/dashboard/DashboardCharts";
+import { invoiceBalance, OUTSTANDING_STATUSES } from "@/lib/invoices";
 
 const CREWS = ["Crew A", "Crew B", "Crew C", "Crew D"];
 const CREW_CAPACITY = 5;
@@ -40,15 +41,23 @@ const SOLD_STATUSES = [
 export default function Dashboard() {
   const { jobs, materials, salespeople, invoices, leads } = useStore();
 
-  const invoicePaid = invoices
-    .filter((i) => i.status === "Paid")
-    .reduce((acc, i) => acc + i.total, 0);
+  const invoicePaid = invoices.reduce(
+    (acc, i) =>
+      acc +
+      Math.max(
+        0,
+        (i.depositAmount || 0) +
+          (i.paidAmount || 0) -
+          (i.refundedAmount || 0),
+      ),
+    0,
+  );
   const invoiceOutstanding = invoices
-    .filter((i) => i.status === "Sent" || i.status === "Overdue")
-    .reduce((acc, i) => acc + i.total, 0);
+    .filter((i) => OUTSTANDING_STATUSES.includes(i.status))
+    .reduce((acc, i) => acc + invoiceBalance(i), 0);
   const invoiceOverdue = invoices
     .filter((i) => i.status === "Overdue")
-    .reduce((acc, i) => acc + i.total, 0);
+    .reduce((acc, i) => acc + invoiceBalance(i), 0);
 
   const openLeads = leads.filter((l) => l.stage !== "Won" && l.stage !== "Lost");
   const leadsNeedingFollowUp = leads.filter((l) => {

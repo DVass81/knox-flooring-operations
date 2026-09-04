@@ -1555,6 +1555,10 @@ components:
         - Waterproof
         - Commercial
         - Trim/Supplies
+        - Padding
+        - Underlayment
+        - Trim
+        - Installation
     ProductUnit:
       type: string
       enum:
@@ -1562,11 +1566,13 @@ components:
         - box
         - lineal ft
         - each
+        - piece
     ProductInventoryType:
       type: string
       enum:
         - Inventory
         - Special Order
+        - Service
     CommissionBasis:
       type: string
       enum: [Revenue, Gross Profit]

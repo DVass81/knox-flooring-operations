@@ -205,8 +205,17 @@ export interface Invoice {
   customerName: string;
   lineItems: InvoiceLineItem[];
   subtotal: number;
+  taxableAmount: number;
+  taxAmount: number;
+  discountAmount: number;
   total: number;
   depositAmount: number;
+  paidAmount: number;
+  balanceAmount: number;
+  refundedAmount: number;
+  taxCode: string;
+  paymentReference: string;
+  paidAt?: string;
   status: InvoiceStatus;
   issueDate: string;
   dueDate: string;
@@ -224,11 +233,15 @@ export type ProductCategory =
   | 'Laminate'
   | 'Waterproof'
   | 'Commercial'
-  | 'Trim/Supplies';
+  | 'Trim/Supplies'
+  | 'Padding'
+  | 'Underlayment'
+  | 'Trim'
+  | 'Installation';
 
-export type ProductUnit = 'sqft' | 'box' | 'lineal ft' | 'each';
+export type ProductUnit = 'sqft' | 'box' | 'lineal ft' | 'each' | 'piece';
 
-export type ProductInventoryType = 'Inventory' | 'Special Order';
+export type ProductInventoryType = 'Inventory' | 'Special Order' | 'Service';
 
 export interface Product {
   id: string;

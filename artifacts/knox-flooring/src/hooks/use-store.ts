@@ -338,7 +338,21 @@ export function useStore() {
   const addInvoice = async (
     data: Omit<
       Invoice,
-      "id" | "invoiceNumber" | "subtotal" | "total" | "createdAt" | "updatedAt"
+      | "id"
+      | "invoiceNumber"
+      | "subtotal"
+      | "taxableAmount"
+      | "taxAmount"
+      | "discountAmount"
+      | "total"
+      | "paidAmount"
+      | "balanceAmount"
+      | "refundedAmount"
+      | "taxCode"
+      | "paymentReference"
+      | "paidAt"
+      | "createdAt"
+      | "updatedAt"
     >,
   ): Promise<Invoice> => {
     const created = await createInvoiceMutation.mutateAsync({
