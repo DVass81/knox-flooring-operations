@@ -30,4 +30,4 @@ COPY --from=build /app /app
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "pnpm --filter @workspace/db push && exec node --enable-source-maps artifacts/api-server/dist/index.mjs"]
+CMD ["sh", "-c", "pnpm --filter @workspace/db push-force && exec node --enable-source-maps artifacts/api-server/dist/index.mjs"]
