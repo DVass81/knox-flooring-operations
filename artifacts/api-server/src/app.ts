@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import path from "node:path";
+import cookieParser from "cookie-parser";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
@@ -26,9 +27,11 @@ app.use(
     },
   }),
 );
-app.use(cors());
-app.use(express.json());
+app.set("trust proxy", 1);
+app.use(cors({ origin: process.env.APP_BASE_URL || true, credentials: true }));
+app.use(express.json({ limit: "1mb", verify: (req, _res, buffer) => { (req as express.Request).rawBody = Buffer.from(buffer); } }));
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 app.use("/api", router);
 

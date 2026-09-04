@@ -13,8 +13,17 @@ export interface PublicInvoice {
   invoiceNumber: string;
   lineItems: InvoiceLineItem[];
   subtotal: number;
+  taxableAmount: number;
+  taxAmount: number;
+  discountAmount: number;
   total: number;
   depositAmount: number;
+  paidAmount: number;
+  balanceAmount: number;
+  refundedAmount: number;
+  taxCode: string;
+  paymentReference: string;
+  paidAt?: string;
   status: InvoiceStatus;
   issueDate: string;
   dueDate: string;

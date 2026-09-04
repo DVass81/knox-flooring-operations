@@ -16,6 +16,7 @@ import {
   DeleteInvoiceParams,
 } from "@workspace/api-zod";
 import { stripNulls } from "../lib/strip-nulls";
+import { queueQuickBooksReview } from "../lib/quickbooks-queue";
 
 const router: IRouter = Router();
 
@@ -27,15 +28,19 @@ function nextInvoiceNumber(existing: string[]): string {
   return `INV-${max + 1}`;
 }
 
-function computeTotals(lineItems: InvoiceLineItem[]): {
+function computeTotals(lineItems: InvoiceLineItem[], taxAmount = 0, discountAmount = 0, depositAmount = 0, paidAmount = 0): {
   subtotal: number;
   total: number;
+  taxableAmount: number;
+  balanceAmount: number;
 } {
   const subtotal = lineItems.reduce(
     (acc, item) => acc + (item.quantity || 0) * (item.unitPrice || 0),
     0,
   );
-  return { subtotal, total: subtotal };
+  const taxableAmount = Math.max(0, subtotal - discountAmount);
+  const total = Math.max(0, taxableAmount + taxAmount);
+  return { subtotal, taxableAmount, total, balanceAmount: Math.max(0, total - depositAmount - paidAmount) };
 }
 
 router.get("/invoices", async (_req, res): Promise<void> => {
@@ -56,7 +61,7 @@ router.post("/invoices", async (req, res): Promise<void> => {
     .from(invoicesTable);
   const now = new Date().toISOString();
   const lineItems = parsed.data.lineItems as InvoiceLineItem[];
-  const { subtotal, total } = computeTotals(lineItems);
+  const { subtotal, taxableAmount, total, balanceAmount } = computeTotals(lineItems, parsed.data.taxAmount ?? 0, parsed.data.discountAmount ?? 0, parsed.data.depositAmount ?? 0);
 
   const values: InvoiceInsert = {
     ...parsed.data,
@@ -64,12 +69,15 @@ router.post("/invoices", async (req, res): Promise<void> => {
     invoiceNumber: nextInvoiceNumber(existing.map((i) => i.invoiceNumber)),
     lineItems,
     subtotal,
+    taxableAmount,
     total,
+    balanceAmount,
     createdAt: now,
     updatedAt: now,
   };
 
   const [invoice] = await db.insert(invoicesTable).values(values).returning();
+  await queueQuickBooksReview("invoice", invoice.id, "create", stripNulls(invoice), invoice.taxCode ? [] : ["Confirm the QuickBooks tax code before approval"]);
   res.status(201).json(UpdateInvoiceResponse.parse(stripNulls(invoice)));
 });
 
@@ -91,12 +99,16 @@ router.patch("/invoices/:id", async (req, res): Promise<void> => {
     updatedAt: new Date().toISOString(),
   };
 
-  if (parsed.data.lineItems) {
-    const lineItems = parsed.data.lineItems as InvoiceLineItem[];
-    const { subtotal, total } = computeTotals(lineItems);
+  const current = (await db.select().from(invoicesTable).where(eq(invoicesTable.id, params.data.id)).limit(1))[0];
+  if (!current) { res.status(404).json({ error: "Invoice not found" }); return; }
+  if (parsed.data.lineItems || parsed.data.taxAmount !== undefined || parsed.data.discountAmount !== undefined || parsed.data.depositAmount !== undefined) {
+    const lineItems = (parsed.data.lineItems ?? current.lineItems) as InvoiceLineItem[];
+    const { subtotal, taxableAmount, total, balanceAmount } = computeTotals(lineItems, parsed.data.taxAmount ?? current?.taxAmount ?? 0, parsed.data.discountAmount ?? current?.discountAmount ?? 0, parsed.data.depositAmount ?? current?.depositAmount ?? 0, current?.paidAmount ?? 0);
     updates.lineItems = lineItems;
     updates.subtotal = subtotal;
+    updates.taxableAmount = taxableAmount;
     updates.total = total;
+    updates.balanceAmount = balanceAmount;
   }
 
   const [invoice] = await db
@@ -109,6 +121,8 @@ router.patch("/invoices/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Invoice not found" });
     return;
   }
+
+  await queueQuickBooksReview("invoice", invoice.id, "update", stripNulls(invoice), invoice.taxCode ? [] : ["Confirm the QuickBooks tax code before approval"]);
 
   res.json(UpdateInvoiceResponse.parse(stripNulls(invoice)));
 });

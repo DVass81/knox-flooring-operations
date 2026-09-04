@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useStore } from "@/hooks/use-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +17,9 @@ import {
   CalendarDays,
   Ruler,
   Plug,
+  Loader2,
 } from "lucide-react";
+import { useAuth } from "@/contexts/auth";
 
 export const DEMO_ENTERED_KEY = "knox-demo-entered";
 
@@ -83,27 +84,24 @@ export const INTEGRATIONS = [
 ];
 
 export default function Welcome() {
-  const { settings } = useStore();
+  const { login, forgot, reset } = useAuth();
   const [, setLocation] = useLocation();
-
-  const ownerName = settings.ownerName?.trim() || "Will Hedley";
+  const ownerName = "Knox Flooring Owner";
   const firstName = ownerName.split(/\s+/)[0] || "Will";
-  const ownerRole = settings.ownerRole?.trim() || "Owner";
-  const company = settings.companyName?.trim() || "Knox Flooring";
+  const ownerRole = "Owner";
+  const company = "Knox Flooring";
 
   const [email, setEmail] = useState(
-    settings.email?.trim() || "will@knoxflooring.com",
+    "",
   );
-  const [password, setPassword] = useState("demoaccess");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const resetToken = new URLSearchParams(window.location.search).get("reset");
 
-  const enter = () => {
-    try {
-      sessionStorage.setItem(DEMO_ENTERED_KEY, "1");
-    } catch {
-      /* ignore */
-    }
-    setLocation("/");
-  };
+  const enter = async () => { setBusy(true); setError(""); try { if (resetToken) { await reset(resetToken, password); setMessage("Password updated. Sign in with your new password."); window.history.replaceState({}, "", "/welcome"); } else { await login(email, password); setLocation("/"); } } catch (e) { setError(e instanceof Error ? e.message : "Sign in failed"); } finally { setBusy(false); } };
+  const sendReset = async () => { if (!email) { setError("Enter your email first."); return; } setBusy(true); setError(""); try { setMessage(await forgot(email)); } catch (e) { setError(e instanceof Error ? e.message : "Unable to send reset email"); } finally { setBusy(false); } };
 
   return (
     <div className="min-h-screen w-full bg-background lg:grid lg:grid-cols-[1.1fr_0.9fr]">
@@ -235,7 +233,7 @@ export default function Welcome() {
             Sign in to continue
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Signed in as {ownerName} · {ownerRole}
+            Secure access for {ownerName} · {ownerRole}
           </p>
 
           <form
@@ -258,9 +256,7 @@ export default function Welcome() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <span className="text-xs text-muted-foreground">
-                  Forgot?
-                </span>
+                {!resetToken && <button type="button" onClick={sendReset} className="text-xs text-primary hover:underline">Forgot password?</button>}
               </div>
               <Input
                 id="password"
@@ -272,19 +268,16 @@ export default function Welcome() {
             </div>
 
             <Button type="submit" className="w-full gap-2" size="lg">
-              Enter the platform
-              <ArrowRight className="h-4 w-4" />
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <>{resetToken ? "Set new password" : "Sign in"}<ArrowRight className="h-4 w-4" /></>}
             </Button>
+            {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+            {message && <p className="text-sm text-emerald-600">{message}</p>}
           </form>
 
           <div className="mt-6 flex items-start gap-2 rounded-lg bg-muted/60 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
             <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <span>
-              This is a live demo — your details are pre-filled, so just click{" "}
-              <span className="font-medium text-foreground">
-                Enter the platform
-              </span>
-              .
+              Your account is protected with an encrypted session. Use the owner email and password configured for this deployment.
             </span>
           </div>
 

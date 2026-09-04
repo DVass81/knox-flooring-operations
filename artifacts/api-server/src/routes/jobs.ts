@@ -13,6 +13,7 @@ import {
   DeleteJobParams,
 } from "@workspace/api-zod";
 import { stripNulls } from "../lib/strip-nulls";
+import { queueQuickBooksReview } from "../lib/quickbooks-queue";
 
 const router: IRouter = Router();
 
@@ -57,6 +58,8 @@ router.post("/jobs", async (req, res): Promise<void> => {
   };
 
   const [job] = await db.insert(jobsTable).values(values).returning();
+  await queueQuickBooksReview("customer", job.id, "create", stripNulls(job));
+  await queueQuickBooksReview("project", job.id, "create", stripNulls(job), ["Customer must be linked before this project is approved"]);
   res.status(201).json(GetJobResponse.parse(stripNulls(job)));
 });
 
@@ -76,7 +79,6 @@ router.get("/jobs/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Job not found" });
     return;
   }
-
   res.json(GetJobResponse.parse(stripNulls(job)));
 });
 
@@ -116,6 +118,9 @@ router.patch("/jobs/:id", async (req, res): Promise<void> => {
     .set({ ...parsed.data, stageHistory: nextStageHistory, updatedAt: now })
     .where(eq(jobsTable.id, params.data.id))
     .returning();
+
+  await queueQuickBooksReview("customer", job.id, "update", stripNulls(job));
+  await queueQuickBooksReview("project", job.id, "update", stripNulls(job));
 
   res.json(UpdateJobResponse.parse(stripNulls(job)));
 });

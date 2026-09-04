@@ -527,8 +527,17 @@ export const ConvertProposalResponse = zod.object({
   "unitPrice": zod.number()
 })),
   "subtotal": zod.number(),
+  "taxableAmount": zod.number(),
+  "taxAmount": zod.number(),
+  "discountAmount": zod.number(),
   "total": zod.number(),
-  "depositAmount": zod.number().optional(),
+  "depositAmount": zod.number(),
+  "paidAmount": zod.number(),
+  "balanceAmount": zod.number(),
+  "refundedAmount": zod.number(),
+  "taxCode": zod.string(),
+  "paymentReference": zod.string(),
+  "paidAt": zod.string().optional(),
   "status": zod.enum(['Draft', 'Sent', 'Paid', 'Overdue']),
   "issueDate": zod.string(),
   "dueDate": zod.string(),
@@ -1582,8 +1591,17 @@ export const ListInvoicesResponseItem = zod.object({
   "unitPrice": zod.number()
 })),
   "subtotal": zod.number(),
+  "taxableAmount": zod.number(),
+  "taxAmount": zod.number(),
+  "discountAmount": zod.number(),
   "total": zod.number(),
-  "depositAmount": zod.number().optional(),
+  "depositAmount": zod.number(),
+  "paidAmount": zod.number(),
+  "balanceAmount": zod.number(),
+  "refundedAmount": zod.number(),
+  "taxCode": zod.string(),
+  "paymentReference": zod.string(),
+  "paidAt": zod.string().optional(),
   "status": zod.enum(['Draft', 'Sent', 'Paid', 'Overdue']),
   "issueDate": zod.string(),
   "dueDate": zod.string(),
@@ -1609,6 +1627,9 @@ export const CreateInvoiceBody = zod.object({
   "unitPrice": zod.number()
 })),
   "depositAmount": zod.number().optional(),
+  "taxAmount": zod.number().optional(),
+  "discountAmount": zod.number().optional(),
+  "taxCode": zod.string().optional(),
   "status": zod.enum(['Draft', 'Sent', 'Paid', 'Overdue']),
   "issueDate": zod.string().optional(),
   "dueDate": zod.string().optional(),
@@ -1633,6 +1654,9 @@ export const UpdateInvoiceBody = zod.object({
   "unitPrice": zod.number()
 })).optional(),
   "depositAmount": zod.number().optional(),
+  "taxAmount": zod.number().optional(),
+  "discountAmount": zod.number().optional(),
+  "taxCode": zod.string().optional(),
   "status": zod.enum(['Draft', 'Sent', 'Paid', 'Overdue']).optional(),
   "issueDate": zod.string().optional(),
   "dueDate": zod.string().optional(),
@@ -1653,8 +1677,17 @@ export const UpdateInvoiceResponse = zod.object({
   "unitPrice": zod.number()
 })),
   "subtotal": zod.number(),
+  "taxableAmount": zod.number(),
+  "taxAmount": zod.number(),
+  "discountAmount": zod.number(),
   "total": zod.number(),
-  "depositAmount": zod.number().optional(),
+  "depositAmount": zod.number(),
+  "paidAmount": zod.number(),
+  "balanceAmount": zod.number(),
+  "refundedAmount": zod.number(),
+  "taxCode": zod.string(),
+  "paymentReference": zod.string(),
+  "paidAt": zod.string().optional(),
   "status": zod.enum(['Draft', 'Sent', 'Paid', 'Overdue']),
   "issueDate": zod.string(),
   "dueDate": zod.string(),
@@ -1844,8 +1877,12 @@ export const ListLaborEntriesResponseItem = zod.object({
   "jobId": zod.string(),
   "date": zod.string(),
   "crew": zod.string(),
+  "workerType": zod.enum(['unmapped', 'employee', 'contractor']),
+  "workerExternalId": zod.string().optional(),
+  "hourlyCost": zod.number(),
   "hours": zod.number(),
   "notes": zod.string(),
+  "accountingStatus": zod.string(),
   "createdAt": zod.string()
 })
 export const ListLaborEntriesResponse = zod.array(ListLaborEntriesResponseItem)
@@ -1861,8 +1898,12 @@ export const CreateLaborEntryParams = zod.object({
 export const CreateLaborEntryBody = zod.object({
   "date": zod.string(),
   "crew": zod.string(),
+  "workerType": zod.enum(['unmapped', 'employee', 'contractor']).optional(),
+  "workerExternalId": zod.string().optional(),
+  "hourlyCost": zod.number().optional(),
   "hours": zod.number(),
-  "notes": zod.string().optional()
+  "notes": zod.string().optional(),
+  "accountingStatus": zod.string().optional()
 })
 
 
@@ -1877,8 +1918,12 @@ export const UpdateLaborEntryParams = zod.object({
 export const UpdateLaborEntryBody = zod.object({
   "date": zod.string().optional(),
   "crew": zod.string().optional(),
+  "workerType": zod.enum(['unmapped', 'employee', 'contractor']).optional(),
+  "workerExternalId": zod.string().optional(),
+  "hourlyCost": zod.number().optional(),
   "hours": zod.number().optional(),
-  "notes": zod.string().optional()
+  "notes": zod.string().optional(),
+  "accountingStatus": zod.string().optional()
 })
 
 export const UpdateLaborEntryResponse = zod.object({
@@ -1886,8 +1931,12 @@ export const UpdateLaborEntryResponse = zod.object({
   "jobId": zod.string(),
   "date": zod.string(),
   "crew": zod.string(),
+  "workerType": zod.enum(['unmapped', 'employee', 'contractor']),
+  "workerExternalId": zod.string().optional(),
+  "hourlyCost": zod.number(),
   "hours": zod.number(),
   "notes": zod.string(),
+  "accountingStatus": zod.string(),
   "createdAt": zod.string()
 })
 
@@ -1914,6 +1963,11 @@ export const ListMaterialUsageResponseItem = zod.object({
   "material": zod.string(),
   "quantity": zod.number(),
   "cost": zod.number(),
+  "vendorName": zod.string(),
+  "vendorExternalId": zod.string().optional(),
+  "expenseAccountExternalId": zod.string().optional(),
+  "transactionDate": zod.string().optional(),
+  "accountingStatus": zod.string(),
   "notes": zod.string(),
   "createdAt": zod.string()
 })
@@ -1931,6 +1985,11 @@ export const CreateMaterialUsageBody = zod.object({
   "material": zod.string(),
   "quantity": zod.number(),
   "cost": zod.number(),
+  "vendorName": zod.string().optional(),
+  "vendorExternalId": zod.string().optional(),
+  "expenseAccountExternalId": zod.string().optional(),
+  "transactionDate": zod.string().optional(),
+  "accountingStatus": zod.string().optional(),
   "notes": zod.string().optional()
 })
 
@@ -1947,6 +2006,11 @@ export const UpdateMaterialUsageBody = zod.object({
   "material": zod.string().optional(),
   "quantity": zod.number().optional(),
   "cost": zod.number().optional(),
+  "vendorName": zod.string().optional(),
+  "vendorExternalId": zod.string().optional(),
+  "expenseAccountExternalId": zod.string().optional(),
+  "transactionDate": zod.string().optional(),
+  "accountingStatus": zod.string().optional(),
   "notes": zod.string().optional()
 })
 
@@ -1956,6 +2020,11 @@ export const UpdateMaterialUsageResponse = zod.object({
   "material": zod.string(),
   "quantity": zod.number(),
   "cost": zod.number(),
+  "vendorName": zod.string(),
+  "vendorExternalId": zod.string().optional(),
+  "expenseAccountExternalId": zod.string().optional(),
+  "transactionDate": zod.string().optional(),
+  "accountingStatus": zod.string(),
   "notes": zod.string(),
   "createdAt": zod.string()
 })
@@ -2039,8 +2108,17 @@ export const GetPublicJobResponse = zod.object({
   "unitPrice": zod.number()
 })),
   "subtotal": zod.number(),
+  "taxableAmount": zod.number(),
+  "taxAmount": zod.number(),
+  "discountAmount": zod.number(),
   "total": zod.number(),
   "depositAmount": zod.number(),
+  "paidAmount": zod.number(),
+  "balanceAmount": zod.number(),
+  "refundedAmount": zod.number(),
+  "taxCode": zod.string(),
+  "paymentReference": zod.string(),
+  "paidAt": zod.string().optional(),
   "status": zod.enum(['Draft', 'Sent', 'Paid', 'Overdue']),
   "issueDate": zod.string(),
   "dueDate": zod.string(),

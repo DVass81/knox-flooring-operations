@@ -2,6 +2,8 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { seedDatabase } from "./lib/seed";
 import { startAutoSync } from "./lib/sync-measurements";
+import { bootstrapOwner } from "./routes/auth";
+import { startQuickBooksWorker } from "./lib/quickbooks-worker";
 
 const rawPort = process.env["PORT"];
 
@@ -25,11 +27,12 @@ app.listen(port, (err) => {
 
   logger.info({ port }, "Server listening");
 
-  seedDatabase().catch((seedErr) => {
+  seedDatabase().then(() => bootstrapOwner()).catch((seedErr) => {
     logger.error({ err: seedErr }, "Error seeding database");
   });
 
   // Automatic background two-way sync with Measure Square. No-ops cleanly while
   // not connected; the manual "Sync now" route stays available as an override.
   startAutoSync();
+  startQuickBooksWorker();
 });

@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { Search, Menu } from "lucide-react";
+import { Search, Menu, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { SidebarBody } from "./Sidebar";
 import { NotificationCenter } from "./NotificationCenter";
 import { CommandPalette } from "./CommandPalette";
+import { useAuth } from "@/contexts/auth";
 
 export function Header() {
+  const { logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
@@ -48,6 +50,7 @@ export function Header() {
       </div>
       <div className="flex items-center gap-4">
         <NotificationCenter />
+        <Button variant="ghost" size="icon" title="Sign out" aria-label="Sign out" onClick={() => void logout()}><LogOut className="h-4 w-4" /></Button>
       </div>
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </header>

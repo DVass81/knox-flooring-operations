@@ -10,5 +10,10 @@ export interface MaterialUsageInput {
   material: string;
   quantity: number;
   cost: number;
+  vendorName?: string;
+  vendorExternalId?: string;
+  expenseAccountExternalId?: string;
+  transactionDate?: string;
+  accountingStatus?: string;
   notes?: string;
 }

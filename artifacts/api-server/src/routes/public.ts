@@ -148,8 +148,17 @@ router.get("/public/jobs/:token", async (req, res): Promise<void> => {
       invoiceNumber: inv.invoiceNumber,
       lineItems: inv.lineItems,
       subtotal: inv.subtotal,
+      taxableAmount: inv.taxableAmount,
+      taxAmount: inv.taxAmount,
+      discountAmount: inv.discountAmount,
       total: inv.total,
       depositAmount: inv.depositAmount,
+      paidAmount: inv.paidAmount,
+      balanceAmount: inv.balanceAmount,
+      refundedAmount: inv.refundedAmount,
+      taxCode: inv.taxCode,
+      paymentReference: inv.paymentReference,
+      paidAt: inv.paidAt,
       status: inv.status,
       issueDate: inv.issueDate,
       dueDate: inv.dueDate,
@@ -157,13 +166,14 @@ router.get("/public/jobs/:token", async (req, res): Promise<void> => {
     }),
   );
 
-  // Customers don't pay in-app; balance reflects manual invoice status.
+  // Payment balances are imported from QuickBooks when connected.
   const invoicedTotal = sortedInvoices
     .filter((inv) => inv.status !== "Draft")
     .reduce((sum, inv) => sum + (inv.total || 0), 0);
-  const paidTotal = sortedInvoices
-    .filter((inv) => inv.status === "Paid")
-    .reduce((sum, inv) => sum + (inv.total || 0), 0);
+  const paidTotal = sortedInvoices.reduce(
+    (sum, inv) => sum + (inv.paidAmount || 0) + (inv.depositAmount || 0) - (inv.refundedAmount || 0),
+    0,
+  );
   const outstanding = Math.max(0, invoicedTotal - paidTotal);
 
   const publicJob = stripNulls({

@@ -12,6 +12,9 @@ export interface InvoiceUpdate {
   customerName?: string;
   lineItems?: InvoiceLineItem[];
   depositAmount?: number;
+  taxAmount?: number;
+  discountAmount?: number;
+  taxCode?: string;
   status?: InvoiceStatus;
   issueDate?: string;
   dueDate?: string;

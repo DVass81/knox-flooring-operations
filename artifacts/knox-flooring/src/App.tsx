@@ -30,6 +30,8 @@ import PublicQuote from "@/pages/public-quote";
 import PublicPrint from "@/pages/public-print";
 import Welcome, { hasEnteredDemo } from "@/pages/welcome";
 import VideoPage from "@/pages/video";
+import { AuthProvider, useAuth } from "@/contexts/auth";
+import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
 
@@ -64,6 +66,8 @@ function AdminRouter() {
 }
 
 function Router() {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>;
   return (
     <Switch>
       <Route path="/video" component={VideoPage} />
@@ -74,10 +78,10 @@ function Router() {
       <Route path="/p/:token" component={PublicStatus} />
       <Route path="/q/:token" component={PublicQuote} />
       <Route path="/welcome">
-        {() => (hasEnteredDemo() ? <Redirect to="/" /> : <Welcome />)}
+        {() => (user ? <Redirect to="/" /> : <Welcome />)}
       </Route>
       <Route path="/">
-        {() => (hasEnteredDemo() ? <AdminRouter /> : <Redirect to="/welcome" />)}
+        {() => (user ? <AdminRouter /> : <Redirect to="/welcome" />)}
       </Route>
       <Route component={AdminRouter} />
     </Switch>
@@ -89,7 +93,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
+          <AuthProvider><Router /></AuthProvider>
         </WouterRouter>
         <Toaster />
       </TooltipProvider>

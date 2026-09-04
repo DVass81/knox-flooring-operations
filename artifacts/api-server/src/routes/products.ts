@@ -11,6 +11,7 @@ import {
   DeleteProductParams,
 } from "@workspace/api-zod";
 import { stripNulls } from "../lib/strip-nulls";
+import { queueQuickBooksReview } from "../lib/quickbooks-queue";
 
 const router: IRouter = Router();
 
@@ -36,6 +37,7 @@ router.post("/products", async (req, res): Promise<void> => {
   };
 
   const [product] = await db.insert(productsTable).values(values).returning();
+  await queueQuickBooksReview("item", product.id, "create", stripNulls(product), ["An approved QuickBooks income account is required"]);
   res.status(201).json(UpdateProductResponse.parse(stripNulls(product)));
 });
 
@@ -67,6 +69,7 @@ router.patch("/products/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Product not found" });
     return;
   }
+  await queueQuickBooksReview("item", product.id, "update", stripNulls(product), ["An approved QuickBooks income account is required"]);
 
   res.json(UpdateProductResponse.parse(stripNulls(product)));
 });

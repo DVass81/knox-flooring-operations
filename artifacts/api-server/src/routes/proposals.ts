@@ -25,6 +25,7 @@ import {
   ConvertProposalResponse,
 } from "@workspace/api-zod";
 import { stripNulls } from "../lib/strip-nulls";
+import { queueQuickBooksReview } from "../lib/quickbooks-queue";
 
 const router: IRouter = Router();
 
@@ -78,6 +79,7 @@ router.post("/proposals", async (req, res): Promise<void> => {
   };
 
   const [proposal] = await db.insert(proposalsTable).values(values).returning();
+  await queueQuickBooksReview("estimate", proposal.id, "create", stripNulls(proposal), ["Customer must be reconciled before this estimate is approved"]);
   res.status(201).json(UpdateProposalResponse.parse(stripNulls(proposal)));
 });
 
@@ -131,6 +133,8 @@ router.patch("/proposals/:id", async (req, res): Promise<void> => {
     .where(eq(proposalsTable.id, params.data.id))
     .returning();
 
+  await queueQuickBooksReview("estimate", proposal.id, "update", stripNulls(proposal), ["Customer must be reconciled before this estimate is approved"]);
+
   res.json(UpdateProposalResponse.parse(stripNulls(proposal)));
 });
 
@@ -150,6 +154,7 @@ router.post("/proposals/:id/convert", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Proposal not found" });
     return;
   }
+  await queueQuickBooksReview("estimate", proposal.id, "update", stripNulls(proposal), ["Customer must be reconciled before this estimate is approved"]);
 
   // Idempotent: if already converted, return the existing job + invoice instead
   // of creating duplicates. This is the duplicate-conversion guard.
@@ -309,8 +314,10 @@ router.post("/proposals/:id/convert", async (req, res): Promise<void> => {
     customerName: proposal.customerName,
     lineItems: invoiceLineItems,
     subtotal,
+    taxableAmount: subtotal,
     total: subtotal,
     depositAmount,
+    balanceAmount: Math.max(0, subtotal - depositAmount),
     status: "Draft",
     issueDate: now.slice(0, 10),
     dueDate,
@@ -330,6 +337,10 @@ router.post("/proposals/:id/convert", async (req, res): Promise<void> => {
     .update(proposalsTable)
     .set({ jobId: job.id, convertedJobId: job.id, convertedInvoiceId: invoice.id })
     .where(eq(proposalsTable.id, proposal.id));
+
+  await queueQuickBooksReview("customer", job.id, "create", stripNulls(job));
+  await queueQuickBooksReview("project", job.id, "create", stripNulls(job), ["Customer must be linked before this project is approved"]);
+  await queueQuickBooksReview("invoice", invoice.id, "create", stripNulls(invoice), ["Confirm the QuickBooks tax code before approval"]);
 
   res.status(201).json(
     ConvertProposalResponse.parse({

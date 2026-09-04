@@ -5,13 +5,18 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { LaborEntryWorkerType } from './laborEntryWorkerType';
 
 export interface LaborEntry {
   id: string;
   jobId: string;
   date: string;
   crew: string;
+  workerType: LaborEntryWorkerType;
+  workerExternalId?: string;
+  hourlyCost: number;
   hours: number;
   notes: string;
+  accountingStatus: string;
   createdAt: string;
 }

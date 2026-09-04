@@ -216,28 +216,67 @@ export interface JobMaterialUpdate {
   unit?: string;
 }
 
+export type LaborEntryWorkerType = typeof LaborEntryWorkerType[keyof typeof LaborEntryWorkerType];
+
+
+export const LaborEntryWorkerType = {
+  unmapped: 'unmapped',
+  employee: 'employee',
+  contractor: 'contractor',
+} as const;
+
 export interface LaborEntry {
   id: string;
   jobId: string;
   date: string;
   crew: string;
+  workerType: LaborEntryWorkerType;
+  workerExternalId?: string;
+  hourlyCost: number;
   hours: number;
   notes: string;
+  accountingStatus: string;
   createdAt: string;
 }
+
+export type LaborEntryInputWorkerType = typeof LaborEntryInputWorkerType[keyof typeof LaborEntryInputWorkerType];
+
+
+export const LaborEntryInputWorkerType = {
+  unmapped: 'unmapped',
+  employee: 'employee',
+  contractor: 'contractor',
+} as const;
 
 export interface LaborEntryInput {
   date: string;
   crew: string;
+  workerType?: LaborEntryInputWorkerType;
+  workerExternalId?: string;
+  hourlyCost?: number;
   hours: number;
   notes?: string;
+  accountingStatus?: string;
 }
+
+export type LaborEntryUpdateWorkerType = typeof LaborEntryUpdateWorkerType[keyof typeof LaborEntryUpdateWorkerType];
+
+
+export const LaborEntryUpdateWorkerType = {
+  unmapped: 'unmapped',
+  employee: 'employee',
+  contractor: 'contractor',
+} as const;
 
 export interface LaborEntryUpdate {
   date?: string;
   crew?: string;
+  workerType?: LaborEntryUpdateWorkerType;
+  workerExternalId?: string;
+  hourlyCost?: number;
   hours?: number;
   notes?: string;
+  accountingStatus?: string;
 }
 
 export interface MaterialUsage {
@@ -246,6 +285,11 @@ export interface MaterialUsage {
   material: string;
   quantity: number;
   cost: number;
+  vendorName: string;
+  vendorExternalId?: string;
+  expenseAccountExternalId?: string;
+  transactionDate?: string;
+  accountingStatus: string;
   notes: string;
   createdAt: string;
 }
@@ -254,6 +298,11 @@ export interface MaterialUsageInput {
   material: string;
   quantity: number;
   cost: number;
+  vendorName?: string;
+  vendorExternalId?: string;
+  expenseAccountExternalId?: string;
+  transactionDate?: string;
+  accountingStatus?: string;
   notes?: string;
 }
 
@@ -261,6 +310,11 @@ export interface MaterialUsageUpdate {
   material?: string;
   quantity?: number;
   cost?: number;
+  vendorName?: string;
+  vendorExternalId?: string;
+  expenseAccountExternalId?: string;
+  transactionDate?: string;
+  accountingStatus?: string;
   notes?: string;
 }
 
@@ -307,8 +361,17 @@ export interface PublicInvoice {
   invoiceNumber: string;
   lineItems: InvoiceLineItem[];
   subtotal: number;
+  taxableAmount: number;
+  taxAmount: number;
+  discountAmount: number;
   total: number;
   depositAmount: number;
+  paidAmount: number;
+  balanceAmount: number;
+  refundedAmount: number;
+  taxCode: string;
+  paymentReference: string;
+  paidAt?: string;
   status: InvoiceStatus;
   issueDate: string;
   dueDate: string;
@@ -602,8 +665,17 @@ export interface Invoice {
   customerName: string;
   lineItems: InvoiceLineItem[];
   subtotal: number;
+  taxableAmount: number;
+  taxAmount: number;
+  discountAmount: number;
   total: number;
-  depositAmount?: number;
+  depositAmount: number;
+  paidAmount: number;
+  balanceAmount: number;
+  refundedAmount: number;
+  taxCode: string;
+  paymentReference: string;
+  paidAt?: string;
   status: InvoiceStatus;
   issueDate: string;
   dueDate: string;
@@ -826,6 +898,9 @@ export interface InvoiceInput {
   customerName: string;
   lineItems: InvoiceLineItem[];
   depositAmount?: number;
+  taxAmount?: number;
+  discountAmount?: number;
+  taxCode?: string;
   status: InvoiceStatus;
   issueDate?: string;
   dueDate?: string;
@@ -836,6 +911,9 @@ export interface InvoiceUpdate {
   customerName?: string;
   lineItems?: InvoiceLineItem[];
   depositAmount?: number;
+  taxAmount?: number;
+  discountAmount?: number;
+  taxCode?: string;
   status?: InvoiceStatus;
   issueDate?: string;
   dueDate?: string;

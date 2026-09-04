@@ -1655,7 +1655,7 @@ components:
           type: string
     LaborEntry:
       type: object
-      required: [id, jobId, date, crew, hours, notes, createdAt]
+      required: [id, jobId, date, crew, workerType, hourlyCost, hours, notes, accountingStatus, createdAt]
       properties:
         id:
           type: string
@@ -1665,9 +1665,18 @@ components:
           type: string
         crew:
           type: string
+        workerType:
+          type: string
+          enum: [unmapped, employee, contractor]
+        workerExternalId:
+          type: string
+        hourlyCost:
+          type: number
         hours:
           type: number
         notes:
+          type: string
+        accountingStatus:
           type: string
         createdAt:
           type: string
@@ -1679,9 +1688,18 @@ components:
           type: string
         crew:
           type: string
+        workerType:
+          type: string
+          enum: [unmapped, employee, contractor]
+        workerExternalId:
+          type: string
+        hourlyCost:
+          type: number
         hours:
           type: number
         notes:
+          type: string
+        accountingStatus:
           type: string
     LaborEntryUpdate:
       type: object
@@ -1690,13 +1708,22 @@ components:
           type: string
         crew:
           type: string
+        workerType:
+          type: string
+          enum: [unmapped, employee, contractor]
+        workerExternalId:
+          type: string
+        hourlyCost:
+          type: number
         hours:
           type: number
         notes:
           type: string
+        accountingStatus:
+          type: string
     MaterialUsage:
       type: object
-      required: [id, jobId, material, quantity, cost, notes, createdAt]
+      required: [id, jobId, material, quantity, cost, vendorName, accountingStatus, notes, createdAt]
       properties:
         id:
           type: string
@@ -1708,6 +1735,16 @@ components:
           type: number
         cost:
           type: number
+        vendorName:
+          type: string
+        vendorExternalId:
+          type: string
+        expenseAccountExternalId:
+          type: string
+        transactionDate:
+          type: string
+        accountingStatus:
+          type: string
         notes:
           type: string
         createdAt:
@@ -1722,6 +1759,16 @@ components:
           type: number
         cost:
           type: number
+        vendorName:
+          type: string
+        vendorExternalId:
+          type: string
+        expenseAccountExternalId:
+          type: string
+        transactionDate:
+          type: string
+        accountingStatus:
+          type: string
         notes:
           type: string
     MaterialUsageUpdate:
@@ -1733,6 +1780,16 @@ components:
           type: number
         cost:
           type: number
+        vendorName:
+          type: string
+        vendorExternalId:
+          type: string
+        expenseAccountExternalId:
+          type: string
+        transactionDate:
+          type: string
+        accountingStatus:
+          type: string
         notes:
           type: string
     PublicCompany:
@@ -1805,8 +1862,16 @@ components:
         - invoiceNumber
         - lineItems
         - subtotal
+        - taxableAmount
+        - taxAmount
+        - discountAmount
         - total
         - depositAmount
+        - paidAmount
+        - balanceAmount
+        - refundedAmount
+        - taxCode
+        - paymentReference
         - status
         - issueDate
         - dueDate
@@ -1822,10 +1887,28 @@ components:
             $ref: "#/components/schemas/InvoiceLineItem"
         subtotal:
           type: number
+        taxableAmount:
+          type: number
+        taxAmount:
+          type: number
+        discountAmount:
+          type: number
         total:
           type: number
         depositAmount:
           type: number
+        paidAmount:
+          type: number
+        balanceAmount:
+          type: number
+        refundedAmount:
+          type: number
+        taxCode:
+          type: string
+        paymentReference:
+          type: string
+        paidAt:
+          type: string
         status:
           $ref: "#/components/schemas/InvoiceStatus"
         issueDate:
@@ -2600,7 +2683,16 @@ components:
         - customerName
         - lineItems
         - subtotal
+        - taxableAmount
+        - taxAmount
+        - discountAmount
         - total
+        - depositAmount
+        - paidAmount
+        - balanceAmount
+        - refundedAmount
+        - taxCode
+        - paymentReference
         - status
         - issueDate
         - dueDate
@@ -2624,10 +2716,28 @@ components:
             $ref: "#/components/schemas/InvoiceLineItem"
         subtotal:
           type: number
+        taxableAmount:
+          type: number
+        taxAmount:
+          type: number
+        discountAmount:
+          type: number
         total:
           type: number
         depositAmount:
           type: number
+        paidAmount:
+          type: number
+        balanceAmount:
+          type: number
+        refundedAmount:
+          type: number
+        taxCode:
+          type: string
+        paymentReference:
+          type: string
+        paidAt:
+          type: string
         status:
           $ref: "#/components/schemas/InvoiceStatus"
         issueDate:
@@ -2966,6 +3076,12 @@ components:
             $ref: "#/components/schemas/InvoiceLineItem"
         depositAmount:
           type: number
+        taxAmount:
+          type: number
+        discountAmount:
+          type: number
+        taxCode:
+          type: string
         status:
           $ref: "#/components/schemas/InvoiceStatus"
         issueDate:
@@ -2985,6 +3101,12 @@ components:
             $ref: "#/components/schemas/InvoiceLineItem"
         depositAmount:
           type: number
+        taxAmount:
+          type: number
+        discountAmount:
+          type: number
+        taxCode:
+          type: string
         status:
           $ref: "#/components/schemas/InvoiceStatus"
         issueDate:

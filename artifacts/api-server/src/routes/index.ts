@@ -18,10 +18,17 @@ import tasksRouter from "./tasks";
 import googleCalendarRouter from "./google-calendar";
 import publicRouter from "./public";
 import storageRouter from "./storage";
+import authRouter from "./auth";
+import quickbooksRouter, { quickBooksWebhook } from "./quickbooks";
+import { requireAuth } from "../middlewares/auth";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.post("/quickbooks/webhook", quickBooksWebhook);
+router.use(authRouter);
+router.use(publicRouter);
+router.use(requireAuth);
 router.use(jobsRouter);
 router.use(photosRouter);
 router.use(leadsRouter);
@@ -38,7 +45,7 @@ router.use(measurementsRouter);
 router.use(settingsRouter);
 router.use(tasksRouter);
 router.use(googleCalendarRouter);
-router.use(publicRouter);
 router.use(storageRouter);
+router.use(quickbooksRouter);
 
 export default router;
