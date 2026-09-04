@@ -11,7 +11,8 @@ RUN corepack enable && corepack prepare pnpm@11.19.0 --activate
 WORKDIR /app
 COPY . .
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --config.strict-dep-builds=false \
+    && pnpm rebuild esbuild
 RUN pnpm --filter @workspace/knox-flooring build
 RUN pnpm --filter @workspace/api-server build
 
