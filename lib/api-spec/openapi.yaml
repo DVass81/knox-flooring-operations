@@ -1,0 +1,3833 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: jobs
+    description: Job operations
+  - name: materials
+    description: Material operations
+  - name: proposals
+    description: Proposal operations
+  - name: leads
+    description: Lead operations
+  - name: settings
+    description: Settings operations
+  - name: photos
+    description: Job photo operations
+  - name: salespeople
+    description: Sales team member operations
+  - name: invoices
+    description: Invoice operations
+  - name: products
+    description: Product catalog / inventory operations
+  - name: communications
+    description: Email and SMS communications
+  - name: measurements
+    description: Measure Square measurements and two-way sync
+  - name: tasks
+    description: Internal task calendar operations
+  - name: calendar
+    description: Google Calendar two-way sync operations
+  - name: public
+    description: Public customer-facing endpoints (token-based, read-only)
+  - name: Storage
+    description: Object storage upload and serving endpoints.
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /jobs:
+    get:
+      operationId: listJobs
+      tags: [jobs]
+      summary: List all jobs
+      responses:
+        "200":
+          description: A list of jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Job"
+    post:
+      operationId: createJob
+      tags: [jobs]
+      summary: Create a job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobInput"
+      responses:
+        "201":
+          description: Created job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+  /jobs/{id}:
+    get:
+      operationId: getJob
+      tags: [jobs]
+      summary: Get a job by id
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: A job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      operationId: updateJob
+      tags: [jobs]
+      summary: Update a job
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobUpdate"
+      responses:
+        "200":
+          description: Updated job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteJob
+      tags: [jobs]
+      summary: Delete a job
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /materials:
+    get:
+      operationId: listMaterials
+      tags: [materials]
+      summary: List all materials
+      responses:
+        "200":
+          description: A list of materials
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MaterialRecord"
+  /proposals:
+    get:
+      operationId: listProposals
+      tags: [proposals]
+      summary: List all proposals
+      responses:
+        "200":
+          description: A list of proposals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Proposal"
+    post:
+      operationId: createProposal
+      tags: [proposals]
+      summary: Create a proposal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProposalInput"
+      responses:
+        "201":
+          description: Created proposal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proposal"
+  /proposals/{id}:
+    patch:
+      operationId: updateProposal
+      tags: [proposals]
+      summary: Update a proposal
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProposalUpdate"
+      responses:
+        "200":
+          description: Updated proposal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proposal"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /proposals/{id}/convert:
+    post:
+      operationId: convertProposal
+      tags: [proposals]
+      summary: Convert an accepted quote into a job and a draft invoice
+      description: |
+        Creates a job (with per-job materials and a material-readiness record)
+        and a draft invoice from an accepted quote, carrying over line items,
+        salesperson, totals, and the deposit. Idempotent — returns the existing
+        job and invoice if the quote was already converted.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Existing job and invoice (already converted)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConvertProposalResult"
+        "201":
+          description: Created job and invoice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConvertProposalResult"
+        "400":
+          description: Quote is not in an acceptable state to convert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /leads:
+    get:
+      operationId: listLeads
+      tags: [leads]
+      summary: List all leads
+      responses:
+        "200":
+          description: A list of leads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lead"
+    post:
+      operationId: createLead
+      tags: [leads]
+      summary: Create a lead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadInput"
+      responses:
+        "201":
+          description: Created lead
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+  /leads/{id}:
+    get:
+      operationId: getLead
+      tags: [leads]
+      summary: Get a lead by id
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: A lead
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      operationId: updateLead
+      tags: [leads]
+      summary: Update a lead
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadUpdate"
+      responses:
+        "200":
+          description: Updated lead
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteLead
+      tags: [leads]
+      summary: Delete a lead
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /communications:
+    get:
+      operationId: listCommunications
+      tags: [communications]
+      summary: List communications, optionally filtered by lead or customer
+      parameters:
+        - name: leadId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: customerKey
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A list of communications (newest first)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Communication"
+  /communications/email:
+    post:
+      operationId: sendEmail
+      tags: [communications]
+      summary: Send an email and log it as a communication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendEmailRequest"
+      responses:
+        "201":
+          description: Sent and logged communication
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Communication"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          description: Email provider error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: Email provider not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /communications/sms:
+    post:
+      operationId: sendSms
+      tags: [communications]
+      summary: Send an SMS and log it as a communication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendSmsRequest"
+      responses:
+        "201":
+          description: Sent and logged communication
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Communication"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          description: SMS provider error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: SMS provider not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /measurements:
+    get:
+      operationId: listMeasurements
+      tags: [measurements]
+      summary: List measurements, optionally filtered by lead or job
+      parameters:
+        - name: leadId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: jobId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A list of measurements (newest first)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Measurement"
+    post:
+      operationId: createMeasurement
+      tags: [measurements]
+      summary: Create a measurement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeasurementInput"
+      responses:
+        "201":
+          description: Created measurement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Measurement"
+  /measurements/{id}:
+    patch:
+      operationId: updateMeasurement
+      tags: [measurements]
+      summary: Update a measurement
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeasurementUpdate"
+      responses:
+        "200":
+          description: Updated measurement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Measurement"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteMeasurement
+      tags: [measurements]
+      summary: Delete a measurement
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /measurements/sync:
+    post:
+      operationId: syncMeasurements
+      tags: [measurements]
+      summary: Run a two-way sync with Measure Square
+      description: |
+        Pulls measurements from Measure Square (upserting by external id) and
+        pushes app-side changes back out. Returns a summary including the
+        Measure Square connection state. When Measure Square is not connected,
+        the call succeeds with connected=false and a clear message rather than
+        erroring.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SyncMeasurementsRequest"
+      responses:
+        "200":
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncMeasurementsResult"
+  /measure-square/status:
+    get:
+      operationId: getMeasureSquareStatus
+      tags: [measurements]
+      summary: Get the Measure Square connection status
+      responses:
+        "200":
+          description: Connection status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeasureSquareStatus"
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get settings
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+    patch:
+      operationId: updateSettings
+      tags: [settings]
+      summary: Update settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettingsUpdate"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+  /jobs/{id}/photos:
+    get:
+      operationId: listJobPhotos
+      tags: [photos]
+      summary: List photos for a job
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: A list of job photos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JobPhoto"
+    post:
+      operationId: createJobPhoto
+      tags: [photos]
+      summary: Attach a photo to a job stage
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobPhotoInput"
+      responses:
+        "201":
+          description: Created job photo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobPhoto"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /jobs/{id}/photos/{photoId}:
+    delete:
+      operationId: deleteJobPhoto
+      tags: [photos]
+      summary: Delete a job photo
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - name: photoId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /salespeople:
+    get:
+      operationId: listSalespeople
+      tags: [salespeople]
+      summary: List all sales team members
+      responses:
+        "200":
+          description: A list of salespeople
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Salesperson"
+    post:
+      operationId: createSalesperson
+      tags: [salespeople]
+      summary: Create a sales team member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SalespersonInput"
+      responses:
+        "201":
+          description: Created salesperson
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Salesperson"
+  /salespeople/{id}:
+    patch:
+      operationId: updateSalesperson
+      tags: [salespeople]
+      summary: Update a sales team member
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SalespersonUpdate"
+      responses:
+        "200":
+          description: Updated salesperson
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Salesperson"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteSalesperson
+      tags: [salespeople]
+      summary: Delete a sales team member
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /invoices:
+    get:
+      operationId: listInvoices
+      tags: [invoices]
+      summary: List all invoices
+      responses:
+        "200":
+          description: A list of invoices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Invoice"
+    post:
+      operationId: createInvoice
+      tags: [invoices]
+      summary: Create an invoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvoiceInput"
+      responses:
+        "201":
+          description: Created invoice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+  /invoices/{id}:
+    patch:
+      operationId: updateInvoice
+      tags: [invoices]
+      summary: Update an invoice
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvoiceUpdate"
+      responses:
+        "200":
+          description: Updated invoice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteInvoice
+      tags: [invoices]
+      summary: Delete an invoice
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List all catalog products
+      responses:
+        "200":
+          description: A list of products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+    post:
+      operationId: createProduct
+      tags: [products]
+      summary: Create a catalog product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "201":
+          description: Created product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+  /products/{id}:
+    patch:
+      operationId: updateProduct
+      tags: [products]
+      summary: Update a catalog product
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductUpdate"
+      responses:
+        "200":
+          description: Updated product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteProduct
+      tags: [products]
+      summary: Delete a catalog product
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /jobs/{id}/materials:
+    get:
+      operationId: listJobMaterials
+      tags: [jobs]
+      summary: List materials needed for a job
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: A list of job materials
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JobMaterial"
+    post:
+      operationId: createJobMaterial
+      tags: [jobs]
+      summary: Add a material line item to a job
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobMaterialInput"
+      responses:
+        "201":
+          description: Created job material
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobMaterial"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /jobs/{id}/materials/{materialId}:
+    patch:
+      operationId: updateJobMaterial
+      tags: [jobs]
+      summary: Update a job material line item
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - name: materialId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobMaterialUpdate"
+      responses:
+        "200":
+          description: Updated job material
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobMaterial"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteJobMaterial
+      tags: [jobs]
+      summary: Delete a job material line item
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - name: materialId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /jobs/{id}/labor:
+    get:
+      operationId: listLaborEntries
+      tags: [jobs]
+      summary: List actual labor-hour entries for a job
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: A list of labor entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LaborEntry"
+    post:
+      operationId: createLaborEntry
+      tags: [jobs]
+      summary: Log actual labor hours against a job
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LaborEntryInput"
+      responses:
+        "201":
+          description: Created labor entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LaborEntry"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /jobs/{id}/labor/{entryId}:
+    patch:
+      operationId: updateLaborEntry
+      tags: [jobs]
+      summary: Update a labor-hour entry
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - name: entryId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LaborEntryUpdate"
+      responses:
+        "200":
+          description: Updated labor entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LaborEntry"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteLaborEntry
+      tags: [jobs]
+      summary: Delete a labor-hour entry
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - name: entryId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /jobs/{id}/material-usage:
+    get:
+      operationId: listMaterialUsage
+      tags: [jobs]
+      summary: List actual material-usage entries for a job
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: A list of material usage entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MaterialUsage"
+    post:
+      operationId: createMaterialUsage
+      tags: [jobs]
+      summary: Log actual materials used against a job
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MaterialUsageInput"
+      responses:
+        "201":
+          description: Created material usage entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaterialUsage"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /jobs/{id}/material-usage/{usageId}:
+    patch:
+      operationId: updateMaterialUsage
+      tags: [jobs]
+      summary: Update a material-usage entry
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - name: usageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MaterialUsageUpdate"
+      responses:
+        "200":
+          description: Updated material usage entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaterialUsage"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteMaterialUsage
+      tags: [jobs]
+      summary: Delete a material-usage entry
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - name: usageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /public/jobs/{token}:
+    get:
+      operationId: getPublicJob
+      tags: [public]
+      summary: Get a customer-facing job status by share token
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Public job status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicJob"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /public/quotes/{token}:
+    get:
+      operationId: getPublicQuote
+      tags: [public]
+      summary: Get a customer-facing quote by share token
+      description: |
+        Returns the quote for the public acceptance page. The first time a Sent
+        quote is fetched it is marked as Viewed.
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Public quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicQuote"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /public/quotes/{token}/accept:
+    post:
+      operationId: acceptPublicQuote
+      tags: [public]
+      summary: Accept and e-sign a quote from the public link
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuoteAcceptInput"
+      responses:
+        "200":
+          description: Accepted quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicQuote"
+        "400":
+          description: Invalid request or quote not acceptable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /public/quotes/{token}/decline:
+    post:
+      operationId: declinePublicQuote
+      tags: [public]
+      summary: Decline a quote from the public link
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Declined quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicQuote"
+        "400":
+          description: Quote not in a declinable state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /storage/uploads/request-url:
+    post:
+      tags: [Storage]
+      operationId: requestUploadUrl
+      summary: Request a presigned URL for file upload
+      description: |
+        Returns a presigned GCS URL for direct upload. The client sends JSON
+        metadata here, then uploads the file directly to the returned URL.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadUrlRequest'
+      responses:
+        '200':
+          description: Presigned upload URL generated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadUrlResponse'
+        '400':
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Failed to generate upload URL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /storage/public-objects/{filePath}:
+    get:
+      tags: [Storage]
+      operationId: getPublicObject
+      summary: Serve a public asset from PUBLIC_OBJECT_SEARCH_PATHS
+      description: |
+        Unconditionally public — no authentication or ACL checks.
+        Searches PUBLIC_OBJECT_SEARCH_PATHS for the given file path.
+      parameters:
+        - name: filePath
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Relative file path within the public search paths.
+      responses:
+        '200':
+          description: Object content streamed with correct Content-Type.
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: File not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Failed to serve public object.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /storage/objects/{objectPath}:
+    get:
+      tags: [Storage]
+      operationId: getStorageObject
+      summary: Serve an object entity from PRIVATE_OBJECT_DIR
+      description: |
+        Serves object entities uploaded via presigned URLs. These can optionally
+        be protected with authentication or ACL checks based on the use case.
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Object path within the private object dir (e.g. `uploads/some-uuid`).
+      responses:
+        '200':
+          description: Object content streamed with correct Content-Type.
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Object not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Failed to serve object.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /tasks:
+    get:
+      operationId: listTasks
+      tags: [tasks]
+      summary: List all internal tasks
+      responses:
+        "200":
+          description: A list of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+    post:
+      operationId: createTask
+      tags: [tasks]
+      summary: Create an internal task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskInput"
+      responses:
+        "201":
+          description: Created task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+  /tasks/{id}:
+    patch:
+      operationId: updateTask
+      tags: [tasks]
+      summary: Update an internal task
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskUpdate"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteTask
+      tags: [tasks]
+      summary: Delete an internal task
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /calendar/google/status:
+    get:
+      operationId: getGoogleCalendarStatus
+      tags: [calendar]
+      summary: Check Google Calendar connection status
+      responses:
+        "200":
+          description: Connection status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoogleCalendarStatus"
+  /calendar/google/sync:
+    post:
+      operationId: syncGoogleCalendar
+      tags: [calendar]
+      summary: Run a two-way sync between internal tasks and Google Calendar
+      description: |
+        Pushes any unsynced local task changes to Google Calendar and pulls
+        changes from Google Calendar back into the task list, reconciling by
+        stored Google event id. Uses an incremental sync token when available.
+      responses:
+        "200":
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoogleSyncResult"
+components:
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+    JobStatus:
+      type: string
+      enum:
+        - New Lead
+        - Estimate Scheduled
+        - Estimate Completed
+        - Proposal Sent
+        - Approved
+        - Material Ordered
+        - Material Received
+        - Scheduled
+        - In Progress
+        - Final Walkthrough
+        - Completed
+        - Invoiced
+    PriorityLevel:
+      type: string
+      enum: [Low, Medium, High]
+    RiskLevel:
+      type: string
+      enum: [Low, Medium, High]
+    CrewAssigned:
+      type: string
+      enum: [Crew A, Crew B, Crew C, Crew D, Unassigned]
+    FlooringType:
+      type: string
+      enum:
+        - Carpet
+        - Hardwood
+        - Tile
+        - Laminate
+        - Luxury Vinyl Plank (LVP)
+        - Luxury Vinyl Tile (LVT)
+        - Waterproof Flooring
+        - Commercial Carpet Tile
+        - Commercial LVT
+    MaterialStatusBadge:
+      type: string
+      enum:
+        - Ordered
+        - In Transit
+        - Received
+        - Delayed
+        - Damaged
+        - Missing Items
+    ProposalStatus:
+      type: string
+      enum: [Draft, Sent, Viewed, Accepted, Declined]
+    DepositType:
+      type: string
+      enum: [none, percent, amount]
+    InvoiceStatus:
+      type: string
+      enum: [Draft, Sent, Paid, Overdue]
+    InvoiceLineCategory:
+      type: string
+      enum: [Labor, Materials, Add-on]
+    ProductCategory:
+      type: string
+      enum:
+        - Vinyl Plank
+        - Vinyl Tile
+        - Carpet
+        - Hardwood
+        - Tile
+        - Laminate
+        - Waterproof
+        - Commercial
+        - Trim/Supplies
+    ProductUnit:
+      type: string
+      enum:
+        - sqft
+        - box
+        - lineal ft
+        - each
+    ProductInventoryType:
+      type: string
+      enum:
+        - Inventory
+        - Special Order
+    CommissionBasis:
+      type: string
+      enum: [Revenue, Gross Profit]
+    Room:
+      type: object
+      required: [id, name, length, width]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        length:
+          type: number
+        width:
+          type: number
+        scope:
+          type: string
+    StageEvent:
+      type: object
+      required: [stage, at]
+      properties:
+        stage:
+          $ref: "#/components/schemas/JobStatus"
+        at:
+          type: string
+    JobPhoto:
+      type: object
+      required: [id, jobId, stage, objectPath, caption, createdAt]
+      properties:
+        id:
+          type: string
+        jobId:
+          type: string
+        stage:
+          $ref: "#/components/schemas/JobStatus"
+        objectPath:
+          type: string
+        caption:
+          type: string
+        createdAt:
+          type: string
+    JobPhotoInput:
+      type: object
+      required: [stage, objectPath]
+      properties:
+        stage:
+          $ref: "#/components/schemas/JobStatus"
+        objectPath:
+          type: string
+        caption:
+          type: string
+    JobMaterial:
+      type: object
+      required: [id, jobId, name, quantity, unit, createdAt]
+      properties:
+        id:
+          type: string
+        jobId:
+          type: string
+        name:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+        createdAt:
+          type: string
+    JobMaterialInput:
+      type: object
+      required: [name, quantity, unit]
+      properties:
+        name:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+    JobMaterialUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+    LaborEntry:
+      type: object
+      required: [id, jobId, date, crew, hours, notes, createdAt]
+      properties:
+        id:
+          type: string
+        jobId:
+          type: string
+        date:
+          type: string
+        crew:
+          type: string
+        hours:
+          type: number
+        notes:
+          type: string
+        createdAt:
+          type: string
+    LaborEntryInput:
+      type: object
+      required: [date, crew, hours]
+      properties:
+        date:
+          type: string
+        crew:
+          type: string
+        hours:
+          type: number
+        notes:
+          type: string
+    LaborEntryUpdate:
+      type: object
+      properties:
+        date:
+          type: string
+        crew:
+          type: string
+        hours:
+          type: number
+        notes:
+          type: string
+    MaterialUsage:
+      type: object
+      required: [id, jobId, material, quantity, cost, notes, createdAt]
+      properties:
+        id:
+          type: string
+        jobId:
+          type: string
+        material:
+          type: string
+        quantity:
+          type: number
+        cost:
+          type: number
+        notes:
+          type: string
+        createdAt:
+          type: string
+    MaterialUsageInput:
+      type: object
+      required: [material, quantity, cost]
+      properties:
+        material:
+          type: string
+        quantity:
+          type: number
+        cost:
+          type: number
+        notes:
+          type: string
+    MaterialUsageUpdate:
+      type: object
+      properties:
+        material:
+          type: string
+        quantity:
+          type: number
+        cost:
+          type: number
+        notes:
+          type: string
+    PublicCompany:
+      type: object
+      required: [companyName, phone, email, website]
+      properties:
+        companyName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        website:
+          type: string
+    PublicJob:
+      type: object
+      required:
+        - jobNumber
+        - customerName
+        - city
+        - flooringType
+        - status
+        - stageHistory
+        - photos
+        - company
+      properties:
+        jobNumber:
+          type: string
+        customerName:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        flooringType:
+          $ref: "#/components/schemas/FlooringType"
+        crewAssigned:
+          $ref: "#/components/schemas/CrewAssigned"
+        squareFootage:
+          type: number
+        estStartDate:
+          type: string
+        estCompletionDate:
+          type: string
+        status:
+          $ref: "#/components/schemas/JobStatus"
+        stageHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/StageEvent"
+        photos:
+          type: array
+          items:
+            $ref: "#/components/schemas/JobPhoto"
+        quote:
+          $ref: "#/components/schemas/PublicPortalQuote"
+          nullable: true
+        invoices:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicInvoice"
+        balance:
+          $ref: "#/components/schemas/PublicBalance"
+        company:
+          $ref: "#/components/schemas/PublicCompany"
+    PublicInvoice:
+      type: object
+      required:
+        - id
+        - invoiceNumber
+        - lineItems
+        - subtotal
+        - total
+        - depositAmount
+        - status
+        - issueDate
+        - dueDate
+        - notes
+      properties:
+        id:
+          type: string
+        invoiceNumber:
+          type: string
+        lineItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceLineItem"
+        subtotal:
+          type: number
+        total:
+          type: number
+        depositAmount:
+          type: number
+        status:
+          $ref: "#/components/schemas/InvoiceStatus"
+        issueDate:
+          type: string
+        dueDate:
+          type: string
+        notes:
+          type: string
+    PublicBalance:
+      type: object
+      required:
+        - invoicedTotal
+        - paidTotal
+        - outstanding
+      properties:
+        invoicedTotal:
+          type: number
+        paidTotal:
+          type: number
+        outstanding:
+          type: number
+    PublicPortalQuote:
+      type: object
+      required:
+        - shareToken
+        - customerName
+        - projectLocation
+        - flooringType
+        - roomList
+        - totalSqFt
+        - scopeOfWork
+        - estimatedPrice
+        - expectedTimeline
+        - materialAssumptions
+        - exclusions
+        - warrantyNote
+        - depositType
+        - depositValue
+        - depositAmount
+        - paymentTerms
+        - status
+        - signature
+      properties:
+        shareToken:
+          type: string
+        customerName:
+          type: string
+        projectLocation:
+          type: string
+        flooringType:
+          $ref: "#/components/schemas/FlooringType"
+        roomList:
+          type: array
+          items:
+            $ref: "#/components/schemas/Room"
+        totalSqFt:
+          type: number
+        scopeOfWork:
+          type: string
+        estimatedPrice:
+          type: number
+        expectedTimeline:
+          type: string
+        materialAssumptions:
+          type: string
+        exclusions:
+          type: string
+        warrantyNote:
+          type: string
+        depositType:
+          $ref: "#/components/schemas/DepositType"
+        depositValue:
+          type: number
+        depositAmount:
+          type: number
+        paymentTerms:
+          type: string
+        status:
+          $ref: "#/components/schemas/ProposalStatus"
+        acceptedAt:
+          type: string
+        declinedAt:
+          type: string
+        signature:
+          type: string
+    UploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Original file name.
+        size:
+          type: integer
+          minimum: 1
+          description: File size in bytes.
+        contentType:
+          type: string
+          minLength: 1
+          description: MIME type of the file (e.g. `image/jpeg`).
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL:
+          type: string
+          format: uri
+          description: Presigned GCS URL for PUT upload.
+        objectPath:
+          type: string
+          description: Normalized object path (e.g. `/objects/uploads/uuid`). Store this in your database.
+        metadata:
+          $ref: '#/components/schemas/UploadUrlRequest'
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    Job:
+      type: object
+      required:
+        - id
+        - jobNumber
+        - customerName
+        - phone
+        - email
+        - address
+        - city
+        - flooringType
+        - rooms
+        - scopeOfWork
+        - squareFootage
+        - crewAssigned
+        - materialStatus
+        - laborEstimate
+        - estLaborHours
+        - materialEstimate
+        - estRevenue
+        - estGrossProfit
+        - grossMarginPct
+        - notes
+        - priorityLevel
+        - riskLevel
+        - status
+        - stageHistory
+        - shareToken
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        jobNumber:
+          type: string
+        customerName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        flooringType:
+          $ref: "#/components/schemas/FlooringType"
+        rooms:
+          type: array
+          items:
+            $ref: "#/components/schemas/Room"
+        scopeOfWork:
+          type: string
+        squareFootage:
+          type: number
+        crewAssigned:
+          $ref: "#/components/schemas/CrewAssigned"
+        salespersonId:
+          type: string
+          nullable: true
+        estStartDate:
+          type: string
+        estCompletionDate:
+          type: string
+        materialStatus:
+          $ref: "#/components/schemas/MaterialStatusBadge"
+        laborEstimate:
+          type: number
+        estLaborHours:
+          type: number
+        materialEstimate:
+          type: number
+        estRevenue:
+          type: number
+        estGrossProfit:
+          type: number
+        grossMarginPct:
+          type: number
+        actualRevenue:
+          type: number
+        actualLaborCost:
+          type: number
+        actualMaterialCost:
+          type: number
+        actualAddOnCost:
+          type: number
+        notes:
+          type: string
+        priorityLevel:
+          $ref: "#/components/schemas/PriorityLevel"
+        riskLevel:
+          $ref: "#/components/schemas/RiskLevel"
+        status:
+          $ref: "#/components/schemas/JobStatus"
+        stageHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/StageEvent"
+        shareToken:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    JobInput:
+      type: object
+      required:
+        - customerName
+        - phone
+        - email
+        - address
+        - city
+        - flooringType
+        - rooms
+        - squareFootage
+        - crewAssigned
+        - materialStatus
+        - laborEstimate
+        - materialEstimate
+        - estRevenue
+        - estGrossProfit
+        - grossMarginPct
+        - notes
+        - priorityLevel
+        - riskLevel
+        - status
+      properties:
+        customerName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        flooringType:
+          $ref: "#/components/schemas/FlooringType"
+        rooms:
+          type: array
+          items:
+            $ref: "#/components/schemas/Room"
+        scopeOfWork:
+          type: string
+        squareFootage:
+          type: number
+        crewAssigned:
+          $ref: "#/components/schemas/CrewAssigned"
+        salespersonId:
+          type: string
+          nullable: true
+        estStartDate:
+          type: string
+        estCompletionDate:
+          type: string
+        materialStatus:
+          $ref: "#/components/schemas/MaterialStatusBadge"
+        laborEstimate:
+          type: number
+        estLaborHours:
+          type: number
+        materialEstimate:
+          type: number
+        estRevenue:
+          type: number
+        estGrossProfit:
+          type: number
+        grossMarginPct:
+          type: number
+        actualRevenue:
+          type: number
+        actualLaborCost:
+          type: number
+        actualMaterialCost:
+          type: number
+        actualAddOnCost:
+          type: number
+        notes:
+          type: string
+        priorityLevel:
+          $ref: "#/components/schemas/PriorityLevel"
+        riskLevel:
+          $ref: "#/components/schemas/RiskLevel"
+        status:
+          $ref: "#/components/schemas/JobStatus"
+    JobUpdate:
+      type: object
+      properties:
+        customerName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        flooringType:
+          $ref: "#/components/schemas/FlooringType"
+        rooms:
+          type: array
+          items:
+            $ref: "#/components/schemas/Room"
+        scopeOfWork:
+          type: string
+        squareFootage:
+          type: number
+        crewAssigned:
+          $ref: "#/components/schemas/CrewAssigned"
+        salespersonId:
+          type: string
+          nullable: true
+        estStartDate:
+          type: string
+        estCompletionDate:
+          type: string
+        materialStatus:
+          $ref: "#/components/schemas/MaterialStatusBadge"
+        laborEstimate:
+          type: number
+        estLaborHours:
+          type: number
+        materialEstimate:
+          type: number
+        estRevenue:
+          type: number
+        estGrossProfit:
+          type: number
+        grossMarginPct:
+          type: number
+        actualRevenue:
+          type: number
+        actualLaborCost:
+          type: number
+        actualMaterialCost:
+          type: number
+        actualAddOnCost:
+          type: number
+        notes:
+          type: string
+        priorityLevel:
+          $ref: "#/components/schemas/PriorityLevel"
+        riskLevel:
+          $ref: "#/components/schemas/RiskLevel"
+        status:
+          $ref: "#/components/schemas/JobStatus"
+    MaterialRecord:
+      type: object
+      required:
+        - id
+        - jobId
+        - jobNumber
+        - customer
+        - city
+        - flooringType
+        - supplier
+        - received
+        - damaged
+        - missingItems
+        - notes
+        - status
+      properties:
+        id:
+          type: string
+        jobId:
+          type: string
+        jobNumber:
+          type: string
+        customer:
+          type: string
+        city:
+          type: string
+        flooringType:
+          $ref: "#/components/schemas/FlooringType"
+        supplier:
+          type: string
+        orderedDate:
+          type: string
+        expectedDeliveryDate:
+          type: string
+        actualDeliveryDate:
+          type: string
+        received:
+          type: boolean
+        damaged:
+          type: boolean
+        missingItems:
+          type: string
+        notes:
+          type: string
+        status:
+          $ref: "#/components/schemas/MaterialStatusBadge"
+    Proposal:
+      type: object
+      required:
+        - id
+        - customerName
+        - projectLocation
+        - flooringType
+        - roomList
+        - totalSqFt
+        - scopeOfWork
+        - estimatedPrice
+        - expectedTimeline
+        - materialAssumptions
+        - exclusions
+        - warrantyNote
+        - depositType
+        - depositValue
+        - paymentTerms
+        - status
+        - shareToken
+        - signature
+        - createdAt
+      properties:
+        id:
+          type: string
+        jobId:
+          type: string
+        customerName:
+          type: string
+        projectLocation:
+          type: string
+        flooringType:
+          $ref: "#/components/schemas/FlooringType"
+        roomList:
+          type: array
+          items:
+            $ref: "#/components/schemas/Room"
+        lineItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProposalLineItem"
+        salespersonId:
+          type: string
+        totalSqFt:
+          type: number
+        scopeOfWork:
+          type: string
+        estimatedPrice:
+          type: number
+        expectedTimeline:
+          type: string
+        materialAssumptions:
+          type: string
+        exclusions:
+          type: string
+        warrantyNote:
+          type: string
+        depositType:
+          $ref: "#/components/schemas/DepositType"
+        depositValue:
+          type: number
+        paymentTerms:
+          type: string
+        status:
+          $ref: "#/components/schemas/ProposalStatus"
+        shareToken:
+          type: string
+        sentAt:
+          type: string
+        viewedAt:
+          type: string
+        acceptedAt:
+          type: string
+        declinedAt:
+          type: string
+        signature:
+          type: string
+        convertedJobId:
+          type: string
+          nullable: true
+        convertedInvoiceId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+    ProposalLineItem:
+      type: object
+      required:
+        - id
+        - name
+        - unit
+        - quantity
+        - unitPrice
+      properties:
+        id:
+          type: string
+        productId:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        sku:
+          type: string
+        unit:
+          type: string
+        quantity:
+          type: number
+        unitPrice:
+          type: number
+    ProposalInput:
+      type: object
+      required:
+        - customerName
+        - projectLocation
+        - flooringType
+        - roomList
+        - totalSqFt
+        - scopeOfWork
+        - estimatedPrice
+        - expectedTimeline
+        - materialAssumptions
+        - exclusions
+        - warrantyNote
+        - status
+      properties:
+        jobId:
+          type: string
+        customerName:
+          type: string
+        projectLocation:
+          type: string
+        flooringType:
+          $ref: "#/components/schemas/FlooringType"
+        roomList:
+          type: array
+          items:
+            $ref: "#/components/schemas/Room"
+        lineItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProposalLineItem"
+        salespersonId:
+          type: string
+        totalSqFt:
+          type: number
+        scopeOfWork:
+          type: string
+        estimatedPrice:
+          type: number
+        expectedTimeline:
+          type: string
+        materialAssumptions:
+          type: string
+        exclusions:
+          type: string
+        warrantyNote:
+          type: string
+        depositType:
+          $ref: "#/components/schemas/DepositType"
+        depositValue:
+          type: number
+        paymentTerms:
+          type: string
+        status:
+          $ref: "#/components/schemas/ProposalStatus"
+    ProposalUpdate:
+      type: object
+      properties:
+        customerName:
+          type: string
+        projectLocation:
+          type: string
+        scopeOfWork:
+          type: string
+        expectedTimeline:
+          type: string
+        materialAssumptions:
+          type: string
+        exclusions:
+          type: string
+        warrantyNote:
+          type: string
+        depositType:
+          $ref: "#/components/schemas/DepositType"
+        depositValue:
+          type: number
+        paymentTerms:
+          type: string
+        status:
+          $ref: "#/components/schemas/ProposalStatus"
+        lineItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProposalLineItem"
+        salespersonId:
+          type: string
+          nullable: true
+    PublicQuote:
+      type: object
+      required:
+        - customerName
+        - projectLocation
+        - flooringType
+        - roomList
+        - totalSqFt
+        - scopeOfWork
+        - estimatedPrice
+        - expectedTimeline
+        - materialAssumptions
+        - exclusions
+        - warrantyNote
+        - depositType
+        - depositValue
+        - depositAmount
+        - paymentTerms
+        - status
+        - signature
+        - company
+      properties:
+        customerName:
+          type: string
+        projectLocation:
+          type: string
+        flooringType:
+          $ref: "#/components/schemas/FlooringType"
+        roomList:
+          type: array
+          items:
+            $ref: "#/components/schemas/Room"
+        totalSqFt:
+          type: number
+        scopeOfWork:
+          type: string
+        estimatedPrice:
+          type: number
+        expectedTimeline:
+          type: string
+        materialAssumptions:
+          type: string
+        exclusions:
+          type: string
+        warrantyNote:
+          type: string
+        depositType:
+          $ref: "#/components/schemas/DepositType"
+        depositValue:
+          type: number
+        depositAmount:
+          type: number
+        paymentTerms:
+          type: string
+        status:
+          $ref: "#/components/schemas/ProposalStatus"
+        acceptedAt:
+          type: string
+        declinedAt:
+          type: string
+        signature:
+          type: string
+        company:
+          $ref: "#/components/schemas/PublicCompany"
+    QuoteAcceptInput:
+      type: object
+      required: [signature]
+      properties:
+        signature:
+          type: string
+          minLength: 1
+    ConvertProposalResult:
+      type: object
+      required: [job, invoice, materialsCreated]
+      properties:
+        job:
+          $ref: "#/components/schemas/Job"
+        invoice:
+          $ref: "#/components/schemas/Invoice"
+        materialsCreated:
+          type: integer
+    Salesperson:
+      type: object
+      required: [id, name, email, phone, active, createdAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        active:
+          type: boolean
+        commissionRate:
+          type: number
+          nullable: true
+        color:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+    SalespersonInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        active:
+          type: boolean
+        commissionRate:
+          type: number
+          nullable: true
+        color:
+          type: string
+          nullable: true
+    SalespersonUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        active:
+          type: boolean
+        commissionRate:
+          type: number
+          nullable: true
+        color:
+          type: string
+          nullable: true
+    InvoiceLineItem:
+      type: object
+      required: [id, description, category, quantity, unitPrice]
+      properties:
+        id:
+          type: string
+        description:
+          type: string
+        category:
+          $ref: "#/components/schemas/InvoiceLineCategory"
+        quantity:
+          type: number
+        unitPrice:
+          type: number
+    Invoice:
+      type: object
+      required:
+        - id
+        - invoiceNumber
+        - jobId
+        - jobNumber
+        - customerName
+        - lineItems
+        - subtotal
+        - total
+        - status
+        - issueDate
+        - dueDate
+        - notes
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        invoiceNumber:
+          type: string
+        jobId:
+          type: string
+        jobNumber:
+          type: string
+        customerName:
+          type: string
+        lineItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceLineItem"
+        subtotal:
+          type: number
+        total:
+          type: number
+        depositAmount:
+          type: number
+        status:
+          $ref: "#/components/schemas/InvoiceStatus"
+        issueDate:
+          type: string
+        dueDate:
+          type: string
+        notes:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    LeadStage:
+      type: string
+      enum:
+        - New
+        - Contacted
+        - Estimate Scheduled
+        - Quoted
+        - Won
+        - Lost
+    LeadSource:
+      type: string
+      enum:
+        - Referral
+        - Website
+        - Walk-in
+        - Phone Call
+        - Social Media
+        - Home Show
+        - Repeat Customer
+        - Other
+    LeadActivity:
+      type: object
+      required: [id, date, type, note]
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+        type:
+          type: string
+          enum: [Note, Call, Email, Stage Change, Follow-up]
+        note:
+          type: string
+    LeadNote:
+      type: object
+      required: [id, body, createdAt]
+      properties:
+        id:
+          type: string
+        body:
+          type: string
+        author:
+          type: string
+        createdAt:
+          type: string
+    LeadContact:
+      type: object
+      required: [id, name, createdAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        notes:
+          type: string
+        createdAt:
+          type: string
+    LeadAddress:
+      type: object
+      required: [id, createdAt]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        street:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        zip:
+          type: string
+        county:
+          type: string
+        subdivision:
+          type: string
+        isPrimary:
+          type: boolean
+        createdAt:
+          type: string
+    LeadSample:
+      type: object
+      required: [id, productName, createdAt]
+      properties:
+        id:
+          type: string
+        productName:
+          type: string
+        color:
+          type: string
+        sku:
+          type: string
+        status:
+          type: string
+        checkedOutDate:
+          type: string
+        returnDate:
+          type: string
+        notes:
+          type: string
+        createdAt:
+          type: string
+    LeadTask:
+      type: object
+      required: [id, title, completed, createdAt]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        dueDate:
+          type: string
+        assignedTo:
+          type: string
+        completed:
+          type: boolean
+        completedAt:
+          type: string
+        createdAt:
+          type: string
+    LeadInteraction:
+      type: object
+      required: [id, type, summary, date, createdAt]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        summary:
+          type: string
+        date:
+          type: string
+        createdAt:
+          type: string
+    LeadDocument:
+      type: object
+      required: [id, name, objectPath, createdAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        objectPath:
+          type: string
+        contentType:
+          type: string
+        size:
+          type: number
+        createdAt:
+          type: string
+    LeadMeasurement:
+      type: object
+      required: [id, label, createdAt]
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        totalSqft:
+          type: number
+        rooms:
+          type: number
+        measuredDate:
+          type: string
+        source:
+          type: string
+        notes:
+          type: string
+        createdAt:
+          type: string
+    Lead:
+      type: object
+      required:
+        - id
+        - customerName
+        - phone
+        - email
+        - address
+        - city
+        - flooringInterest
+        - estimatedValue
+        - source
+        - stage
+        - salesperson
+        - activityLog
+        - notes
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        customerName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        flooringInterest:
+          $ref: "#/components/schemas/FlooringType"
+        estimatedValue:
+          type: number
+        source:
+          $ref: "#/components/schemas/LeadSource"
+        stage:
+          type: string
+        salesperson:
+          type: string
+        followUpDate:
+          type: string
+        company:
+          type: string
+        contactType:
+          type: string
+        branch:
+          type: string
+        mainPhone:
+          type: string
+        spousePhone:
+          type: string
+        ccEmail:
+          type: string
+        desiredServices:
+          type: string
+        estimatedSqft:
+          type: number
+        interestLevel:
+          type: string
+        installRequest:
+          type: string
+        leadCost:
+          type: number
+        financingAmount:
+          type: number
+        taxExempt:
+          type: boolean
+        addressTitle:
+          type: string
+        street:
+          type: string
+        state:
+          type: string
+        zip:
+          type: string
+        county:
+          type: string
+        subdivision:
+          type: string
+        sortOrder:
+          type: number
+        activityLog:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadActivity"
+        noteEntries:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadNote"
+        contacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadContact"
+        addresses:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadAddress"
+        samples:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadSample"
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadTask"
+        interactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadInteraction"
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadDocument"
+        measurements:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadMeasurement"
+        notes:
+          type: string
+        lostReason:
+          type: string
+        convertedJobId:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    InvoiceInput:
+      type: object
+      required:
+        - jobId
+        - customerName
+        - lineItems
+        - status
+      properties:
+        jobId:
+          type: string
+        jobNumber:
+          type: string
+        customerName:
+          type: string
+        lineItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceLineItem"
+        depositAmount:
+          type: number
+        status:
+          $ref: "#/components/schemas/InvoiceStatus"
+        issueDate:
+          type: string
+        dueDate:
+          type: string
+        notes:
+          type: string
+    InvoiceUpdate:
+      type: object
+      properties:
+        customerName:
+          type: string
+        lineItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceLineItem"
+        depositAmount:
+          type: number
+        status:
+          $ref: "#/components/schemas/InvoiceStatus"
+        issueDate:
+          type: string
+        dueDate:
+          type: string
+        notes:
+          type: string
+    Product:
+      type: object
+      required:
+        - id
+        - name
+        - category
+        - sku
+        - supplier
+        - color
+        - unit
+        - cost
+        - price
+        - quantityOnHand
+        - inventoryType
+        - active
+        - notes
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        category:
+          $ref: "#/components/schemas/ProductCategory"
+        sku:
+          type: string
+        supplier:
+          type: string
+        color:
+          type: string
+        unit:
+          $ref: "#/components/schemas/ProductUnit"
+        cost:
+          type: number
+        price:
+          type: number
+        quantityOnHand:
+          type: number
+        inventoryType:
+          $ref: "#/components/schemas/ProductInventoryType"
+        active:
+          type: boolean
+        notes:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    ProductInput:
+      type: object
+      required:
+        - name
+        - category
+        - unit
+      properties:
+        name:
+          type: string
+        category:
+          $ref: "#/components/schemas/ProductCategory"
+        sku:
+          type: string
+        supplier:
+          type: string
+        color:
+          type: string
+        unit:
+          $ref: "#/components/schemas/ProductUnit"
+        cost:
+          type: number
+        price:
+          type: number
+        quantityOnHand:
+          type: number
+        inventoryType:
+          $ref: "#/components/schemas/ProductInventoryType"
+        active:
+          type: boolean
+        notes:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+    ProductUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        category:
+          $ref: "#/components/schemas/ProductCategory"
+        sku:
+          type: string
+        supplier:
+          type: string
+        color:
+          type: string
+        unit:
+          $ref: "#/components/schemas/ProductUnit"
+        cost:
+          type: number
+        price:
+          type: number
+        quantityOnHand:
+          type: number
+        inventoryType:
+          $ref: "#/components/schemas/ProductInventoryType"
+        active:
+          type: boolean
+        notes:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+    LeadInput:
+      type: object
+      required:
+        - customerName
+        - flooringInterest
+        - estimatedValue
+        - source
+        - stage
+      properties:
+        customerName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        flooringInterest:
+          $ref: "#/components/schemas/FlooringType"
+        estimatedValue:
+          type: number
+        source:
+          $ref: "#/components/schemas/LeadSource"
+        stage:
+          type: string
+        salesperson:
+          type: string
+        followUpDate:
+          type: string
+        company:
+          type: string
+        contactType:
+          type: string
+        branch:
+          type: string
+        mainPhone:
+          type: string
+        spousePhone:
+          type: string
+        ccEmail:
+          type: string
+        desiredServices:
+          type: string
+        estimatedSqft:
+          type: number
+        interestLevel:
+          type: string
+        installRequest:
+          type: string
+        leadCost:
+          type: number
+        financingAmount:
+          type: number
+        taxExempt:
+          type: boolean
+        addressTitle:
+          type: string
+        street:
+          type: string
+        state:
+          type: string
+        zip:
+          type: string
+        county:
+          type: string
+        subdivision:
+          type: string
+        sortOrder:
+          type: number
+        activityLog:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadActivity"
+        noteEntries:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadNote"
+        contacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadContact"
+        addresses:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadAddress"
+        samples:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadSample"
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadTask"
+        interactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadInteraction"
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadDocument"
+        measurements:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadMeasurement"
+        notes:
+          type: string
+        lostReason:
+          type: string
+        convertedJobId:
+          type: string
+    LeadUpdate:
+      type: object
+      properties:
+        customerName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        flooringInterest:
+          $ref: "#/components/schemas/FlooringType"
+        estimatedValue:
+          type: number
+        source:
+          $ref: "#/components/schemas/LeadSource"
+        stage:
+          type: string
+        salesperson:
+          type: string
+        followUpDate:
+          type: string
+          nullable: true
+        company:
+          type: string
+        contactType:
+          type: string
+        branch:
+          type: string
+        mainPhone:
+          type: string
+        spousePhone:
+          type: string
+        ccEmail:
+          type: string
+        desiredServices:
+          type: string
+        estimatedSqft:
+          type: number
+        interestLevel:
+          type: string
+        installRequest:
+          type: string
+        leadCost:
+          type: number
+        financingAmount:
+          type: number
+        taxExempt:
+          type: boolean
+        addressTitle:
+          type: string
+        street:
+          type: string
+        state:
+          type: string
+        zip:
+          type: string
+        county:
+          type: string
+        subdivision:
+          type: string
+        sortOrder:
+          type: number
+        activityLog:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadActivity"
+        noteEntries:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadNote"
+        contacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadContact"
+        addresses:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadAddress"
+        samples:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadSample"
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadTask"
+        interactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadInteraction"
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadDocument"
+        measurements:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadMeasurement"
+        notes:
+          type: string
+        lostReason:
+          type: string
+          nullable: true
+        convertedJobId:
+          type: string
+          nullable: true
+    Settings:
+      type: object
+      required:
+        - ownerName
+        - ownerRole
+        - companyName
+        - address
+        - phone
+        - email
+        - website
+        - defaultWasteFactor
+        - defaultLaborRateLVP
+        - defaultLaborRateHardwood
+        - defaultLaborRateCarpet
+        - defaultLaborRateTile
+        - commissionBasis
+        - defaultCommissionRate
+      properties:
+        ownerName:
+          type: string
+        ownerRole:
+          type: string
+        companyName:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        website:
+          type: string
+        defaultWasteFactor:
+          type: number
+        defaultLaborRateLVP:
+          type: number
+        defaultLaborRateHardwood:
+          type: number
+        defaultLaborRateCarpet:
+          type: number
+        defaultLaborRateTile:
+          type: number
+        commissionBasis:
+          $ref: "#/components/schemas/CommissionBasis"
+        defaultCommissionRate:
+          type: number
+        leadStages:
+          type: array
+          items:
+            type: string
+        googleCalendarSyncToken:
+          type: string
+          nullable: true
+        googleCalendarLastSyncedAt:
+          type: string
+          nullable: true
+    TaskStatus:
+      type: string
+      enum: [Open, Done]
+    Task:
+      type: object
+      required: [id, title, description, startAt, endAt, allDay, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        assigneeId:
+          type: string
+          nullable: true
+        startAt:
+          type: string
+        endAt:
+          type: string
+        allDay:
+          type: boolean
+        status:
+          $ref: "#/components/schemas/TaskStatus"
+        relatedLeadId:
+          type: string
+          nullable: true
+        relatedJobId:
+          type: string
+          nullable: true
+        googleEventId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    TaskInput:
+      type: object
+      required: [title, startAt, endAt]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        assigneeId:
+          type: string
+          nullable: true
+        startAt:
+          type: string
+        endAt:
+          type: string
+        allDay:
+          type: boolean
+        status:
+          $ref: "#/components/schemas/TaskStatus"
+        relatedLeadId:
+          type: string
+          nullable: true
+        relatedJobId:
+          type: string
+          nullable: true
+    TaskUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        assigneeId:
+          type: string
+          nullable: true
+        startAt:
+          type: string
+        endAt:
+          type: string
+        allDay:
+          type: boolean
+        status:
+          $ref: "#/components/schemas/TaskStatus"
+        relatedLeadId:
+          type: string
+          nullable: true
+        relatedJobId:
+          type: string
+          nullable: true
+    GoogleCalendarStatus:
+      type: object
+      required: [connected]
+      properties:
+        connected:
+          type: boolean
+        calendarId:
+          type: string
+          nullable: true
+        lastSyncedAt:
+          type: string
+          nullable: true
+        message:
+          type: string
+          nullable: true
+    GoogleSyncResult:
+      type: object
+      required: [connected, pulled, created, updated, deleted, pushed]
+      properties:
+        connected:
+          type: boolean
+        pulled:
+          type: integer
+        created:
+          type: integer
+        updated:
+          type: integer
+        deleted:
+          type: integer
+        pushed:
+          type: integer
+        lastSyncedAt:
+          type: string
+          nullable: true
+        message:
+          type: string
+          nullable: true
+    CommunicationChannel:
+      type: string
+      enum: [email, sms]
+    CommunicationDirection:
+      type: string
+      enum: [outbound, inbound]
+    CommunicationStatus:
+      type: string
+      enum: [queued, sent, delivered, failed, received]
+    Communication:
+      type: object
+      required:
+        - id
+        - channel
+        - direction
+        - toAddress
+        - fromAddress
+        - subject
+        - body
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+        leadId:
+          type: string
+          nullable: true
+        customerKey:
+          type: string
+          nullable: true
+        customerName:
+          type: string
+        channel:
+          $ref: "#/components/schemas/CommunicationChannel"
+        direction:
+          $ref: "#/components/schemas/CommunicationDirection"
+        toAddress:
+          type: string
+        fromAddress:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+        status:
+          $ref: "#/components/schemas/CommunicationStatus"
+        providerMessageId:
+          type: string
+          nullable: true
+        errorMessage:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+    SendEmailRequest:
+      type: object
+      required:
+        - to
+        - subject
+        - body
+      properties:
+        to:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+        leadId:
+          type: string
+        customerKey:
+          type: string
+        customerName:
+          type: string
+    SendSmsRequest:
+      type: object
+      required:
+        - to
+        - body
+      properties:
+        to:
+          type: string
+        body:
+          type: string
+        leadId:
+          type: string
+        customerKey:
+          type: string
+        customerName:
+          type: string
+    MeasurementSyncStatus:
+      type: string
+      enum: [local, pending, synced, error]
+    MeasurementRoom:
+      type: object
+      required: [name, sqft]
+      properties:
+        name:
+          type: string
+        sqft:
+          type: number
+        lengthFt:
+          type: number
+        widthFt:
+          type: number
+        product:
+          type: string
+    MeasurementProduct:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        sku:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+        sqft:
+          type: number
+    Measurement:
+      type: object
+      required:
+        - id
+        - label
+        - rooms
+        - products
+        - totalSqft
+        - total
+        - source
+        - syncStatus
+        - isDemo
+        - notes
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        leadId:
+          type: string
+          nullable: true
+        jobId:
+          type: string
+          nullable: true
+        externalId:
+          type: string
+          nullable: true
+        label:
+          type: string
+        rooms:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeasurementRoom"
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeasurementProduct"
+        totalSqft:
+          type: number
+        total:
+          type: number
+        measuredDate:
+          type: string
+          nullable: true
+        source:
+          type: string
+        syncStatus:
+          $ref: "#/components/schemas/MeasurementSyncStatus"
+        syncError:
+          type: string
+          nullable: true
+        lastSyncedAt:
+          type: string
+          nullable: true
+        isDemo:
+          type: boolean
+        notes:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    MeasurementInput:
+      type: object
+      required:
+        - label
+      properties:
+        leadId:
+          type: string
+        jobId:
+          type: string
+        label:
+          type: string
+        rooms:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeasurementRoom"
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeasurementProduct"
+        totalSqft:
+          type: number
+        total:
+          type: number
+        measuredDate:
+          type: string
+        source:
+          type: string
+        notes:
+          type: string
+    MeasurementUpdate:
+      type: object
+      properties:
+        leadId:
+          type: string
+        jobId:
+          type: string
+        label:
+          type: string
+        rooms:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeasurementRoom"
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeasurementProduct"
+        totalSqft:
+          type: number
+        total:
+          type: number
+        measuredDate:
+          type: string
+        source:
+          type: string
+        notes:
+          type: string
+    MeasureSquareStatus:
+      type: object
+      required: [connected, configured, message]
+      properties:
+        connected:
+          type: boolean
+        configured:
+          type: boolean
+        message:
+          type: string
+        lastSyncedAt:
+          type: string
+          nullable: true
+    SyncMeasurementsRequest:
+      type: object
+      properties:
+        leadId:
+          type: string
+        jobId:
+          type: string
+    SyncMeasurementsResult:
+      type: object
+      required: [connected, configured, pulled, pushed, errors, message]
+      properties:
+        connected:
+          type: boolean
+        configured:
+          type: boolean
+        pulled:
+          type: number
+        pushed:
+          type: number
+        errors:
+          type: array
+          items:
+            type: string
+        message:
+          type: string
+        syncedAt:
+          type: string
+          nullable: true
+    SettingsUpdate:
+      type: object
+      properties:
+        ownerName:
+          type: string
+        ownerRole:
+          type: string
+        companyName:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        website:
+          type: string
+        defaultWasteFactor:
+          type: number
+        defaultLaborRateLVP:
+          type: number
+        defaultLaborRateHardwood:
+          type: number
+        defaultLaborRateCarpet:
+          type: number
+        defaultLaborRateTile:
+          type: number
+        commissionBasis:
+          $ref: "#/components/schemas/CommissionBasis"
+        defaultCommissionRate:
+          type: number
+        leadStages:
+          type: array
+          items:
+            type: string
+        googleCalendarSyncToken:
+          type: string
+          nullable: true
+        googleCalendarLastSyncedAt:
+          type: string
+          nullable: true

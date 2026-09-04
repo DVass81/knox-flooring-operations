@@ -1,0 +1,348 @@
+Build a fully functional web app called “Knox Flooring Ops AI.”
+
+This is a flooring operations platform that combines:
+1. Job tracking
+2. AI-assisted flooring estimating
+3. Scheduling
+4. Material readiness
+5. Proposal generation
+6. Local market demo data
+
+STYLE / BRANDING:
+Use the visual style inspired by https://www.knoxvillecarpet.com:
+- Clean, professional flooring showroom feel
+- White background
+- Dark charcoal/navy headers
+- Warm tan/gold accent colors
+- Large polished dashboard cards
+- Premium SaaS look
+- Rounded corners
+- Flooring/home improvement imagery placeholders
+- Mobile responsive
+- Sidebar navigation
+- Top header
+
+BUSINESS CONTEXT:
+Knoxville Flooring Center is a family-owned flooring company serving East Tennessee since 1982. They serve Knoxville, Farragut, Maryville, Alcoa, Lenoir City, Oak Ridge, Sevierville, Seymour, Powell, Clinton, and surrounding areas.
+
+The company sells and installs:
+- Carpet
+- Hardwood
+- Tile
+- Laminate
+- Luxury vinyl plank
+- Luxury vinyl tile
+- Waterproof flooring
+- Commercial flooring
+
+APP NAME:
+Knox Flooring Operations + AI Estimator
+
+NAVIGATION:
+Create sidebar links for:
+- Dashboard
+- Jobs
+- AI Estimator
+- Proposals
+- Schedule
+- Materials
+- Reports
+- Settings
+
+CORE MODULE 1: EXECUTIVE DASHBOARD
+
+Create a dashboard showing:
+- Active jobs
+- Jobs sold this month
+- Jobs waiting on material
+- Jobs scheduled
+- Jobs in progress
+- Jobs completed
+- Monthly revenue
+- Estimated gross profit
+- Average job margin
+- Crew utilization
+- Rework/callback count
+
+Include charts for:
+- Jobs by status
+- Revenue by flooring type
+- Jobs by surrounding city
+- Crew workload
+- Weekly installation schedule
+
+CORE MODULE 2: JOB TRACKER
+
+Create a full job management system with these statuses:
+- New Lead
+- Estimate Scheduled
+- Estimate Completed
+- Proposal Sent
+- Approved
+- Material Ordered
+- Material Received
+- Scheduled
+- In Progress
+- Final Walkthrough
+- Completed
+- Invoiced
+
+Each job should include:
+- Job number
+- Customer name
+- Phone
+- Email
+- Address
+- City
+- Flooring type
+- Rooms
+- Square footage
+- Crew assigned
+- Estimated start date
+- Estimated completion date
+- Material status
+- Labor estimate
+- Estimated revenue
+- Estimated gross profit
+- Gross margin percentage
+- Job notes
+- Photo placeholders
+- Priority level
+- Risk level
+
+Users should be able to:
+- Add a job
+- Edit a job
+- Delete a job
+- Change status
+- Search jobs
+- Filter by city
+- Filter by crew
+- Filter by flooring type
+- Filter by job status
+- View a detailed job page
+
+CORE MODULE 3: AI FLOORING ESTIMATOR
+
+Create an AI-assisted estimating screen.
+
+User inputs:
+- Customer name
+- Project city
+- Flooring type
+- Room names
+- Length and width of each room
+- Waste factor percentage
+- Material cost per sq ft
+- Labor rate per sq ft
+- Underlayment cost
+- Trim/transition cost
+- Tear-out cost
+- Stair count
+- Furniture moving
+- Subfloor repair
+- Moisture barrier
+- Job complexity notes
+
+The system should calculate:
+- Total square footage
+- Waste-adjusted square footage
+- Material cost
+- Labor cost
+- Additional costs
+- Estimated total cost
+- Suggested selling price
+- Gross profit dollars
+- Gross margin percentage
+- Estimated install hours
+- Recommended crew size
+- Estimated project duration
+
+Add a simulated AI recommendation section based on rules.
+
+AI should provide:
+- Suggested waste factor
+- Install complexity rating
+- Profitability warning
+- Material ordering warning
+- Schedule recommendation
+- Risk areas
+- Crew recommendation
+- Customer-facing project summary
+
+Example rule logic:
+- Tile jobs have higher labor and longer duration
+- Hardwood jobs require acclimation warning
+- Large LVP jobs over 1,200 sq ft may require 2-3 crew members
+- Carpet jobs usually install faster
+- Jobs in Sevierville or Lenoir City may need travel time note
+- If material is not received but job is scheduled, show warning
+- If margin is below 35%, show profitability warning
+- If waste factor is below 7%, show risk warning
+
+CORE MODULE 4: PROPOSAL GENERATOR
+
+From an estimate, generate a clean customer proposal.
+
+Proposal should include:
+- Customer name
+- Project location
+- Flooring type
+- Room list
+- Total square footage
+- Scope of work
+- Estimated price
+- Expected timeline
+- Material assumptions
+- Exclusions
+- Warranty note
+- Approval button
+- Download PDF button placeholder
+
+Make the proposal look professional enough to show a real customer.
+
+CORE MODULE 5: CREW & SCHEDULE VIEW
+
+Create a weekly schedule board with:
+- Crew A
+- Crew B
+- Crew C
+- Crew D
+
+Each crew card should show:
+- Assigned job
+- City
+- Flooring type
+- Install date
+- Duration
+- Material readiness
+- Job status
+- Risk warning
+
+Show alerts when:
+- Job is scheduled but material is not received
+- Job is high complexity
+- Job is outside Knoxville and needs travel time
+- Crew is overbooked
+
+CORE MODULE 6: MATERIAL READINESS TRACKER
+
+Track material by job:
+- Job number
+- Customer
+- City
+- Flooring type
+- Supplier
+- Material ordered date
+- Expected delivery date
+- Actual delivery date
+- Material received yes/no
+- Damaged material yes/no
+- Missing items
+- Notes
+
+Create badges:
+- Ordered
+- In Transit
+- Received
+- Delayed
+- Damaged
+- Missing Items
+
+CORE MODULE 7: REPORTS
+
+Create simple reports showing:
+- Revenue by city
+- Revenue by flooring type
+- Gross profit by crew
+- Average margin by flooring type
+- Jobs completed by month
+- Callback count by crew
+- Material delays by supplier
+
+MOCK DATA REQUIREMENT:
+Seed the app with realistic mock data for East Tennessee.
+
+Create at least 20 demo jobs using surrounding areas:
+- Knoxville
+- Farragut
+- Maryville
+- Alcoa
+- Lenoir City
+- Oak Ridge
+- Sevierville
+- Seymour
+- Powell
+- Clinton
+- Louisville
+- Loudon
+- Tellico Village
+- Hardin Valley
+- Bearden
+- West Knoxville
+- Karns
+- Halls
+- Fountain City
+- Pigeon Forge
+
+Use realistic customer names, addresses, job types, and values.
+
+Example mock jobs:
+1. J-1001 — Sarah Thompson — Farragut — LVP — 1,250 sq ft — Approved — $11,850 revenue
+2. J-1002 — Mike Reynolds — Maryville — Carpet — 980 sq ft — Scheduled — $6,900 revenue
+3. J-1003 — Amy Carter — Oak Ridge — Hardwood — 1,600 sq ft — Material Ordered — $18,750 revenue
+4. J-1004 — Green Valley Dental — Knoxville — Commercial LVT — 2,800 sq ft — In Progress — $31,500 revenue
+5. J-1005 — Jason Miller — Sevierville — Tile — 720 sq ft — Estimate Completed — $9,850 revenue
+6. J-1006 — Brenda Wallace — Lenoir City — Waterproof Flooring — 1,100 sq ft — Proposal Sent — $10,400 revenue
+7. J-1007 — David Morgan — Alcoa — Laminate — 900 sq ft — Completed — $7,250 revenue
+8. J-1008 — Summit Church Office — Powell — Commercial Carpet Tile — 3,200 sq ft — Material Received — $29,600 revenue
+9. J-1009 — Karen Wilson — Tellico Village — Hardwood — 2,100 sq ft — New Lead — $24,800 revenue
+10. J-1010 — Rob Jenkins — Hardin Valley — LVP — 1,450 sq ft — Scheduled — $13,700 revenue
+
+Add 10 more similar jobs.
+
+Mock crews:
+- Crew A: Residential LVP / laminate specialist
+- Crew B: Carpet and commercial carpet tile
+- Crew C: Hardwood and stairs
+- Crew D: Tile and complex installs
+
+Mock suppliers:
+- Shaw Floors
+- Mohawk
+- COREtec
+- Bruce Hardwood
+- Daltile
+- MSI Surfaces
+- Southwind
+- Mannington
+- Engineered Floors
+
+TECH REQUIREMENTS:
+- React
+- TypeScript
+- Tailwind CSS
+- shadcn/ui components if available
+- Local state or localStorage
+- No backend required yet
+- Make all demo functionality clickable
+- Use modals or full pages for add/edit job
+- Use charts
+- Use clean reusable components
+- Use realistic sample calculations
+
+FUNCTIONALITY EXPECTATION:
+This should not just be a static mockup. It should function as a working demo.
+
+Users should be able to:
+- Create a new estimate
+- See AI recommendations
+- Convert estimate into a proposal
+- Add a job to the tracker
+- Update job statuses
+- View scheduled crews
+- See material warnings
+- Filter/report on jobs by city, crew, status, and flooring type
+
+DESIGN GOAL:
+Make this look like a premium, finished SaaS product that would impress a flooring company owner. It should clearly show how the system improves visibility, estimating accuracy, scheduling, material readiness, and profitability.

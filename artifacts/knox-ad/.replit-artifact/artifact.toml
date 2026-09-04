@@ -1,0 +1,31 @@
+kind = "video"
+previewPath = "/knox-ad/"
+title = "Knox Flooring Ad"
+version = "1.0.0"
+id = "artifacts/knox-ad"
+router = "path"
+
+[[integratedSkills]]
+name = "video-js"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/knox-ad/" ]
+localPort = 20914
+
+[services.development]
+run = "pnpm --filter @workspace/knox-ad run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/knox-ad", "run", "build" ]
+publicDir = "artifacts/knox-ad/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20914"
+BASE_PATH = "/knox-ad/"

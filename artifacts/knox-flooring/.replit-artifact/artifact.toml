@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Knox Flooring Operations + AI Estimator"
+version = "1.0.0"
+id = "artifacts/knox-flooring"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25591
+
+[services.development]
+run = "pnpm --filter @workspace/knox-flooring run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/knox-flooring", "run", "build" ]
+publicDir = "artifacts/knox-flooring/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25591"
+BASE_PATH = "/"
