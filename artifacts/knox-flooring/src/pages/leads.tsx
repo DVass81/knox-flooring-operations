@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useStore } from "@/hooks/use-store";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,8 @@ import {
   MapPin,
   User,
   XCircle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -179,6 +181,7 @@ export default function Leads() {
   const [dragOverStage, setDragOverStage] = useState<LeadStage | null>(null);
   const [lostLead, setLostLead] = useState<Lead | null>(null);
   const [lostReason, setLostReason] = useState("");
+  const boardRef = useRef<HTMLDivElement>(null);
 
   const stages = resolveStages(settings.leadStages);
 
@@ -370,8 +373,20 @@ export default function Leads() {
         </Card>
       </div>
 
-      <div className="h-[calc(100dvh-17rem)] min-h-[360px] max-h-[720px] w-full max-w-full overflow-auto overscroll-contain pb-4">
-        <div className="flex w-max min-w-full gap-4 pr-4">
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">Move across the stages to view Won and Lost.</p>
+          <div className="flex shrink-0 gap-1">
+            <Button type="button" variant="outline" size="icon" aria-label="Scroll lead stages left" onClick={() => boardRef.current?.scrollBy({ left: -304, behavior: "smooth" })}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button type="button" variant="outline" size="icon" aria-label="Scroll lead stages right" onClick={() => boardRef.current?.scrollBy({ left: 304, behavior: "smooth" })}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        <div ref={boardRef} tabIndex={0} aria-label="Lead pipeline stages" className="h-[calc(100dvh-23rem)] min-h-[340px] max-h-[680px] w-full max-w-full overflow-auto overscroll-contain pb-4">
+          <div className="flex w-max min-w-full gap-4 pr-4">
           {stages.map((stage, stageIndex) => {
             const stageLeads = leads
               .filter((l) => l.stage === stage)
@@ -487,6 +502,7 @@ export default function Leads() {
               </div>
             );
           })}
+          </div>
         </div>
       </div>
 
