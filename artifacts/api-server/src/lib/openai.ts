@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { aiRequestAuditsTable, db } from "@workspace/db";
 
 type StructuredResponseOptions = {
   schemaName: string;
@@ -18,6 +19,21 @@ type OpenAIUsage = {
 
 export const hasOpenAI = () => Boolean(process.env.OPENAI_API_KEY);
 export const getOpenAIModel = () => process.env.OPENAI_ESTIMATOR_MODEL ?? "gpt-5.5";
+
+export async function getOpenAIUsageToday() {
+  const today = new Date().toISOString().slice(0, 10);
+  const rows = (await db.select().from(aiRequestAuditsTable)).filter((row) => row.createdAt.startsWith(today));
+  const successfulRequests = rows.filter((row) => row.status === "success").length;
+  const limit = Math.max(1, Number(process.env.OPENAI_DAILY_REQUEST_LIMIT ?? 100) || 100);
+  return {
+    successfulRequests,
+    attempts: rows.length,
+    inputTokens: rows.reduce((sum, row) => sum + row.inputTokens, 0),
+    outputTokens: rows.reduce((sum, row) => sum + row.outputTokens, 0),
+    limit,
+    remaining: Math.max(0, limit - successfulRequests),
+  };
+}
 
 function outputText(payload: any) {
   if (typeof payload?.output_text === "string" && payload.output_text) return payload.output_text;

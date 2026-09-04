@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { randomUUID } from "node:crypto";
 import { aiRequestAuditsTable, db } from "@workspace/db";
 import { requireRole } from "../middlewares/auth";
-import { createStructuredResponse, getOpenAIModel, hasOpenAI } from "../lib/openai";
+import { createStructuredResponse, getOpenAIModel, getOpenAIUsageToday, hasOpenAI } from "../lib/openai";
 
 const router: IRouter = Router();
 const PROMPT_VERSION = "knox-estimator-2026.1";
@@ -44,7 +44,8 @@ router.post("/ai/estimate", requireRole("owner", "sales"), async (req, res) => {
   let result: Record<string, any> = fallback(req.body);
   let status = "fallback";
   let inputTokens = 0, outputTokens = 0;
-  if (hasOpenAI()) {
+  const budget = hasOpenAI() ? await getOpenAIUsageToday() : null;
+  if (hasOpenAI() && budget && budget.remaining > 0) {
     try {
       const ai = await createStructuredResponse<Record<string, any>>({
         schemaName: "flooring_quote_recommendation",
@@ -57,6 +58,8 @@ router.post("/ai/estimate", requireRole("owner", "sales"), async (req, res) => {
       result = { ...ai.value, mode: "live" }; status = "success";
       inputTokens = ai.usage.inputTokens; outputTokens = ai.usage.outputTokens;
     } catch (error) { result = { ...result, fallbackReason: error instanceof Error ? error.message : "AI unavailable" }; }
+  } else if (hasOpenAI()) {
+    result = { ...result, fallbackReason: `Daily OpenAI request limit reached (${budget?.limit ?? 100})` };
   }
   await db.insert(aiRequestAuditsTable).values({ id: randomUUID(), userId: req.auth!.userId, model, promptVersion: PROMPT_VERSION, status, latencyMs: Date.now() - started, inputTokens, outputTokens, estimatedCostMicros: 0, createdAt: new Date().toISOString() });
   res.json({ ...result, promptVersion: PROMPT_VERSION, model: status === "success" ? model : null });

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Router, type IRouter } from "express";
 import { aiRequestAuditsTable, db, invoicesTable, jobsTable, leadsTable, materialsTable, proposalsTable, tasksTable } from "@workspace/db";
 import { requireRole } from "../middlewares/auth";
-import { createStructuredResponse, getOpenAIModel, hasOpenAI } from "../lib/openai";
+import { createStructuredResponse, getOpenAIModel, getOpenAIUsageToday, hasOpenAI } from "../lib/openai";
 
 const router: IRouter = Router();
 const PROMPT_VERSION = "knox-operations-brief-2026.1";
@@ -144,7 +144,8 @@ router.post("/ai/operations-brief", requireRole("owner", "sales", "operations"),
   let inputTokens = 0;
   let outputTokens = 0;
   let fallbackReason: string | undefined;
-  if (hasOpenAI()) {
+  const budget = hasOpenAI() ? await getOpenAIUsageToday() : null;
+  if (hasOpenAI() && budget && budget.remaining > 0) {
     try {
       const ai = await createStructuredResponse<BriefingAI>({
         schemaName: "knox_operations_brief",
@@ -163,6 +164,8 @@ router.post("/ai/operations-brief", requireRole("owner", "sales", "operations"),
     } catch (error) {
       fallbackReason = error instanceof Error ? error.message : "AI unavailable";
     }
+  } else if (hasOpenAI()) {
+    fallbackReason = `Daily OpenAI request limit reached (${budget?.limit ?? 100})`;
   }
   const byId = new Map(orderedCandidates.map((item) => [item.id, item]));
   const selectedIds = [...new Set(analysis.priorityIds)].filter((id) => byId.has(id));
