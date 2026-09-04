@@ -84,7 +84,7 @@ export const INTEGRATIONS = [
 ];
 
 export default function Welcome() {
-  const { login, forgot, reset } = useAuth();
+  const { login, enterDemo, forgot, reset } = useAuth();
   const [, setLocation] = useLocation();
   const ownerName = "Will Hedley";
   const firstName = ownerName.split(/\s+/)[0] || "Will";
@@ -99,6 +99,7 @@ export default function Welcome() {
   const resetToken = new URLSearchParams(window.location.search).get("reset");
 
   const enter = async () => { setBusy(true); setError(""); try { if (resetToken) { await reset(resetToken, password); setMessage("Password updated. Sign in with your new password."); window.history.replaceState({}, "", "/welcome"); } else { await login(email, password); setLocation("/"); } } catch (e) { setError(e instanceof Error ? e.message : "Sign in failed"); } finally { setBusy(false); } };
+  const enterDemoSystem = async () => { setBusy(true); setError(""); setMessage(""); try { await enterDemo(); sessionStorage.setItem(DEMO_ENTERED_KEY, "1"); setLocation("/"); } catch (e) { setError(e instanceof Error ? e.message : "Unable to enter the demo"); } finally { setBusy(false); } };
   const sendReset = async () => { if (!email) { setError("Enter your email first."); return; } setBusy(true); setError(""); try { setMessage(await forgot(email)); } catch (e) { setError(e instanceof Error ? e.message : "Unable to send reset email"); } finally { setBusy(false); } };
 
   return (
@@ -225,8 +226,27 @@ export default function Welcome() {
             Secure access for {ownerName} · {ownerRole}
           </p>
 
+          {!resetToken && (
+            <div className="mt-8 rounded-xl border border-primary/20 bg-primary/5 p-4">
+              <Button type="button" className="w-full gap-2" size="lg" disabled={busy} onClick={enterDemoSystem}>
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Enter Demo<ArrowRight className="h-4 w-4" /></>}
+              </Button>
+              <p className="mt-2 text-center text-xs leading-relaxed text-muted-foreground">
+                No email or password is required during the evaluation period. Secure team sign-in will be configured at implementation.
+              </p>
+            </div>
+          )}
+
+          {!resetToken && (
+            <div className="my-6 flex items-center gap-3 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+              <span className="h-px flex-1 bg-border" />
+              <span>Future secure sign-in</span>
+              <span className="h-px flex-1 bg-border" />
+            </div>
+          )}
+
           <form
-            className="mt-8 space-y-4"
+            className={`${resetToken ? "mt-8" : "mt-0"} space-y-4`}
             onSubmit={(e) => {
               e.preventDefault();
               enter();
@@ -256,7 +276,7 @@ export default function Welcome() {
               />
             </div>
 
-            <Button type="submit" className="w-full gap-2" size="lg">
+            <Button type="submit" variant={resetToken ? "default" : "outline"} className="w-full gap-2" size="lg" disabled={busy}>
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <>{resetToken ? "Set new password" : "Sign in"}<ArrowRight className="h-4 w-4" /></>}
             </Button>
             {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
@@ -266,7 +286,7 @@ export default function Welcome() {
           <div className="mt-6 flex items-start gap-2 rounded-lg bg-muted/60 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
             <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <span>
-              Your account is protected with an encrypted session. Use the owner email and password configured for this deployment.
+              Demo entry still uses an encrypted server session. Password-based access remains visible as a preview of the production sign-in experience.
             </span>
           </div>
 

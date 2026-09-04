@@ -6,6 +6,8 @@ Operations, estimating, invoicing, job costing, and approval-based QuickBooks On
 
 The application has no public registration page. On the first production start, it creates the owner from `OWNER_EMAIL`, `OWNER_INITIAL_PASSWORD`, and `OWNER_NAME`. The password must contain at least 12 characters. After a user exists, the bootstrap values are ignored.
 
+For a temporary evaluation environment, set `DEMO_ACCESS_ENABLED=true` to show an audited, password-free owner entry button while retaining the normal sign-in screen. Set it back to `false` before implementation or whenever public demo access should end.
+
 Copy `.env.example` into your local secret manager and never commit real credentials. Production values belong in DigitalOcean encrypted environment variables.
 
 ## QuickBooks Online setup

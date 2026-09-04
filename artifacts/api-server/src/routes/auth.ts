@@ -9,6 +9,42 @@ const router: IRouter = Router();
 const cookieOptions = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" as const, path: "/", maxAge: SESSION_TTL_MS };
 const attempts = new Map<string, { count: number; resetAt: number }>();
 
+export function isDemoAccessEnabled() {
+  return process.env.DEMO_ACCESS_ENABLED === "true";
+}
+
+router.post("/auth/demo", async (req, res) => {
+  if (!isDemoAccessEnabled()) {
+    res.status(404).json({ error: "Demo access is not enabled" });
+    return;
+  }
+
+  const [owner] = await db
+    .select()
+    .from(usersTable)
+    .where(and(eq(usersTable.role, "owner"), eq(usersTable.active, true)))
+    .limit(1);
+
+  if (!owner) {
+    res.status(503).json({ error: "The demo owner account is not available" });
+    return;
+  }
+
+  const session = await createSession(owner.id, req.ip, req.get("user-agent") ?? "");
+  res.cookie(SESSION_COOKIE, session.token, cookieOptions);
+  await audit("auth.demo_access", {
+    userId: owner.id,
+    entityType: "user",
+    entityId: owner.id,
+    ip: req.ip,
+    details: { temporaryBypass: true },
+  });
+  res.json({
+    user: { id: owner.id, email: owner.email, name: owner.name, role: owner.role },
+    csrfToken: session.csrfToken,
+  });
+});
+
 router.post("/auth/login", async (req, res) => {
   const email = normalizeEmail(String(req.body?.email ?? ""));
   const password = String(req.body?.password ?? "");
