@@ -189,6 +189,10 @@ export function DemoCenter() {
         setTargetInteracted(true);
       }
     };
+    const onRegisteredTrainingInteraction = (event: Event) => {
+      const detail = (event as CustomEvent<{ target?: string }>).detail;
+      if (detail?.target === activeStep.target) setTargetInteracted(true);
+    };
     missingTimer = window.setTimeout(() => setTargetMissing(true), 8000);
     const observer = new MutationObserver(update);
     observer.observe(document.body, { childList: true, subtree: true, attributes: true });
@@ -196,6 +200,7 @@ export function DemoCenter() {
     window.addEventListener("scroll", update, true);
     document.addEventListener("pointerdown", onTargetInteraction, true);
     document.addEventListener("click", onTargetInteraction, true);
+    window.addEventListener("knox:training-interaction", onRegisteredTrainingInteraction);
     discover();
     return () => {
       disposed = true;
@@ -206,6 +211,7 @@ export function DemoCenter() {
       window.removeEventListener("scroll", update, true);
       document.removeEventListener("pointerdown", onTargetInteraction, true);
       document.removeEventListener("click", onTargetInteraction, true);
+      window.removeEventListener("knox:training-interaction", onRegisteredTrainingInteraction);
     };
   }, [activeStep?.id, location]);
 

@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DemoCenter } from "./DemoCenter";
 import type { TrainingStatus } from "./training-types";
+import { Button } from "@/components/ui/button";
 
 const mocks = vi.hoisted(() => ({ api: vi.fn(), navigate: vi.fn(), switchPersona: vi.fn(), user: { role: "owner" as const, actualRole: "owner" as "owner" | undefined, previewRole: null as null | "sales" } }));
 vi.mock("@workspace/api-client-react", () => ({ customFetch: mocks.api }));
@@ -69,6 +70,17 @@ describe("DemoCenter", () => {
     fireEvent.click(await screen.findByRole("button", { name: /start silently/i }));
     const target = await screen.findByRole("button", { name: "Generate AI recommendations" });
     fireEvent.pointerDown(target);
+    expect(await screen.findByText(/highlighted control used/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /verify & complete/i })).toBeEnabled();
+  });
+
+  it("accepts the registered interaction emitted by trained action buttons", async () => {
+    installApi("action");
+    render(<><Button data-training-id="nav-dashboard">Generate AI recommendations</Button><DemoCenter /></>);
+    await waitFor(() => expect(mocks.api).toHaveBeenCalled());
+    fireEvent(window, new Event("knox:demo-center"));
+    fireEvent.click(await screen.findByRole("button", { name: /start silently/i }));
+    fireEvent.click(await screen.findByRole("button", { name: "Generate AI recommendations" }));
     expect(await screen.findByText(/highlighted control used/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /verify & complete/i })).toBeEnabled();
   });
