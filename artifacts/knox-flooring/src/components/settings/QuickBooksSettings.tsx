@@ -76,7 +76,7 @@ export function QuickBooksSettings() {
     await run(`map-${candidate.localId}`, () => customFetch(`/api/quickbooks/entity-mappings/${candidate.entityType}/${candidate.localId}`, { method: "PUT", body: JSON.stringify({ decision, quickbooksId }), responseType: "json" }), `${candidate.localName} reconciled`);
     setCandidates((value) => value.filter((item) => item.localId !== candidate.localId || item.entityType !== candidate.entityType));
   };
-  const demoQueue = queue.filter((item) => item.payload?.demoSimulation);
+  const demoQueue = queue.filter((item) => item.payload?.demoSimulation).sort((a, b) => Number(a.payload?.flowStep ?? 0) - Number(b.payload?.flowStep ?? 0));
   const liveQueue = queue.filter((item) => !item.payload?.demoSimulation);
   const pending = liveQueue.filter((item) => item.status === "pending_approval");
   const failures = liveQueue.filter((item) => item.status === "failed");

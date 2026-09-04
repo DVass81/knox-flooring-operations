@@ -27,7 +27,7 @@ router.post("/quickbooks/demo/load", requireOwner, async (req, res) => {
   const [[job], [proposal], [invoice], [product], [material]] = await Promise.all([
     db.select().from(jobsTable).orderBy(desc(jobsTable.createdAt)).limit(1),
     db.select().from(proposalsTable).orderBy(desc(proposalsTable.createdAt)).limit(1),
-    db.select().from(invoicesTable).orderBy(desc(invoicesTable.createdAt)).limit(1),
+    db.select().from(invoicesTable).where(inArray(invoicesTable.status, ["Partial", "Overdue", "Sent"])).orderBy(desc(invoicesTable.createdAt)).limit(1),
     db.select().from(productsTable).orderBy(asc(productsTable.name)).limit(1),
     db.select().from(materialsTable).limit(1),
   ]);

@@ -14,9 +14,9 @@ const recommendationSchema = {
   properties: {
     scopeOfWork: { type: "string" },
     recommendedProducts: { type: "array", items: { type: "string" } },
-    wasteFactor: { type: "number" },
+    wasteFactor: { type: "number", minimum: 0, maximum: 30 },
     wasteExplanation: { type: "string" },
-    labor: { type: "object", additionalProperties: false, required: ["hours", "crewSize", "durationDays"], properties: { hours: { type: "number" }, crewSize: { type: "integer" }, durationDays: { type: "integer" } } },
+    labor: { type: "object", additionalProperties: false, required: ["hours", "crewSize", "durationDays"], properties: { hours: { type: "number", minimum: 1 }, crewSize: { type: "integer", minimum: 1 }, durationDays: { type: "integer", minimum: 1 } } },
     preparation: { type: "array", items: { type: "string" } },
     risks: { type: "array", items: { type: "string" } },
     missingInformation: { type: "array", items: { type: "string" } },

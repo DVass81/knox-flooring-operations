@@ -55,10 +55,11 @@ router.post("/ai/operations-brief", requireRole("owner", "sales", "operations"),
   const now = new Date();
   const today = now.toISOString().slice(0, 10);
   const priorities: Priority[] = [];
+  const nonCollectibleStatuses = new Set(["Draft", "Paid", "Refunded", "Credited", "Voided"]);
 
   for (const invoice of invoices) {
-    const balance = Math.max(0, invoice.balanceAmount || invoice.total - invoice.depositAmount - invoice.paidAmount + invoice.refundedAmount);
-    if (balance <= 0 || invoice.status === "Draft") continue;
+    const balance = Math.max(0, invoice.balanceAmount);
+    if (balance <= 0 || nonCollectibleStatuses.has(invoice.status)) continue;
     const overdue = invoice.status === "Overdue" || Boolean(invoice.dueDate && invoice.dueDate < today);
     priorities.push({
       id: `invoice:${invoice.id}`,
@@ -123,8 +124,8 @@ router.post("/ai/operations-brief", requireRole("owner", "sales", "operations"),
   const metrics = {
     openLeads: leads.filter((lead) => !["Won", "Lost"].includes(lead.stage)).length,
     activeJobs: jobs.filter((job) => !["Completed", "Paid", "Cancelled"].includes(job.status)).length,
-    openInvoiceBalance: Math.round(invoices.reduce((sum, invoice) => sum + (invoice.status === "Draft" ? 0 : Math.max(0, invoice.balanceAmount)), 0)),
-    overdueInvoices: invoices.filter((invoice) => invoice.status === "Overdue").length,
+    openInvoiceBalance: Math.round(invoices.reduce((sum, invoice) => sum + (nonCollectibleStatuses.has(invoice.status) ? 0 : Math.max(0, invoice.balanceAmount)), 0)),
+    overdueInvoices: invoices.filter((invoice) => !nonCollectibleStatuses.has(invoice.status) && invoice.balanceAmount > 0 && (invoice.status === "Overdue" || Boolean(invoice.dueDate && invoice.dueDate < today))).length,
     materialExceptions: materials.filter((material) => material.damaged || Boolean(material.missingItems) || (!material.received && Boolean(material.expectedDeliveryDate && material.expectedDeliveryDate <= today))).length,
     proposalsAwaitingDecision: proposals.filter((proposal) => ["Sent", "Viewed"].includes(proposal.status)).length,
   };
