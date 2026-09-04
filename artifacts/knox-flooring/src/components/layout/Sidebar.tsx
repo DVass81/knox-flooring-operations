@@ -18,18 +18,12 @@ export function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
-      <div className="flex items-center h-16 px-6 border-b border-sidebar-border">
-        <div className="flex items-center gap-3">
-          <img src="/kfc-logo.png" alt="Knoxville Flooring Center" className="h-10 w-10 rounded-md bg-white object-contain p-1" />
-          <div className="flex flex-col leading-none">
-            <span className="font-serif text-lg font-semibold text-white tracking-tight">
-              KFC Operations
-            </span>
-            <span className="text-[10px] uppercase tracking-[0.18em] text-sidebar-foreground/50">
-              Flooring Center
-            </span>
-          </div>
-        </div>
+      <div className="flex h-24 items-center justify-center border-b border-sidebar-border px-4">
+        <img
+          src="/kfc-logo.png"
+          alt="Knoxville Flooring Center"
+          className="h-auto w-full max-w-[220px] object-contain"
+        />
       </div>
       <nav className="flex-1 py-5 px-3 space-y-5 overflow-y-auto">
         {navGroups.map((group) => ({ ...group, items: group.items.filter((item) => !item.roles || item.roles.includes(user?.role ?? "owner")) })).filter((group) => group.items.length > 0).map((group) => (
