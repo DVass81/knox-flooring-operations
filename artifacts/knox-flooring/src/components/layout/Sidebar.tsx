@@ -51,7 +51,7 @@ export function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
       <nav className="flex-1 py-5 px-3 space-y-5 overflow-y-auto">
         {navGroups.map((group) => ({ ...group, items: group.items.filter((item) => !item.roles || item.roles.includes(user?.role ?? "owner")) })).filter((group) => group.items.length > 0).map((group) => (
           <div key={group.label}>
-            <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/40">
+            <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
               {group.label}
             </p>
             <div className="space-y-0.5">
@@ -67,8 +67,8 @@ export function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
                       className={cn(
                         "group relative flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all cursor-pointer",
                         isActive
-                          ? "bg-sidebar-accent text-sidebar-primary"
-                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-white"
+                          ? "bg-sidebar-accent text-white"
+                          : "text-white hover:bg-sidebar-accent/50"
                       )}
                     >
                       {isActive && (
@@ -100,7 +100,7 @@ export function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
             <span className="text-sm font-medium text-white truncate">
               {user?.name || settings.ownerName || "Will Hedley"}
             </span>
-            <span className="text-xs text-sidebar-foreground/50 truncate">
+            <span className="text-xs text-white truncate">
               {user?.previewRole ? `Previewing ${user.role}` : (user?.role || settings.ownerRole || "Owner")}
             </span>
           </div>
