@@ -50,7 +50,7 @@ export function StagePhotos({
   };
 
   return (
-    <Card>
+    <Card data-training-id="job-photos">
       <CardHeader>
         <CardTitle>Job Photos</CardTitle>
       </CardHeader>

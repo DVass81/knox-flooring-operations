@@ -107,7 +107,7 @@ export function RoomsScopeEditor({
   const scopeChanged = scopeDraft !== job.scopeOfWork;
 
   return (
-    <Card>
+    <Card data-training-id="job-scope">
       <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
         <div>
           <CardTitle>Rooms & Scope</CardTitle>

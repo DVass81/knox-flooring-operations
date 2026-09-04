@@ -80,7 +80,7 @@ export default function JobDetail() {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-5xl mx-auto" data-training-id="job-overview">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/jobs">
@@ -102,7 +102,7 @@ export default function JobDetail() {
         </div>
       </div>
 
-      <Card>
+      <Card data-training-id="job-stage">
         <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
           <CardTitle>Job Stage</CardTitle>
           <Select value={job.status} onValueChange={(v: JobStatus) => updateJob(job.id, { status: v })}>

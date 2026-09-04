@@ -1,4 +1,4 @@
-import { boolean, integer, jsonb, pgTable, text } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const demoBaselinesTable = pgTable("demo_baselines", {
   id: text("id").primaryKey(),
@@ -30,6 +30,41 @@ export const tourProgressTable = pgTable("tour_progress", {
   completedAt: text("completed_at"),
   updatedAt: text("updated_at").notNull(),
 });
+
+export const trainingRunsTable = pgTable("training_runs", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  missionKey: text("mission_key").notNull(),
+  manifestVersion: text("manifest_version").notNull(),
+  status: text("status").notNull().default("active"),
+  currentStep: integer("current_step").notNull().default(0),
+  voiceEnabled: boolean("voice_enabled").notNull().default(false),
+  checkpoints: jsonb("checkpoints").$type<string[]>().notNull().default([]),
+  practiceData: jsonb("practice_data").$type<Record<string, unknown>>().notNull().default({}),
+  startedAt: text("started_at").notNull(),
+  completedAt: text("completed_at"),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const trainingPreferencesTable = pgTable("training_preferences", {
+  userId: text("user_id").primaryKey(),
+  voiceEnabled: boolean("voice_enabled").notNull().default(false),
+  captionsEnabled: boolean("captions_enabled").notNull().default(true),
+  welcomeDismissed: boolean("welcome_dismissed").notNull().default(false),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const trainingAudioCacheTable = pgTable("training_audio_cache", {
+  id: text("id").primaryKey(),
+  scriptHash: text("script_hash").notNull(),
+  stepId: text("step_id").notNull(),
+  manifestVersion: text("manifest_version").notNull(),
+  model: text("model").notNull(),
+  voice: text("voice").notNull(),
+  contentType: text("content_type").notNull().default("audio/mpeg"),
+  audioBase64: text("audio_base64").notNull(),
+  createdAt: text("created_at").notNull(),
+}, (table) => [uniqueIndex("training_audio_cache_script_hash_idx").on(table.scriptHash)]);
 
 export const aiRequestAuditsTable = pgTable("ai_request_audits", {
   id: text("id").primaryKey(),

@@ -4,6 +4,29 @@ import { useStore } from "@/hooks/use-store";
 import { navGroups } from "./nav";
 import { useAuth } from "@/contexts/auth";
 
+const trainingIds: Record<string, string> = {
+  "/": "nav-dashboard",
+  "/ai-operations": "nav-ai-operations",
+  "/leads": "nav-leads",
+  "/pipeline": "nav-pipeline",
+  "/estimator": "nav-ai-quote-copilot",
+  "/proposals": "nav-proposals",
+  "/jobs": "nav-jobs",
+  "/schedule": "nav-schedule",
+  "/calendar": "nav-calendar",
+  "/tasks": "nav-task-calendar",
+  "/materials": "nav-materials",
+  "/inventory": "nav-inventory",
+  "/invoices": "nav-invoices",
+  "/commissions": "nav-commissions",
+  "/sales": "nav-sales-performance",
+  "/customers": "nav-customers",
+  "/reports": "nav-reports",
+  "/settings": "nav-settings",
+  "/integration-health": "nav-integration-health",
+  "/demo-outbox": "nav-demo-outbox",
+};
+
 function getInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";
@@ -40,6 +63,7 @@ export function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
                   <Link key={item.name} href={item.href} className="block" onClick={onNavigate}>
                     <div
                       data-tour={item.href}
+                      data-training-id={trainingIds[item.href]}
                       className={cn(
                         "group relative flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all cursor-pointer",
                         isActive

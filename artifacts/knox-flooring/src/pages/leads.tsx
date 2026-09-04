@@ -302,7 +302,7 @@ export default function Leads() {
             Capture leads and work them to a close.
           </p>
         </div>
-        <Button onClick={openAdd}>
+        <Button onClick={openAdd} data-training-id="leads-new">
           <Plus className="mr-2 h-4 w-4" /> New Lead
         </Button>
       </div>

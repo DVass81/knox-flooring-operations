@@ -190,7 +190,7 @@ export function JobActuals({
               {totalHours.toLocaleString()} hrs logged
             </p>
           </div>
-          <Button size="sm" onClick={() => setLaborOpen(true)}>
+          <Button size="sm" onClick={() => setLaborOpen(true)} data-training-id="job-log-labor">
             <Plus className="w-4 h-4 mr-2" /> Log Hours
           </Button>
         </CardHeader>
@@ -240,7 +240,7 @@ export function JobActuals({
               ${totalMaterialCost.toLocaleString()} total
             </p>
           </div>
-          <Button size="sm" onClick={() => setUsageOpen(true)}>
+          <Button size="sm" onClick={() => setUsageOpen(true)} data-training-id="job-log-material">
             <Plus className="w-4 h-4 mr-2" /> Log Usage
           </Button>
         </CardHeader>

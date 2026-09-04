@@ -377,7 +377,7 @@ export default function Estimator() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card data-training-id="estimator-rooms">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Rooms & Measurements</CardTitle>
               <Button variant="outline" size="sm" onClick={addRoom}><Plus className="w-4 h-4 mr-2" />Add Room</Button>
@@ -482,7 +482,7 @@ export default function Estimator() {
         </div>
 
         <div className="space-y-6">
-          <Card className="border-primary bg-primary/5">
+          <Card className="border-primary bg-primary/5" data-training-id="estimator-summary">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calculator className="w-5 h-5 text-primary" />
@@ -520,7 +520,7 @@ export default function Estimator() {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-2">
-               <Button className="w-full" size="lg" onClick={handleConvertToProposal}>
+               <Button className="w-full" size="lg" onClick={handleConvertToProposal} data-training-id="estimator-proposal">
                   <FileText className="w-4 h-4 mr-2" /> Convert to Proposal
                </Button>
                <Button className="w-full" variant="outline" onClick={handleSaveAsJob}>
@@ -577,7 +577,7 @@ export default function Estimator() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Button onClick={runCopilot} disabled={copilotLoading || rawSqFt <= 0} className="w-full bg-gradient-to-r from-primary to-sky-500 text-white">
+              <Button onClick={runCopilot} disabled={copilotLoading || rawSqFt <= 0} className="w-full bg-gradient-to-r from-primary to-sky-500 text-white" data-training-id="estimator-ai">
                 {copilotLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}{copilotLoading ? "Analyzing project…" : "Generate AI recommendations"}
               </Button>
               <div className="flex items-start gap-2 rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" /><span>Human approval required. AI cannot change products, prices, measurements, taxes, or send a proposal.</span></div>

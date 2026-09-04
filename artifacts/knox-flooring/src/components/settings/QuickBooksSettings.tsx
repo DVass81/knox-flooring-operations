@@ -93,7 +93,7 @@ export function QuickBooksSettings() {
       </CardContent>
     </Card>
 
-    {status?.demoAvailable && !status.connection.connected && <Card className="overflow-hidden border-violet-500/30">
+    {status?.demoAvailable && !status.connection.connected && <Card className="overflow-hidden border-violet-500/30" data-training-id="quickbooks-demo">
       <CardHeader className="bg-gradient-to-r from-violet-600/10 via-blue-500/10 to-sky-400/10"><div className="flex flex-wrap items-start justify-between gap-3"><div><CardTitle className="flex items-center gap-2"><PlayCircle className="h-5 w-5 text-violet-600" />Interactive QuickBooks Demo Company</CardTitle><CardDescription className="mt-1">A safe, persistent rehearsal of the exact approval and synchronization workflow Will would use. Nothing leaves Knox Ops.</CardDescription></div><Badge className="bg-violet-600 text-white">Clearly simulated</Badge></div></CardHeader>
       <CardContent className="space-y-5 pt-5">
         <div className="grid gap-2 md:grid-cols-4">{demoStages.map((stage, index) => <div key={stage} className="flex items-center gap-2 rounded-lg border bg-background p-3 text-sm font-medium"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">{index + 1}</span><span>{stage}</span>{index < demoStages.length - 1 && <ArrowRight className="ml-auto hidden h-4 w-4 text-muted-foreground md:block" />}</div>)}</div>

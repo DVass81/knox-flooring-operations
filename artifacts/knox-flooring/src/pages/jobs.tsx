@@ -190,7 +190,7 @@ export default function Jobs() {
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Jobs Tracker</h1>
           <p className="text-muted-foreground mt-1">Manage active flooring jobs and pipeline.</p>
         </div>
-        <Button onClick={openAdd}>
+        <Button onClick={openAdd} data-training-id="jobs-new">
           <Plus className="mr-2 h-4 w-4" /> New Job
         </Button>
       </div>
