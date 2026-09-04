@@ -23,6 +23,7 @@ import quickbooksRouter, { quickBooksWebhook } from "./quickbooks";
 import { enforceRoleAccess, requireAuth } from "../middlewares/auth";
 import demoRouter from "./demo";
 import aiEstimatesRouter from "./ai-estimates";
+import aiOperationsRouter from "./ai-operations";
 import integrationHealthRouter from "./integration-health";
 
 const router: IRouter = Router();
@@ -35,6 +36,7 @@ router.use(requireAuth);
 router.use(enforceRoleAccess);
 router.use(demoRouter);
 router.use(aiEstimatesRouter);
+router.use(aiOperationsRouter);
 router.use(integrationHealthRouter);
 router.use(jobsRouter);
 router.use(photosRouter);

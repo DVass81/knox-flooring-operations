@@ -1,16 +1,83 @@
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, like } from "drizzle-orm";
 import { Router, type IRouter } from "express";
-import { db, jobsTable, productsTable, quickbooksAccountingMappingsTable, quickbooksConflictsTable, quickbooksConnectionsTable, quickbooksEntityMappingsTable, quickbooksSyncJobsTable, quickbooksWebhookEventsTable } from "@workspace/db";
+import { db, invoicesTable, jobsTable, materialsTable, productsTable, proposalsTable, quickbooksAccountingMappingsTable, quickbooksConflictsTable, quickbooksConnectionsTable, quickbooksEntityMappingsTable, quickbooksSyncJobsTable, quickbooksWebhookEventsTable } from "@workspace/db";
 import { audit } from "../lib/auth";
 import { encryptSecret, getConnection, qboQuery, signOAuthState, verifyOAuthState } from "../lib/quickbooks";
 import { processQuickBooksQueue } from "../lib/quickbooks-worker";
+import { requireOwner } from "../middlewares/auth";
 
 const router: IRouter = Router();
 const configured = () => Boolean(process.env.QUICKBOOKS_CLIENT_ID && process.env.QUICKBOOKS_CLIENT_SECRET && process.env.QUICKBOOKS_REDIRECT_URI && process.env.QUICKBOOKS_ENCRYPTION_KEY);
+const demoAvailable = () => process.env.DEMO_MODE === "true";
 const publicConnection = (c: Awaited<ReturnType<typeof getConnection>>) => c ? ({ connected: c.status === "connected", status: c.status, realmId: c.realmId, companyName: c.companyName, environment: c.environment, readinessStatus: c.readinessStatus, lastSyncAt: c.lastSyncAt, lastCdcAt: c.lastCdcAt, refreshTokenExpiresAt: c.refreshTokenExpiresAt }) : ({ connected: false, status: configured() ? "not_connected" : "not_configured", readinessStatus: "configuration_required" });
 
-router.get("/quickbooks/status", async (_req, res) => res.json({ configured: configured(), connection: publicConnection(await getConnection()) }));
+router.get("/quickbooks/status", async (_req, res) => res.json({ configured: configured(), demoAvailable: demoAvailable(), demoCompany: demoAvailable() ? { name: "Knoxville Flooring Demo Company", environment: "simulated", lastFour: "1982" } : null, connection: publicConnection(await getConnection()) }));
+
+router.get("/quickbooks/demo", async (_req, res) => {
+  if (!demoAvailable()) { res.status(404).json({ error: "QuickBooks demo mode is unavailable" }); return; }
+  const items = await db.select().from(quickbooksSyncJobsTable).where(like(quickbooksSyncJobsTable.idempotencyKey, "qbdemo:%")).orderBy(asc(quickbooksSyncJobsTable.createdAt));
+  res.json({ company: { name: "Knoxville Flooring Demo Company", environment: "simulated", companyId: "DEMO-1982" }, items });
+});
+
+router.post("/quickbooks/demo/load", requireOwner, async (req, res) => {
+  if (!demoAvailable()) { res.status(404).json({ error: "QuickBooks demo mode is unavailable" }); return; }
+  const connection = await getConnection();
+  if (connection?.status === "connected") { res.status(409).json({ error: "Disconnect the live QuickBooks company before running the simulator" }); return; }
+  const [[job], [proposal], [invoice], [product], [material]] = await Promise.all([
+    db.select().from(jobsTable).orderBy(desc(jobsTable.createdAt)).limit(1),
+    db.select().from(proposalsTable).orderBy(desc(proposalsTable.createdAt)).limit(1),
+    db.select().from(invoicesTable).orderBy(desc(invoicesTable.createdAt)).limit(1),
+    db.select().from(productsTable).orderBy(asc(productsTable.name)).limit(1),
+    db.select().from(materialsTable).limit(1),
+  ]);
+  const now = new Date().toISOString();
+  const definitions = [
+    job && { entityType: "customer", localId: job.id, action: "create", destination: "QuickBooks Customer", summary: `Create customer record for ${job.jobNumber}`, amount: null, preview: { DisplayName: job.customerName, PrimaryEmailAddr: job.email || "Not supplied" } },
+    job && { entityType: "project", localId: job.id, action: "create", destination: "QuickBooks Project", summary: `Create ${job.jobNumber} beneath its customer`, amount: job.estRevenue, preview: { Name: `${job.jobNumber} - ${job.flooringType}`, Status: "In Progress" } },
+    product && { entityType: "item", localId: product.id, action: "create", destination: "Products & Services", summary: `Map ${product.name} to flooring income`, amount: product.price, preview: { Name: product.name, Sku: product.sku, UnitPrice: product.price } },
+    proposal && { entityType: "estimate", localId: proposal.id, action: "create", destination: "QuickBooks Estimate", summary: `Export approved ${proposal.flooringType} proposal`, amount: proposal.estimatedPrice, preview: { TotalAmt: proposal.estimatedPrice, TxnStatus: proposal.status } },
+    invoice && { entityType: "invoice", localId: invoice.id, action: "create", destination: "QuickBooks Invoice", summary: `Post invoice ${invoice.invoiceNumber} with tax and deposit`, amount: invoice.total, preview: { DocNumber: invoice.invoiceNumber, TotalAmt: invoice.total, Balance: invoice.balanceAmount, TaxCode: invoice.taxCode || "TAX" } },
+    invoice && { entityType: "payment", localId: invoice.id, action: "import", destination: "Knox payment status", summary: `Import a QuickBooks payment against ${invoice.invoiceNumber}`, amount: Math.min(invoice.balanceAmount || invoice.total, 2500), preview: { PaymentRefNum: "DEMO-PMT-1982", AppliedTo: invoice.invoiceNumber } },
+    job && { entityType: "time", localId: job.id, action: "create", destination: "QuickBooks Time Activity", summary: `Assign crew labor to project ${job.jobNumber}`, amount: job.actualLaborCost || job.laborEstimate, preview: { Hours: job.estLaborHours, EmployeeOrVendor: job.crewAssigned } },
+    material && { entityType: "expense", localId: material.id, action: "create", destination: "QuickBooks Billable Expense", summary: `Assign material purchase to ${material.jobNumber}`, amount: null, preview: { Vendor: material.supplier || "Demo Flooring Supply", Project: material.jobNumber, Status: material.status } },
+  ].filter(Boolean) as Array<{ entityType: string; localId: string; action: string; destination: string; summary: string; amount: number | null; preview: Record<string, unknown> }>;
+  await db.transaction(async (tx) => {
+    await tx.delete(quickbooksSyncJobsTable).where(like(quickbooksSyncJobsTable.idempotencyKey, "qbdemo:%"));
+    if (definitions.length) await tx.insert(quickbooksSyncJobsTable).values(definitions.map((item, index) => ({
+      id: randomUUID(),
+      idempotencyKey: `qbdemo:${item.entityType}:${item.localId}:${index}`,
+      entityType: item.entityType,
+      localId: item.localId,
+      action: item.action,
+      status: "demo_pending",
+      payload: { demoSimulation: true, flowStep: index + 1, destination: item.destination, summary: item.summary, amount: item.amount, quickBooksPreview: item.preview },
+      warnings: item.entityType === "invoice" ? ["Owner approval required before accounting export"] : [],
+      nextAttemptAt: now,
+      createdAt: new Date(Date.now() + index).toISOString(),
+      updatedAt: now,
+    })));
+  });
+  await audit("quickbooks.demo_loaded", { userId: req.auth!.userId, entityType: "quickbooks_demo", details: { count: definitions.length } });
+  res.json({ loaded: definitions.length });
+});
+
+router.post("/quickbooks/demo/approve", requireOwner, async (req, res) => {
+  if (!demoAvailable()) { res.status(404).json({ error: "QuickBooks demo mode is unavailable" }); return; }
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(String) : [];
+  if (!ids.length) { res.status(400).json({ error: "ids are required" }); return; }
+  const rows = await db.select().from(quickbooksSyncJobsTable).where(and(inArray(quickbooksSyncJobsTable.id, ids), eq(quickbooksSyncJobsTable.status, "demo_pending")));
+  const now = new Date().toISOString();
+  const changed = [];
+  for (const row of rows) {
+    if ((row.payload as any)?.demoSimulation !== true || !row.idempotencyKey.startsWith("qbdemo:")) continue;
+    const demoId = `QB-DEMO-${createHash("sha256").update(`${row.entityType}:${row.localId}`).digest("hex").slice(0, 8).toUpperCase()}`;
+    const [updated] = await db.update(quickbooksSyncJobsTable).set({ status: "demo_completed", attempts: 1, approvedBy: req.auth!.userId, approvedAt: now, startedAt: now, completedAt: now, updatedAt: now, payload: { ...row.payload, demoResult: { id: demoId, syncToken: "0", completedAt: now, direction: row.action === "import" ? "QuickBooks → Knox" : "Knox → QuickBooks" } } }).where(eq(quickbooksSyncJobsTable.id, row.id)).returning();
+    if (updated) changed.push(updated);
+  }
+  await audit("quickbooks.demo_sync_completed", { userId: req.auth!.userId, entityType: "quickbooks_demo", details: { ids: changed.map((row) => row.id) } });
+  res.json(changed);
+});
 
 router.get("/quickbooks/connect", async (req, res) => {
   if (!configured()) { res.status(503).json({ error: "QuickBooks environment variables are not configured" }); return; }

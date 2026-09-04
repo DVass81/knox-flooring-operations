@@ -18,6 +18,7 @@ import {
   Activity,
   Send,
   Target,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 
@@ -40,6 +41,7 @@ export const navGroups: NavGroup[] = [
     label: "Overview",
     items: [
       { name: "Dashboard", href: "/", icon: LayoutDashboard, keywords: "home overview kpi" },
+      { name: "AI Operations Briefing", href: "/ai-operations", icon: Sparkles, keywords: "daily plan handoffs risks priorities", roles: ["owner", "sales", "operations"] },
     ],
   },
   {

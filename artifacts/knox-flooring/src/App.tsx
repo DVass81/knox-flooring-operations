@@ -34,6 +34,7 @@ import { AuthProvider, useAuth } from "@/contexts/auth";
 import { Loader2 } from "lucide-react";
 import IntegrationHealth from "@/pages/integration-health";
 import DemoOutbox from "@/pages/demo-outbox";
+import AIOperations from "@/pages/ai-operations";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ function AdminRouter() {
         <Route path="/jobs/:id" component={JobDetail} />
         <Route path="/pipeline" component={Pipeline} />
         <Route path="/estimator" component={Estimator} />
+        <Route path="/ai-operations" component={AIOperations} />
         <Route path="/proposals" component={Proposals} />
         <Route path="/schedule" component={Schedule} />
         <Route path="/calendar" component={CalendarPage} />
