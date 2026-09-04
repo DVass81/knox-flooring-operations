@@ -7,7 +7,7 @@ type AuthContextValue = { user: User | null; loading: boolean; login(email: stri
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 async function request(path: string, init?: RequestInit) {
-  const response = await fetch(`/api${path}`, { credentials: "include", headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) }, ...init });
+  const response = await fetch(`/api${path}`, { credentials: "include", ...init, headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) } });
   const body = response.status === 204 ? null : await response.json().catch(() => null);
   if (!response.ok) throw new Error(body?.error ?? "Request failed"); return body;
 }
