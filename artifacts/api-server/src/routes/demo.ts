@@ -64,6 +64,16 @@ router.get("/demo/outbox", async (_req, res) => {
   res.json(await db.select().from(demoOutboxTable).orderBy(desc(demoOutboxTable.createdAt)).limit(100));
 });
 
+router.post("/demo/training/reset", requireOwner, async (req, res) => {
+  await db.transaction(async (tx) => {
+    await tx.delete(trainingRunsTable).where(eq(trainingRunsTable.userId, req.auth!.userId));
+    await tx.delete(tourProgressTable).where(eq(tourProgressTable.userId, req.auth!.userId));
+    await tx.delete(trainingPreferencesTable).where(eq(trainingPreferencesTable.userId, req.auth!.userId));
+  });
+  await audit("training.reset", { userId: req.auth!.userId, entityType: "training", entityId: req.auth!.userId, ip: req.ip, details: { invitationRestored: true } });
+  res.json({ ok: true, invitationRestored: true });
+});
+
 router.put("/demo/preferences", async (req, res) => {
   const now = new Date().toISOString();
   const [existing] = await db.select().from(trainingPreferencesTable)
