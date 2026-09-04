@@ -98,7 +98,7 @@ export default function Welcome() {
   const [message, setMessage] = useState("");
   const resetToken = new URLSearchParams(window.location.search).get("reset");
 
-  const enter = async () => { setBusy(true); setError(""); try { if (resetToken) { await reset(resetToken, password); setMessage("Password updated. Sign in with your new password."); window.history.replaceState({}, "", "/welcome"); } else { await login(email, password); setLocation("/"); } } catch (e) { setError(e instanceof Error ? e.message : "Sign in failed"); } finally { setBusy(false); } };
+  const enter = async () => { setBusy(true); setError(""); try { if (resetToken) { await reset(resetToken, password); setMessage("Password updated. Sign in with your new password."); window.history.replaceState({}, "", "/welcome"); } else { await login(email, password); sessionStorage.setItem(DEMO_ENTERED_KEY, "1"); setLocation("/"); } } catch (e) { setError(e instanceof Error ? e.message : "Sign in failed"); } finally { setBusy(false); } };
   const enterDemoSystem = async () => { setBusy(true); setError(""); setMessage(""); try { await enterDemo(); sessionStorage.setItem(DEMO_ENTERED_KEY, "1"); setLocation("/"); } catch (e) { setError(e instanceof Error ? e.message : "Unable to enter the demo"); } finally { setBusy(false); } };
   const sendReset = async () => { if (!email) { setError("Enter your email first."); return; } setBusy(true); setError(""); try { setMessage(await forgot(email)); } catch (e) { setError(e instanceof Error ? e.message : "Unable to send reset email"); } finally { setBusy(false); } };
 

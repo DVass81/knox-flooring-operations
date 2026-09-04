@@ -74,6 +74,7 @@ function AdminRouter() {
 function Router() {
   const { user, loading } = useAuth();
   if (loading) return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>;
+  const hasAppAccess = Boolean(user && hasEnteredDemo());
   return (
     <Switch>
       <Route path="/video" component={VideoPage} />
@@ -83,13 +84,10 @@ function Router() {
       <Route path="/p/:token/print/:kind" component={PublicPrint} />
       <Route path="/p/:token" component={PublicStatus} />
       <Route path="/q/:token" component={PublicQuote} />
-      <Route path="/welcome">
-        {() => (user ? <Redirect to="/" /> : <Welcome />)}
+      <Route path="/welcome" component={Welcome} />
+      <Route>
+        {() => (hasAppAccess ? <AdminRouter /> : <Redirect to="/welcome" />)}
       </Route>
-      <Route path="/">
-        {() => (user ? <AdminRouter /> : <Redirect to="/welcome" />)}
-      </Route>
-      <Route component={AdminRouter} />
     </Switch>
   );
 }

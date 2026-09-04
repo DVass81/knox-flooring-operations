@@ -19,7 +19,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthContextValue>(() => ({ user, loading,
     login: async (email, password) => { const body = await request("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }); accept(body); },
     enterDemo: async () => { const body = await request("/auth/demo", { method: "POST" }); accept(body); },
-    logout: async () => { await request("/auth/logout", { method: "POST", headers: csrf ? { "x-csrf-token": csrf } : {} }); setUser(null); setCsrf(null); setCsrfToken(null); },
+    logout: async () => { await request("/auth/logout", { method: "POST", headers: csrf ? { "x-csrf-token": csrf } : {} }); sessionStorage.removeItem("knox-demo-entered"); setUser(null); setCsrf(null); setCsrfToken(null); },
     switchPersona: async (role) => { const body = await request("/auth/persona", { method: "POST", headers: csrf ? { "x-csrf-token": csrf } : {}, body: JSON.stringify({ role }) }); accept(body); },
     forgot: async (email) => (await request("/auth/password/forgot", { method: "POST", body: JSON.stringify({ email }) })).message,
     reset: async (token, password) => { await request("/auth/password/reset", { method: "POST", body: JSON.stringify({ token, password }) }); },
