@@ -3,7 +3,7 @@ import { setCsrfToken } from "@workspace/api-client-react";
 
 export type AppRole = "owner" | "sales" | "operations" | "installer";
 type User = { id: string; email: string; name: string; role: AppRole; actualRole?: AppRole; previewRole?: AppRole | null };
-type AuthContextValue = { user: User | null; loading: boolean; login(email: string, password: string): Promise<void>; logout(): Promise<void>; switchPersona(role: Exclude<AppRole, "owner"> | null): Promise<void>; forgot(email: string): Promise<string>; reset(token: string, password: string): Promise<void> };
+type AuthContextValue = { user: User | null; loading: boolean; login(email: string, password: string): Promise<void>; logout(): Promise<void>; switchPersona(role: Exclude<AppRole, "owner"> | null): Promise<void>; forgot(email: string): Promise<string>; reset(token: string, password: string): Promise<void>; changePassword(currentPassword: string, newPassword: string): Promise<void> };
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 async function request(path: string, init?: RequestInit) {
@@ -22,6 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     switchPersona: async (role) => { const body = await request("/auth/persona", { method: "POST", headers: csrf ? { "x-csrf-token": csrf } : {}, body: JSON.stringify({ role }) }); accept(body); },
     forgot: async (email) => (await request("/auth/password/forgot", { method: "POST", body: JSON.stringify({ email }) })).message,
     reset: async (token, password) => { await request("/auth/password/reset", { method: "POST", body: JSON.stringify({ token, password }) }); },
+    changePassword: async (currentPassword, newPassword) => { await request("/auth/password/change", { method: "POST", headers: csrf ? { "x-csrf-token": csrf } : {}, body: JSON.stringify({ currentPassword, newPassword }) }); },
   }), [user, loading, csrf]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -86,14 +86,12 @@ export const INTEGRATIONS = [
 export default function Welcome() {
   const { login, forgot, reset } = useAuth();
   const [, setLocation] = useLocation();
-  const ownerName = "Knox Flooring Owner";
+  const ownerName = "Will Hedley";
   const firstName = ownerName.split(/\s+/)[0] || "Will";
   const ownerRole = "Owner";
   const company = "Knox Flooring";
 
-  const [email, setEmail] = useState(
-    "",
-  );
+  const [email, setEmail] = useState("will@knoxvillecarpet.com");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -118,16 +116,8 @@ export default function Welcome() {
         />
 
         {/* brand */}
-        <div className="relative flex items-center gap-3">
-          <img src="/kfc-logo.png" alt="Knoxville Flooring Center" className="h-12 w-12 rounded-xl bg-white object-contain p-1.5 shadow-sm" />
-          <div className="flex flex-col leading-none">
-            <span className="font-serif text-xl font-semibold tracking-tight text-white">
-              KFC Operations
-            </span>
-            <span className="text-[10px] uppercase tracking-[0.18em] text-sidebar-foreground/50">
-              Flooring Center
-            </span>
-          </div>
+        <div className="relative">
+          <img src="/kfc-logo.png" alt="Knoxville Flooring Center" className="h-auto w-full max-w-sm rounded-2xl shadow-2xl ring-1 ring-white/15" />
         </div>
 
         {/* greeting */}
@@ -211,6 +201,7 @@ export default function Welcome() {
       {/* SIGN IN */}
       <div className="flex items-center justify-center px-6 py-12 sm:px-10 lg:py-14">
         <div className="w-full max-w-sm">
+          <img src="/kfc-logo.png" alt="Knoxville Flooring Center" className="mb-10 h-auto w-full rounded-2xl shadow-xl ring-1 ring-primary/10" />
           <div className="mb-8 lg:hidden">
             <div className="flex items-center gap-2 text-muted-foreground">
               <ShieldCheck className="h-4 w-4 text-primary" />

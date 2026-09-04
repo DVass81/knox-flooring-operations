@@ -75,6 +75,18 @@ router.post("/auth/password/reset", async (req, res) => {
   await audit("auth.password_reset", { entityType: "user", entityId: reset.userId, ip: req.ip }); res.status(204).end();
 });
 
+router.post("/auth/password/change", requireAuth, async (req, res) => {
+  const currentPassword = String(req.body?.currentPassword ?? "");
+  const newPassword = String(req.body?.newPassword ?? "");
+  if (newPassword.length < 12) { res.status(400).json({ error: "New password must be at least 12 characters" }); return; }
+  if (currentPassword === newPassword) { res.status(400).json({ error: "Choose a new password that is different from the current password" }); return; }
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.auth!.userId)).limit(1);
+  if (!user || !(await verifyPassword(user.passwordHash, currentPassword))) { res.status(400).json({ error: "Current password is incorrect" }); return; }
+  await db.update(usersTable).set({ passwordHash: await hashPassword(newPassword), updatedAt: new Date().toISOString() }).where(eq(usersTable.id, user.id));
+  await audit("auth.password_changed", { userId: user.id, entityType: "user", entityId: user.id, ip: req.ip });
+  res.status(204).end();
+});
+
 export async function bootstrapOwner() {
   const email = process.env.OWNER_EMAIL ? normalizeEmail(process.env.OWNER_EMAIL) : "";
   const password = process.env.OWNER_INITIAL_PASSWORD ?? "";

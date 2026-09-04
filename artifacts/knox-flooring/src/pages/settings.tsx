@@ -19,9 +19,11 @@ import { resolveStages } from "@/lib/lead-links";
 import { WON_STAGE, LOST_STAGE, type CommissionBasis } from "@/lib/types";
 import { QuickBooksSettings } from "@/components/settings/QuickBooksSettings";
 import { DemoSettings } from "@/components/settings/DemoSettings";
+import { useAuth } from "@/contexts/auth";
 
 export default function Settings() {
   const { settings, updateSettings } = useStore();
+  const { changePassword } = useAuth();
   const { toast } = useToast();
   const [form, setForm] = useState(settings);
   const [stages, setStages] = useState<string[]>(
@@ -29,6 +31,10 @@ export default function Settings() {
       (s) => s !== WON_STAGE && s !== LOST_STAGE,
     ),
   );
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordBusy, setPasswordBusy] = useState(false);
 
   useEffect(() => {
     setForm(settings);
@@ -102,6 +108,19 @@ export default function Settings() {
     toast({ title: "Owner saved", description: "Owner profile updated." });
   };
 
+  const savePassword = async () => {
+    if (newPassword.length < 12) { toast({ title: "Password is too short", description: "Use at least 12 characters.", variant: "destructive" }); return; }
+    if (newPassword !== confirmPassword) { toast({ title: "Passwords do not match", variant: "destructive" }); return; }
+    setPasswordBusy(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
+      toast({ title: "Password updated", description: "Use the new password the next time you sign in." });
+    } catch (error) {
+      toast({ title: "Password was not changed", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+    } finally { setPasswordBusy(false); }
+  };
+
   const saveProfile = async () => {
     await updateSettings({
       companyName: form.companyName,
@@ -170,6 +189,21 @@ export default function Settings() {
           <Button className="mt-4" onClick={saveOwner}>
             Save Owner
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Owner Password</CardTitle>
+          <CardDescription>Change the demo owner password without changing any business or accounting data.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2"><Label htmlFor="current-password">Current password</Label><Input id="current-password" type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} /></div>
+            <div className="space-y-2"><Label htmlFor="new-password">New password</Label><Input id="new-password" type="password" autoComplete="new-password" minLength={12} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} /></div>
+            <div className="space-y-2"><Label htmlFor="confirm-password">Confirm new password</Label><Input id="confirm-password" type="password" autoComplete="new-password" minLength={12} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} /></div>
+          </div>
+          <Button disabled={passwordBusy || !currentPassword || !newPassword || !confirmPassword} onClick={savePassword}>{passwordBusy ? "Updating…" : "Update Password"}</Button>
         </CardContent>
       </Card>
 
