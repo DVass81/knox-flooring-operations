@@ -61,4 +61,9 @@ export type TrainingStatus = {
   pageGuides: PageGuide[];
   runs: TrainingRun[];
   preferences: TrainingPreferences;
+  narration: {
+    provider: "ElevenLabs" | "OpenAI fallback" | "Unavailable";
+    voice: string;
+    model: string;
+  };
 };

@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { Activity, Bot, CalendarDays, Calculator, Mail, RefreshCw } from "lucide-react";
+import { Activity, Bot, CalendarDays, Calculator, Mail, RefreshCw, Volume2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 type Integration = { key: string; name: string; status: "Live" | "Sandbox" | "Simulated" | "Disconnected" | "Error"; detail: string; metrics?: { label: string; value: string }[] };
-const icons: Record<string, typeof Activity> = { openai: Bot, quickbooks: Activity, calendar: CalendarDays, measure_square: Calculator, communications: Mail };
+const icons: Record<string, typeof Activity> = { openai: Bot, tutorial_voice: Volume2, quickbooks: Activity, calendar: CalendarDays, measure_square: Calculator, communications: Mail };
 const styles: Record<string, string> = { Live: "bg-emerald-500/15 text-emerald-700", Sandbox: "bg-sky-500/15 text-sky-700", Simulated: "bg-amber-500/15 text-amber-700", Disconnected: "bg-muted text-muted-foreground", Error: "bg-red-500/15 text-red-700" };
 
 export default function IntegrationHealth() {

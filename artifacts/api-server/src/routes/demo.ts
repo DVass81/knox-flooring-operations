@@ -21,6 +21,7 @@ import { audit } from "../lib/auth";
 import { PAGE_GUIDES, TRAINING_MANIFEST_VERSION, TRAINING_MISSIONS, canCompleteTrainingStep, findTrainingStep } from "../lib/training";
 import { requireOwner } from "../middlewares/auth";
 import { SEED_INVOICES, SEED_JOBS, SEED_LEADS, SEED_PRODUCTS, SEED_PROPOSALS } from "../lib/seed-data";
+import { generateTutorialNarration, getTutorialNarrationStatus } from "../lib/tutorial-narration";
 
 const router: IRouter = Router();
 const runStatuses = new Set(["active", "paused", "completed", "dismissed"]);
@@ -57,6 +58,7 @@ router.get("/demo/status", async (req, res) => {
     progress,
     runs,
     preferences: savedPreferences ?? { userId: req.auth!.userId, voiceEnabled: false, captionsEnabled: true, welcomeDismissed: false },
+    narration: getTutorialNarrationStatus(),
   });
 });
 
@@ -196,34 +198,34 @@ router.post("/demo/missions/:key/restart", async (req, res) => {
 router.get("/demo/audio/:stepId", async (req, res) => {
   const found = findTrainingStep(req.params.stepId);
   if (!found) { res.status(404).json({ error: "Narration script not found" }); return; }
-  const model = process.env.OPENAI_TTS_MODEL?.trim() || "gpt-4o-mini-tts";
-  const voice = process.env.OPENAI_TTS_VOICE?.trim() || "marin";
-  const scriptHash = createHash("sha256").update(`${TRAINING_MANIFEST_VERSION}\n${model}\n${voice}\n${found.step.narration}`).digest("hex");
+  const narration = getTutorialNarrationStatus();
+  const provider = narration.provider === "OpenAI fallback" ? "OpenAI" : narration.provider;
+  const settingsFingerprint = [process.env.ELEVENLABS_VOICE_STABILITY, process.env.ELEVENLABS_VOICE_SIMILARITY, process.env.ELEVENLABS_VOICE_STYLE, process.env.ELEVENLABS_VOICE_SPEED].join(":");
+  const scriptHash = createHash("sha256").update(`${TRAINING_MANIFEST_VERSION}\n${provider}\n${narration.model}\n${narration.voice}\n${settingsFingerprint}\n${found.step.narration}`).digest("hex");
   const [cached] = await db.select().from(trainingAudioCacheTable).where(eq(trainingAudioCacheTable.scriptHash, scriptHash)).limit(1);
   if (cached) {
+    const cachedProvider = cached.model.startsWith("ElevenLabs:") ? "ElevenLabs" : "OpenAI";
     res.setHeader("Cache-Control", "private, max-age=86400");
     res.setHeader("X-AI-Generated-Voice", "true");
+    res.setHeader("X-Narration-Provider", cachedProvider);
+    res.setHeader("X-Narration-Voice", cached.voice);
     res.type(cached.contentType).send(Buffer.from(cached.audioBase64, "base64"));
     return;
   }
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) { res.status(503).json({ error: "Voice narration is unavailable. Captions remain available." }); return; }
+  if (narration.provider === "Unavailable") { res.status(503).json({ error: "Voice narration is unavailable. Captions remain available." }); return; }
   const started = Date.now();
   try {
-    const response = await fetch("https://api.openai.com/v1/audio/speech", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model, voice, input: found.step.narration, instructions: "Speak in a warm, patient, confident, professional style. Use a natural pace, clear phrasing, and a welcoming East Tennessee business-training tone.", response_format: "mp3" }),
-      signal: AbortSignal.timeout(30_000),
-    });
-    if (!response.ok) throw new Error(`OpenAI speech request failed with status ${response.status}`);
-    const audio = Buffer.from(await response.arrayBuffer());
+    const generated = await generateTutorialNarration(found.step.narration);
+    const actualModel = `${generated.provider}:${generated.model}`;
+    const actualHash = createHash("sha256").update(`${TRAINING_MANIFEST_VERSION}\n${generated.provider}\n${generated.model}\n${generated.voice}\n${settingsFingerprint}\n${found.step.narration}`).digest("hex");
     const now = new Date().toISOString();
-    await db.insert(trainingAudioCacheTable).values({ id: randomUUID(), scriptHash, stepId: req.params.stepId, manifestVersion: TRAINING_MANIFEST_VERSION, model, voice, contentType: "audio/mpeg", audioBase64: audio.toString("base64"), createdAt: now }).onConflictDoNothing();
-    await audit("training.narration.generated", { userId: req.auth!.userId, entityType: "training_audio", entityId: req.params.stepId, ip: req.ip, details: { model, voice, latencyMs: Date.now() - started } });
+    await db.insert(trainingAudioCacheTable).values({ id: randomUUID(), scriptHash: actualHash, stepId: req.params.stepId, manifestVersion: TRAINING_MANIFEST_VERSION, model: actualModel, voice: generated.voice, contentType: generated.contentType, audioBase64: generated.audio.toString("base64"), createdAt: now }).onConflictDoNothing();
+    await audit("training.narration.generated", { userId: req.auth!.userId, entityType: "training_audio", entityId: req.params.stepId, ip: req.ip, details: { provider: generated.provider, model: generated.model, voice: generated.voice, latencyMs: Date.now() - started } });
     res.setHeader("Cache-Control", "private, max-age=86400");
     res.setHeader("X-AI-Generated-Voice", "true");
-    res.type("audio/mpeg").send(audio);
+    res.setHeader("X-Narration-Provider", generated.provider);
+    res.setHeader("X-Narration-Voice", generated.voice);
+    res.type(generated.contentType).send(generated.audio);
   } catch (error) {
     req.log.warn({ error, stepId: req.params.stepId }, "Training narration generation failed");
     res.status(503).json({ error: "Voice narration is temporarily unavailable. Continue with the visible captions and try Replay shortly." });

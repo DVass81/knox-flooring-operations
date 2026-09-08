@@ -64,6 +64,8 @@ export function DemoCenter() {
   const [error, setError] = useState("");
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [audioState, setAudioState] = useState<"idle" | "loading" | "playing" | "blocked" | "unavailable">("idle");
+  const [activeNarrationProvider, setActiveNarrationProvider] = useState<string | null>(null);
+  const [activeNarrationVoice, setActiveNarrationVoice] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const lastFocusRef = useRef<HTMLElement | null>(null);
@@ -124,6 +126,8 @@ export function DemoCenter() {
     try {
       const response = await fetch(`/api/demo/audio/${encodeURIComponent(step.id)}`, { credentials: "include" });
       if (!response.ok) throw new Error("Narration unavailable");
+      setActiveNarrationProvider(response.headers.get("X-Narration-Provider"));
+      setActiveNarrationVoice(response.headers.get("X-Narration-Voice"));
       const objectUrl = URL.createObjectURL(await response.blob());
       audioUrlRef.current = objectUrl;
       const audio = new Audio(objectUrl);
@@ -364,6 +368,16 @@ export function DemoCenter() {
 
   const panelOnLeft = Boolean(targetRect && typeof window !== "undefined" && targetRect.left + (targetRect.width / 2) > window.innerWidth / 2);
   const unresolvedTargetMissing = targetMissing && !targetInteracted;
+  const configuredNarrationProvider = status?.narration.provider;
+  const narrationProvider = activeNarrationProvider ?? (configuredNarrationProvider === "OpenAI fallback" ? "OpenAI" : configuredNarrationProvider);
+  const narrationVoice = activeNarrationVoice ?? status?.narration.voice;
+  const narrationLabel = narrationProvider === "ElevenLabs"
+    ? `ElevenLabs · ${narrationVoice || "warm teaching voice"}`
+    : narrationProvider === "OpenAI"
+      ? "OpenAI backup narrator"
+      : narrationProvider === "Unavailable"
+        ? "Captions only"
+        : "AI-generated narration";
 
   const overlay = activeStep ? createPortal(<>
     {targetRect && <div
@@ -411,7 +425,7 @@ export function DemoCenter() {
           {voiceEnabled && <Button variant="ghost" size="sm" onClick={() => void playAudio(activeStep)} disabled={audioState === "loading"}>
             {audioState === "loading" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Play className="mr-1.5 h-4 w-4" />}Replay
           </Button>}
-          <span className="text-[11px] text-muted-foreground">AI-generated voice · captions always shown</span>
+          <span className="text-[11px] text-muted-foreground">{narrationLabel} · captions always shown</span>
         </div>
         {audioState === "blocked" && <p className="text-xs text-amber-700 dark:text-amber-300">Your browser blocked autoplay. Select Replay to hear this step.</p>}
         {audioState === "unavailable" && <p className="text-xs text-amber-700 dark:text-amber-300">Narration is temporarily unavailable. Continue with the visible captions or try Replay.</p>}
@@ -456,7 +470,7 @@ export function DemoCenter() {
           <DialogDescription>Choose a guided mission, continue where you stopped, or use the Page Guide while exploring freely.</DialogDescription>
         </DialogHeader>
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/30 p-3">
-          <div><p className="text-sm font-medium">Narration preference</p><p className="text-xs text-muted-foreground">AI-generated warm voice with captions always visible.</p></div>
+          <div><p className="text-sm font-medium">Narration preference</p><p className="text-xs text-muted-foreground">{narrationLabel}. Warm, optional guidance with captions always visible.</p></div>
           <Button variant="outline" size="sm" onClick={() => void toggleVoice()}>{voiceEnabled ? <Volume2 className="mr-2 h-4 w-4" /> : <VolumeX className="mr-2 h-4 w-4" />}{voiceEnabled ? "Voice on" : "Voice off"}</Button>
         </div>
         {error && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
