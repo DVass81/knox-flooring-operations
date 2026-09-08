@@ -8,7 +8,7 @@ describe("tutorial narration", () => {
       const url = String(input);
       calls.push({ url, init });
       if (url.includes("/v2/voices")) {
-        return new Response(JSON.stringify({ voices: [{ voice_id: "teacher-voice", name: "Lawrence - Bright and Informative" }] }), { status: 200, headers: { "content-type": "application/json" } });
+        return new Response(JSON.stringify({ voices: [{ voice_id: "teacher-voice", name: "Adam - Engaging, Friendly and Bright" }] }), { status: 200, headers: { "content-type": "application/json" } });
       }
       return new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { "content-type": "audio/mpeg" } });
     }) as typeof fetch;
@@ -17,7 +17,7 @@ describe("tutorial narration", () => {
     const result = await generateTutorialNarration("Welcome to training.", { fetchImpl, env });
 
     expect(result.provider).toBe("ElevenLabs");
-    expect(result.voice).toBe("Lawrence - Bright and Informative");
+    expect(result.voice).toBe("Adam - Engaging, Friendly and Bright");
     expect(calls[1].url).toContain("/v1/text-to-speech/teacher-voice");
     const body = JSON.parse(String(calls[1].init?.body));
     expect(body.model_id).toBe("eleven_multilingual_v2");

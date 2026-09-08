@@ -20,7 +20,7 @@ export type TutorialNarrationStatus = {
 };
 
 const DEFAULT_ELEVENLABS_MODEL = "eleven_multilingual_v2";
-const DEFAULT_ELEVENLABS_VOICE = "Lawrence - Bright and Informative";
+const DEFAULT_ELEVENLABS_VOICE = "Adam - Engaging, Friendly and Bright";
 const DEFAULT_OPENAI_MODEL = "gpt-4o-mini-tts";
 const DEFAULT_OPENAI_VOICE = "marin";
 
@@ -69,7 +69,6 @@ async function resolveElevenLabsVoice(fetchImpl: FetchLike, env: NodeJS.ProcessE
 
   const search = new URL("https://api.elevenlabs.io/v2/voices");
   search.searchParams.set("search", configuredName);
-  search.searchParams.set("voice_type", "default");
   search.searchParams.set("page_size", "20");
   const response = await fetchImpl(search, {
     headers: { "xi-api-key": value(env, "ELEVENLABS_API_KEY"), Accept: "application/json" },

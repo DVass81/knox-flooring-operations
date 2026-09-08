@@ -18,7 +18,7 @@ const mission = {
 function status(kind: "info" | "action" = "info"): TrainingStatus {
   return {
     enabled: true, manifestVersion: "test", preferences, runs: [], pageGuides: [{ key: "dashboard", name: "Dashboard", route: "/", role: ["owner"], summary: "Daily priorities", target: "nav-dashboard", narration: "Dashboard help" }],
-    narration: { provider: "ElevenLabs", voice: "Lawrence - Bright and Informative", model: "eleven_multilingual_v2" },
+    narration: { provider: "ElevenLabs", voice: "Adam - Engaging, Friendly and Bright", model: "eleven_multilingual_v2" },
     missions: [{ ...mission, steps: [{ ...mission.steps[0], kind }] }],
   };
 }
