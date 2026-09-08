@@ -66,8 +66,11 @@ export function DemoCenter() {
   const [audioState, setAudioState] = useState<"idle" | "loading" | "playing" | "blocked" | "unavailable">("idle");
   const [activeNarrationProvider, setActiveNarrationProvider] = useState<string | null>(null);
   const [activeNarrationVoice, setActiveNarrationVoice] = useState<string | null>(null);
+  const [narrationFallbackReason, setNarrationFallbackReason] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
+  const audioRequestRef = useRef<AbortController | null>(null);
+  const audioRequestVersionRef = useRef(0);
   const lastFocusRef = useRef<HTMLElement | null>(null);
   const isActualOwner = user?.actualRole === "owner" || (!user?.actualRole && user?.role === "owner");
 
@@ -113,35 +116,53 @@ export function DemoCenter() {
   }, [status, location]);
 
   const stopAudio = useCallback(() => {
-    audioRef.current?.pause();
+    audioRequestVersionRef.current += 1;
+    audioRequestRef.current?.abort();
+    audioRequestRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.onended = null;
+      audioRef.current.onerror = null;
+      audioRef.current.pause();
+    }
     audioRef.current = null;
     if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
     audioUrlRef.current = null;
+    setActiveNarrationProvider(null);
+    setActiveNarrationVoice(null);
+    setNarrationFallbackReason(null);
     setAudioState("idle");
   }, []);
 
   const playAudio = useCallback(async (step: TrainingStep) => {
     stopAudio();
+    const request = new AbortController();
+    audioRequestRef.current = request;
+    const requestVersion = audioRequestVersionRef.current;
+    const isCurrent = () => !request.signal.aborted && requestVersion === audioRequestVersionRef.current;
     setAudioState("loading");
     try {
-      const response = await fetch(`/api/demo/audio/${encodeURIComponent(step.id)}`, { credentials: "include" });
+      const response = await fetch(`/api/demo/audio/${encodeURIComponent(step.id)}`, { credentials: "include", cache: "no-store", signal: request.signal });
+      if (!isCurrent()) return;
       if (!response.ok) throw new Error("Narration unavailable");
+      const blob = await response.blob();
+      if (!isCurrent()) return;
       setActiveNarrationProvider(response.headers.get("X-Narration-Provider"));
       setActiveNarrationVoice(response.headers.get("X-Narration-Voice"));
-      const objectUrl = URL.createObjectURL(await response.blob());
+      setNarrationFallbackReason(response.headers.get("X-Narration-Fallback-Reason"));
+      const objectUrl = URL.createObjectURL(blob);
       audioUrlRef.current = objectUrl;
       const audio = new Audio(objectUrl);
       audioRef.current = audio;
-      audio.onended = () => setAudioState("idle");
-      audio.onerror = () => setAudioState("unavailable");
+      audio.onended = () => { if (isCurrent()) setAudioState("idle"); };
+      audio.onerror = () => { if (isCurrent()) setAudioState("unavailable"); };
       try {
         await audio.play();
-        setAudioState("playing");
+        if (isCurrent()) setAudioState("playing");
       } catch {
-        setAudioState("blocked");
+        if (isCurrent()) setAudioState("blocked");
       }
     } catch {
-      setAudioState("unavailable");
+      if (isCurrent()) setAudioState("unavailable");
     }
   }, [stopAudio]);
 
@@ -158,7 +179,10 @@ export function DemoCenter() {
   useEffect(() => {
     if (!voiceEnabled || !mission || !activeRun) return;
     const next = mission.steps[activeRun.currentStep + 1];
-    if (next) void fetch(`/api/demo/audio/${encodeURIComponent(next.id)}`, { credentials: "include" }).catch(() => undefined);
+    if (!next) return;
+    const request = new AbortController();
+    void fetch(`/api/demo/audio/${encodeURIComponent(next.id)}`, { credentials: "include", cache: "no-store", signal: request.signal }).catch(() => undefined);
+    return () => request.abort();
   }, [voiceEnabled, mission?.key, activeRun?.currentStep]);
 
   useEffect(() => {
@@ -337,8 +361,8 @@ export function DemoCenter() {
   const toggleVoice = async () => {
     const next = !voiceEnabled;
     setVoiceEnabled(next);
-    try { await savePreference({ voiceEnabled: next }); } catch { /* Voice still changes for this session. */ }
     if (next && activeStep) void playAudio(activeStep); else stopAudio();
+    try { await savePreference({ voiceEnabled: next }); } catch { /* Voice still changes for this session. */ }
   };
 
   const openPageGuide = () => {
@@ -429,6 +453,7 @@ export function DemoCenter() {
         </div>
         {audioState === "blocked" && <p className="text-xs text-amber-700 dark:text-amber-300">Your browser blocked autoplay. Select Replay to hear this step.</p>}
         {audioState === "unavailable" && <p className="text-xs text-amber-700 dark:text-amber-300">Narration is temporarily unavailable. Continue with the visible captions or try Replay.</p>}
+        {voiceEnabled && narrationFallbackReason && narrationProvider === "OpenAI" && <p role="status" className="text-xs text-amber-700 dark:text-amber-300">{narrationFallbackReason}</p>}
         {error && <p role="alert" className="rounded-lg bg-destructive/10 p-2 text-sm text-destructive">{error}</p>}
         <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
           <div className="flex gap-1">

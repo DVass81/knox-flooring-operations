@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import {
   auditEventsTable,
@@ -22,6 +22,7 @@ import { PAGE_GUIDES, TRAINING_MANIFEST_VERSION, TRAINING_MISSIONS, canCompleteT
 import { requireOwner } from "../middlewares/auth";
 import { SEED_INVOICES, SEED_JOBS, SEED_LEADS, SEED_PRODUCTS, SEED_PROPOSALS } from "../lib/seed-data";
 import { generateTutorialNarration, getTutorialNarrationStatus } from "../lib/tutorial-narration";
+import { createTrainingAudioHandler } from "../lib/training-audio-handler";
 
 const router: IRouter = Router();
 const runStatuses = new Set(["active", "paused", "completed", "dismissed"]);
@@ -195,42 +196,22 @@ router.post("/demo/missions/:key/restart", async (req, res) => {
   res.json({ ...run, ...values });
 });
 
-router.get("/demo/audio/:stepId", async (req, res) => {
-  const found = findTrainingStep(req.params.stepId);
-  if (!found) { res.status(404).json({ error: "Narration script not found" }); return; }
-  const narration = getTutorialNarrationStatus();
-  const provider = narration.provider === "OpenAI fallback" ? "OpenAI" : narration.provider;
-  const settingsFingerprint = [process.env.ELEVENLABS_VOICE_STABILITY, process.env.ELEVENLABS_VOICE_SIMILARITY, process.env.ELEVENLABS_VOICE_STYLE, process.env.ELEVENLABS_VOICE_SPEED].join(":");
-  const scriptHash = createHash("sha256").update(`${TRAINING_MANIFEST_VERSION}\n${provider}\n${narration.model}\n${narration.voice}\n${settingsFingerprint}\n${found.step.narration}`).digest("hex");
-  const [cached] = await db.select().from(trainingAudioCacheTable).where(eq(trainingAudioCacheTable.scriptHash, scriptHash)).limit(1);
-  if (cached) {
-    const cachedProvider = cached.model.startsWith("ElevenLabs:") ? "ElevenLabs" : "OpenAI";
-    res.setHeader("Cache-Control", "private, max-age=86400");
-    res.setHeader("X-AI-Generated-Voice", "true");
-    res.setHeader("X-Narration-Provider", cachedProvider);
-    res.setHeader("X-Narration-Voice", cached.voice);
-    res.type(cached.contentType).send(Buffer.from(cached.audioBase64, "base64"));
-    return;
-  }
-  if (narration.provider === "Unavailable") { res.status(503).json({ error: "Voice narration is unavailable. Captions remain available." }); return; }
-  const started = Date.now();
-  try {
-    const generated = await generateTutorialNarration(found.step.narration);
-    const actualModel = `${generated.provider}:${generated.model}`;
-    const actualHash = createHash("sha256").update(`${TRAINING_MANIFEST_VERSION}\n${generated.provider}\n${generated.model}\n${generated.voice}\n${settingsFingerprint}\n${found.step.narration}`).digest("hex");
-    const now = new Date().toISOString();
-    await db.insert(trainingAudioCacheTable).values({ id: randomUUID(), scriptHash: actualHash, stepId: req.params.stepId, manifestVersion: TRAINING_MANIFEST_VERSION, model: actualModel, voice: generated.voice, contentType: generated.contentType, audioBase64: generated.audio.toString("base64"), createdAt: now }).onConflictDoNothing();
-    await audit("training.narration.generated", { userId: req.auth!.userId, entityType: "training_audio", entityId: req.params.stepId, ip: req.ip, details: { provider: generated.provider, model: generated.model, voice: generated.voice, latencyMs: Date.now() - started } });
-    res.setHeader("Cache-Control", "private, max-age=86400");
-    res.setHeader("X-AI-Generated-Voice", "true");
-    res.setHeader("X-Narration-Provider", generated.provider);
-    res.setHeader("X-Narration-Voice", generated.voice);
-    res.type(generated.contentType).send(generated.audio);
-  } catch (error) {
-    req.log.warn({ error, stepId: req.params.stepId }, "Training narration generation failed");
-    res.status(503).json({ error: "Voice narration is temporarily unavailable. Continue with the visible captions and try Replay shortly." });
-  }
-});
+router.get("/demo/audio/:stepId", createTrainingAudioHandler({
+  manifestVersion: TRAINING_MANIFEST_VERSION,
+  findScript: (stepId) => findTrainingStep(stepId)?.step.narration,
+  getStatus: getTutorialNarrationStatus,
+  generate: generateTutorialNarration,
+  readCache: async (scriptHash) => {
+    const [cached] = await db.select().from(trainingAudioCacheTable).where(eq(trainingAudioCacheTable.scriptHash, scriptHash)).limit(1);
+    return cached;
+  },
+  writeCache: async (audio) => {
+    await db.insert(trainingAudioCacheTable).values({ ...audio, id: randomUUID(), createdAt: new Date().toISOString() }).onConflictDoNothing();
+  },
+  auditGenerated: async (req, stepId, details) => {
+    await audit("training.narration.generated", { userId: req.auth!.userId, entityType: "training_audio", entityId: stepId, ip: req.ip, details });
+  },
+}));
 
 router.get("/demo/reset/preview", requireOwner, async (_req, res) => {
   const origins = await db.select().from(demoRecordOriginsTable);
