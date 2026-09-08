@@ -20,7 +20,7 @@ export type TutorialNarrationStatus = {
 };
 
 const DEFAULT_ELEVENLABS_MODEL = "eleven_multilingual_v2";
-const DEFAULT_ELEVENLABS_VOICE = "Adam - Engaging, Friendly and Bright";
+const DEFAULT_ELEVENLABS_VOICE = "Liam - Energetic, Social Media Creator";
 const DEFAULT_OPENAI_MODEL = "gpt-4o-mini-tts";
 const DEFAULT_OPENAI_VOICE = "marin";
 
