@@ -39,6 +39,8 @@ Open `/estimator`, adjust a room and assumptions, create a sample proposal draft
 
 `.do/public-sample.yaml` prepares a distinct one-instance 1 GiB DigitalOcean service on `demo/public-sample` with `deploy_on_push: false`. It does not modify the existing private app spec. The current reviewed base estimate is $10/month; no database, job or autoscaling is included. Provisioning still requires the separate hosting-cost approval and deployment review.
 
+On `demo/public-sample` only, the default root `Dockerfile` is an exact copy of `Dockerfile.public-sample`. This ensures a new DigitalOcean app that automatically selects `/Dockerfile` builds the isolated public runtime. The existing private application's `main` branch retains its original Dockerfile and deployment configuration. Do not deploy this public branch into the existing private app.
+
 Set `PUBLIC_SAMPLE_ORIGIN` to the service's exact HTTPS origin. The template uses DigitalOcean's `${APP_URL}` binding; verify it in the deployment preview. No trailing slash, path, database string or provider keys should be configured. Health checks target `/api/healthz`. The server refuses listed database/provider secret environment variables when launched.
 
 Production HTTPS should be supplied by DigitalOcean; the secure cookie is required. Link Catalyst's Services page only to the separately provisioned public sample after its health and visitor isolation are verified. Keep the private Flooring owner-entry URL out of public service links.
