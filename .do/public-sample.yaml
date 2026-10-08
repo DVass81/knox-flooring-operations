@@ -1,0 +1,24 @@
+# Separate public sample. Provision only after the reviewed hosting cost is approved.
+name: catalyst-flooring-public-sample
+region: nyc
+services:
+  - name: web
+    github:
+      repo: DVass81/knox-flooring-operations
+      branch: demo/public-sample
+      deploy_on_push: false
+    dockerfile_path: Dockerfile.public-sample
+    source_dir: /
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-1gb-fixed
+    health_check:
+      http_path: /api/healthz
+      initial_delay_seconds: 15
+    envs:
+      - key: NODE_ENV
+        value: production
+        scope: RUN_TIME
+      - key: PUBLIC_SAMPLE_ORIGIN
+        value: ${APP_URL}
+        scope: RUN_TIME
