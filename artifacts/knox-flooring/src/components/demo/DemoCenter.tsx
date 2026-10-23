@@ -525,10 +525,11 @@ export function DemoCenter() {
       </DialogContent>
     </Dialog>
 
-    {!activeStep && currentGuide && <Button type="button" variant="outline" className="fixed bottom-4 left-4 z-30 rounded-full bg-background/95 shadow-lg backdrop-blur lg:left-[17rem]" onClick={openPageGuide} aria-label={`Open ${currentGuide.name} page guide`}>
-      <HelpCircle className="mr-2 h-4 w-4 text-primary" />Page Guide
-    </Button>}
-    {!activeStep && status?.runs.some((run) => run.status === "paused") && <Button type="button" className="fixed bottom-4 right-4 z-30 rounded-full shadow-lg" onClick={() => setCenterOpen(true)}><Play className="mr-2 h-4 w-4" />Resume Training</Button>}
+    {!activeStep && currentGuide && <div className="fixed bottom-4 left-4 z-30 lg:left-[17rem]">
+      <Button type="button" variant="outline" className="rounded-full bg-background/95 shadow-lg backdrop-blur" onClick={openPageGuide} aria-label={`Open ${currentGuide.name} page guide`}>
+        <HelpCircle className="mr-2 h-4 w-4 text-primary" />Page Guide
+      </Button>
+    </div>}
     {overlay}
   </>;
 }
