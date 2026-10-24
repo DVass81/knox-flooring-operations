@@ -20,6 +20,7 @@ import { WON_STAGE, LOST_STAGE, type CommissionBasis } from "@/lib/types";
 import { QuickBooksSettings } from "@/components/settings/QuickBooksSettings";
 import { DemoSettings } from "@/components/settings/DemoSettings";
 import { useAuth } from "@/contexts/auth";
+import { OperatingSettings } from "@/components/settings/OperatingSettings";
 
 export default function Settings() {
   const { settings, updateSettings } = useStore();
@@ -35,18 +36,23 @@ export default function Settings() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordBusy, setPasswordBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [dirty, setDirty] = useState(false);
+  const runSave = async (action: () => Promise<void>) => { setSaving(true); setSaveError(""); try { await action(); } catch (error) { setSaveError(error instanceof Error ? error.message : "Changes could not be saved."); } finally { setSaving(false); } };
 
   useEffect(() => {
+    if (dirty) return;
     setForm(settings);
     setStages(
       resolveStages(settings.leadStages).filter(
         (s) => s !== WON_STAGE && s !== LOST_STAGE,
       ),
     );
-  }, [settings]);
+  }, [settings, dirty]);
 
   const set = (updates: Partial<typeof form>) =>
-    setForm((prev) => ({ ...prev, ...updates }));
+    { setDirty(true); setForm((prev) => ({ ...prev, ...updates })); };
 
   const setStage = (index: number, value: string) =>
     setStages((prev) => prev.map((s, i) => (i === index ? value : s)));
@@ -135,10 +141,10 @@ export default function Settings() {
   const saveDefaults = async () => {
     await updateSettings({
       defaultWasteFactor: form.defaultWasteFactor,
-      defaultLaborRateLVP: form.defaultLaborRateLVP,
-      defaultLaborRateHardwood: form.defaultLaborRateHardwood,
-      defaultLaborRateCarpet: form.defaultLaborRateCarpet,
-      defaultLaborRateTile: form.defaultLaborRateTile,
+
+
+
+
     });
     toast({ title: "Defaults saved", description: "Estimator defaults updated." });
   };
@@ -157,7 +163,7 @@ export default function Settings() {
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Settings</h1>
+        <h1 data-training-id="nav-settings" className="text-3xl font-bold tracking-tight text-foreground">Settings</h1>
         <p className="text-muted-foreground mt-1">Manage your company profile and estimator defaults.</p>
       </div>
 
@@ -186,7 +192,7 @@ export default function Settings() {
               />
             </div>
           </div>
-          <Button className="mt-4" onClick={saveOwner}>
+          <Button className="mt-4" disabled={saving} onClick={() => runSave(saveOwner)}>
             Save Owner
           </Button>
         </CardContent>
@@ -207,8 +213,10 @@ export default function Settings() {
         </CardContent>
       </Card>
 
+      {saveError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-900">{saveError}</p>}
       <QuickBooksSettings />
       <DemoSettings />
+      <OperatingSettings />
 
       <Card>
         <CardHeader>
@@ -245,7 +253,7 @@ export default function Settings() {
                 onChange={(e) => set({ website: e.target.value })}
               />
             </div>
-            <div className="col-span-2 space-y-2">
+            <div className="md:col-span-2 space-y-2">
               <Label>Address</Label>
               <Input
                 value={form.address}
@@ -253,7 +261,7 @@ export default function Settings() {
               />
             </div>
           </div>
-          <Button className="mt-4" onClick={saveProfile}>
+          <Button className="mt-4" disabled={saving} onClick={() => runSave(saveProfile)}>
             Save Profile
           </Button>
         </CardContent>
@@ -322,72 +330,14 @@ export default function Settings() {
             <Button type="button" variant="outline" onClick={addStage}>
               <Plus className="mr-2 h-4 w-4" /> Add Stage
             </Button>
-            <Button type="button" onClick={saveStages}>
+            <Button type="button" disabled={saving} onClick={() => runSave(saveStages)}>
               Save Stages
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Estimator Defaults</CardTitle>
-          <CardDescription>Default labor rates and waste factors used in the AI Estimator.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Default Waste Factor (%)</Label>
-              <Input
-                type="number"
-                value={form.defaultWasteFactor}
-                onChange={(e) => set({ defaultWasteFactor: Number(e.target.value) })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Default LVP Labor ($/sqft)</Label>
-              <Input
-                type="number"
-                step="0.1"
-                value={form.defaultLaborRateLVP}
-                onChange={(e) => set({ defaultLaborRateLVP: Number(e.target.value) })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Default Hardwood Labor ($/sqft)</Label>
-              <Input
-                type="number"
-                step="0.1"
-                value={form.defaultLaborRateHardwood}
-                onChange={(e) => set({ defaultLaborRateHardwood: Number(e.target.value) })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Default Carpet Labor ($/sqft)</Label>
-              <Input
-                type="number"
-                step="0.1"
-                value={form.defaultLaborRateCarpet}
-                onChange={(e) => set({ defaultLaborRateCarpet: Number(e.target.value) })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Default Tile Labor ($/sqft)</Label>
-              <Input
-                type="number"
-                step="0.1"
-                value={form.defaultLaborRateTile}
-                onChange={(e) => set({ defaultLaborRateTile: Number(e.target.value) })}
-              />
-            </div>
-          </div>
-          <Button className="mt-4" onClick={saveDefaults}>
-            Save Defaults
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
+      <Card><CardHeader><CardTitle>Estimate preferences</CardTitle><CardDescription>The initial waste allowance can be adjusted for each estimate. Labor and margin policies are configured above.</CardDescription></CardHeader><CardContent className="space-y-4"><label className="block max-w-xs space-y-1 text-sm">Default waste allowance (%)<Input type="number" min="0" max="100" step="0.1" value={form.defaultWasteFactor} onChange={e => set({ defaultWasteFactor: Number(e.target.value) })} /></label><Button disabled={saving} onClick={() => runSave(saveDefaults)}>{saving ? "Saving…" : "Save preferences"}</Button></CardContent></Card>      <Card>
         <CardHeader>
           <CardTitle>Commission Defaults</CardTitle>
           <CardDescription>
@@ -432,7 +382,7 @@ export default function Settings() {
               </p>
             </div>
           </div>
-          <Button className="mt-4" onClick={saveCommission}>
+          <Button className="mt-4" disabled={saving} onClick={() => runSave(saveCommission)}>
             Save Commission Settings
           </Button>
         </CardContent>

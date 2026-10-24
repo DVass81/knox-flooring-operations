@@ -119,6 +119,8 @@ router.patch("/tasks/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  const [existing] = await db.select().from(tasksTable).where(eq(tasksTable.id, params.data.id));
+  if (existing?.bookingId) { res.status(409).json({ error: "Edit this installation through Crew Schedule so capacity checks remain consistent.", bookingId: existing.bookingId }); return; }
   const [task] = await db
     .update(tasksTable)
     .set({ ...parsed.data, updatedAt: new Date().toISOString() })
@@ -145,6 +147,8 @@ router.delete("/tasks/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  const [existing] = await db.select().from(tasksTable).where(eq(tasksTable.id, params.data.id));
+  if (existing?.bookingId) { res.status(409).json({ error: "Cancel this installation through Crew Schedule.", bookingId: existing.bookingId }); return; }
   const [deleted] = await db
     .delete(tasksTable)
     .where(eq(tasksTable.id, params.data.id))

@@ -1,4 +1,5 @@
-import { pgTable, text, real, jsonb } from "drizzle-orm/pg-core";
+import { jobsTable } from "./jobs";
+import { index, pgTable, text, real, jsonb, integer } from "drizzle-orm/pg-core";
 import type { Room } from "./jobs";
 
 export type DepositType = "none" | "percent" | "amount";
@@ -12,11 +13,16 @@ export interface ProposalLineItem {
   unit: string;
   quantity: number;
   unitPrice: number;
+  lineTotal?: number;
 }
 
 export const proposalsTable = pgTable("proposals", {
   id: text("id").primaryKey(),
-  jobId: text("job_id"),
+  customerId: text("customer_id"),
+  siteId: text("site_id"),
+  estimateSnapshot: jsonb("estimate_snapshot").$type<Record<string, unknown>>(),
+  revision: integer("revision").notNull().default(1),
+  jobId: text("job_id").references(() => jobsTable.id, { onDelete: "restrict" }),
   customerName: text("customer_name").notNull(),
   projectLocation: text("project_location").notNull().default(""),
   flooringType: text("flooring_type").notNull(),
@@ -40,10 +46,10 @@ export const proposalsTable = pgTable("proposals", {
   acceptedAt: text("accepted_at"),
   declinedAt: text("declined_at"),
   signature: text("signature").notNull().default(""),
-  convertedJobId: text("converted_job_id"),
+  convertedJobId: text("converted_job_id").references(() => jobsTable.id, { onDelete: "restrict" }),
   convertedInvoiceId: text("converted_invoice_id"),
   createdAt: text("created_at").notNull(),
-});
+}, (table) => [index("proposals_job_id_idx").on(table.jobId), index("proposals_converted_job_id_idx").on(table.convertedJobId)]);
 
 export type ProposalRow = typeof proposalsTable.$inferSelect;
 export type ProposalInsert = typeof proposalsTable.$inferInsert;

@@ -7,6 +7,8 @@
  */
 
 export interface QuoteAcceptInput {
+  /** @minimum 1 */
+  revision: number;
   /** @minLength 1 */
   signature: string;
 }

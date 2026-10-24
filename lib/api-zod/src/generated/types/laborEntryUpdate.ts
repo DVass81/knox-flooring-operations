@@ -13,7 +13,11 @@ export interface LaborEntryUpdate {
   workerType?: LaborEntryUpdateWorkerType;
   workerExternalId?: string;
   hourlyCost?: number;
+  /** @minimum 0.01 */
   hours?: number;
   notes?: string;
   accountingStatus?: string;
+  crewId?: string | null;
+  bookingId?: string | null;
+  callbackId?: string | null;
 }

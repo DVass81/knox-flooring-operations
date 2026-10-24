@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
+import { useUrlState } from "@/hooks/use-url-state";
+import { recordedJobDate, inReportingPeriod } from "@/lib/reporting";
 import { useStore } from "@/hooks/use-store";
+import { DataBoundary } from "@/components/layout/DataBoundary";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -59,32 +62,15 @@ interface RepCommission {
 }
 
 export default function Commissions() {
-  const { jobs, salespeople, settings } = useStore();
+  const { jobs, salespeople, settings, queryState } = useStore();
   const now = new Date();
 
-  const [range, setRange] = useState<RangeKey>("year");
-  const [customStart, setCustomStart] = useState("");
-  const [customEnd, setCustomEnd] = useState("");
+  const [range, setRange] = useUrlState<RangeKey>("period", "year");
+  const [customStart, setCustomStart] = useUrlState<string>("from", "");
+  const [customEnd, setCustomEnd] = useUrlState<string>("to", "");
 
   const eligibleJobs = useMemo(() => {
-    let start: Date | null = null;
-    let end: Date | null = null;
-    if (range === "custom") {
-      start = customStart ? new Date(customStart) : null;
-      end = customEnd ? new Date(customEnd) : null;
-      if (end) end.setHours(23, 59, 59, 999);
-    } else {
-      start = rangeStart(range, now);
-    }
-    return jobs.filter((job) => {
-      if (!job.salespersonId) return false;
-      if (stageIndex(job.status) < APPROVED_IDX) return false;
-      const created = new Date(job.createdAt);
-      if (Number.isNaN(created.getTime())) return false;
-      if (start && created < start) return false;
-      if (end && created > end) return false;
-      return true;
-    });
+    return jobs.filter((job) => job.salespersonId && stageIndex(job.status) >= APPROVED_IDX && inReportingPeriod(recordedJobDate(job, "sold"), range, customStart, customEnd));
   }, [jobs, range, customStart, customEnd, now]);
 
   const repCommissions = useMemo<RepCommission[]>(() => {
@@ -150,7 +136,7 @@ export default function Commissions() {
     {
       label: "Total Commissions",
       value: fmtMoney(totals.totalCommission),
-      sub: "Owed in selected period",
+      sub: "Calculated for recorded sales",
       icon: Wallet,
     },
     {
@@ -173,6 +159,8 @@ export default function Commissions() {
     },
   ];
 
+  const failedQuery = [queryState.jobs, queryState.salespeople].find((query) => query.isLoading || query.isError);
+  if (failedQuery) return <DataBoundary query={failedQuery} name="commission records"><span /></DataBoundary>;
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -181,12 +169,12 @@ export default function Commissions() {
             Commissions
           </h1>
           <p className="text-muted-foreground mt-1">
-            Auto-calculated sales commissions on approved jobs. Reporting only — no
+            Calculated commissions on jobs with recorded approval dates. Reporting only — no
             payouts are processed.
           </p>
         </div>
         <Select value={range} onValueChange={(v: RangeKey) => setRange(v)}>
-          <SelectTrigger className="w-[150px] bg-background">
+          <SelectTrigger aria-label="Reporting period" className="w-[150px] bg-background">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -202,8 +190,8 @@ export default function Commissions() {
       {range === "custom" && (
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1">
-            <Label className="text-xs">From</Label>
-            <Input
+            <Label className="text-xs" htmlFor="commissions-field-1">From</Label>
+            <Input id="commissions-field-1"
               type="date"
               value={customStart}
               onChange={(e) => setCustomStart(e.target.value)}
@@ -211,8 +199,8 @@ export default function Commissions() {
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">To</Label>
-            <Input
+            <Label className="text-xs" htmlFor="commissions-field-2">To</Label>
+            <Input id="commissions-field-2"
               type="date"
               value={customEnd}
               onChange={(e) => setCustomEnd(e.target.value)}

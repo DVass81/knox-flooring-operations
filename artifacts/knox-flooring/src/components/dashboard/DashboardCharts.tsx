@@ -27,10 +27,10 @@ import {
 } from "lucide-react";
 import { stageIndex } from "@/lib/stages";
 import { computeCosting, fmtMoney } from "@/lib/costing";
+import { recordedJobDate, businessDate } from "@/lib/reporting";
 
 const CREWS = ["Crew A", "Crew B", "Crew C", "Crew D"];
-const CREW_CAPACITY = 5;
-const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const PROPOSAL_IDX = stageIndex("Proposal Sent");
 const APPROVED_IDX = stageIndex("Approved");
@@ -199,13 +199,13 @@ export function DashboardCharts() {
       );
     };
     jobs.forEach((j) => {
-      const rev = computeCosting(j).effectiveRevenue;
+      const rev = j.estRevenue;
       if (stageIndex(j.status) >= APPROVED_IDX) {
-        const o = offset(j.createdAt);
+        const o = offset(recordedJobDate(j, "sold") ?? undefined);
         if (o >= 0 && o <= 5) months[5 - o].booked += rev;
       }
       if (["Completed", "Invoiced"].includes(j.status)) {
-        const o = offset(j.updatedAt);
+        const o = offset(recordedJobDate(j, "completed") ?? undefined);
         if (o >= 0 && o <= 5) months[5 - o].completed += rev;
       }
     });
@@ -247,12 +247,11 @@ export function DashboardCharts() {
     jobs
       .filter((j) => stageIndex(j.status) >= APPROVED_IDX)
       .forEach((j) => {
-        const c = computeCosting(j);
         const t = j.flooringType;
         if (!profByType[t]) profByType[t] = { revenue: 0, cost: 0, profit: 0 };
-        profByType[t].revenue += c.effectiveRevenue;
-        profByType[t].cost += c.effectiveRevenue - c.effectiveGrossProfit;
-        profByType[t].profit += c.effectiveGrossProfit;
+        profByType[t].revenue += j.estRevenue;
+        profByType[t].cost += j.materialEstimate + j.laborEstimate;
+        profByType[t].profit += j.estRevenue - j.materialEstimate - j.laborEstimate;
       });
     const profitData = Object.entries(profByType)
       .map(([name, v]) => ({
@@ -275,7 +274,7 @@ export function DashboardCharts() {
       .filter((j) => stageIndex(j.status) >= APPROVED_IDX)
       .forEach((j) => {
         mixByType[j.flooringType] =
-          (mixByType[j.flooringType] || 0) + computeCosting(j).effectiveRevenue;
+          (mixByType[j.flooringType] || 0) + j.estRevenue;
       });
     const mixData = Object.entries(mixByType)
       .map(([name, value]) => ({ name, short: shortType(name), value: Math.round(value) }))
@@ -291,20 +290,20 @@ export function DashboardCharts() {
       return {
         name: crew.replace("Crew ", ""),
         jobs: count,
-        utilization: Math.min(100, Math.round((count / CREW_CAPACITY) * 100)),
       };
     });
     const totalActiveCrewed = activeJobs.filter(
       (j) => j.crewAssigned !== "Unassigned",
     ).length;
-    const crewUtil = Math.min(
-      100,
-      Math.round((totalActiveCrewed / (CREWS.length * CREW_CAPACITY)) * 100),
-    );
+    const crewUtil = totalActiveCrewed;
     const weekData = WEEKDAYS.map((day) => ({ name: day, value: 0 }));
     jobs.forEach((j) => {
       if (!j.estStartDate) return;
-      const dt = new Date(j.estStartDate);
+      if (["Completed", "Invoiced"].includes(j.status)) return;
+      const today = businessDate();
+      const nextWeek = businessDate(new Date(Date.now() + 7 * 86400000));
+      if (j.estStartDate.slice(0, 10) < today || j.estStartDate.slice(0, 10) >= nextWeek) return;
+      const dt = new Date(`${j.estStartDate.slice(0, 10)}T12:00:00`);
       if (Number.isNaN(dt.getTime())) return;
       const idx = dt.getDay() === 0 ? 6 : dt.getDay() - 1;
       if (idx >= 0 && idx < WEEKDAYS.length) weekData[idx].value += 1;
@@ -341,8 +340,8 @@ export function DashboardCharts() {
       <div className="grid gap-4 lg:grid-cols-3">
         <ChartCard
           className="lg:col-span-2"
-          title="Revenue Momentum"
-          subtitle="Booked vs. completed revenue · last 6 months"
+          title="Recorded job value"
+          subtitle="Estimated sold vs. completed value · last six months · recorded event dates only"
           headline={fmtMoney(d.bookedTotal)}
           headlineSub="Total booked"
           trend={d.bookedTrend}
@@ -418,8 +417,8 @@ export function DashboardCharts() {
         </ChartCard>
 
         <ChartCard
-          title="Revenue Mix"
-          subtitle="Booked revenue by flooring type"
+          title="Sold value by flooring"
+          subtitle="Estimated value of currently approved jobs, all dates"
           icon={PieIcon}
         >
           {d.mixData.length === 0 ? (
@@ -493,10 +492,10 @@ export function DashboardCharts() {
       {/* Row 2: pipeline funnel + profitability */}
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard
-          title="Sales Pipeline"
-          subtitle="How opportunities flow from lead to completion"
+          title="Current work stages"
+          subtitle="Open leads and cumulative job stages, all dates"
           headline={d.winRate !== null ? `${d.winRate.toFixed(0)}%` : "—"}
-          headlineSub="Lead → completed"
+          headlineSub="Completed share of current records"
           icon={Filter}
         >
           {!d.hasJobs && d.funnel[0].value === 0 ? (
@@ -540,8 +539,8 @@ export function DashboardCharts() {
         </ChartCard>
 
         <ChartCard
-          title="Profitability"
-          subtitle="Revenue, cost & margin by flooring type"
+          title="Estimated profitability"
+          subtitle="Entered revenue and cost estimates by flooring; verify missing costs before use"
           headline={fmtMoney(d.totalProfit)}
           headlineSub={`${d.avgMargin.toFixed(0)}% avg margin`}
           icon={Layers}
@@ -639,10 +638,10 @@ export function DashboardCharts() {
 
       {/* Row 3: operations */}
       <ChartCard
-        title="Operations Capacity"
-        subtitle="Crew workload and the week ahead"
-        headline={`${d.crewUtil}%`}
-        headlineSub="Crew utilization"
+        title="Current crew workload"
+        subtitle="Assigned job counts and planned installations in the next seven days"
+        headline={`${d.crewUtil}`}
+        headlineSub="Assigned open jobs"
         icon={HardHat}
       >
         <div className="grid gap-6 px-3 lg:grid-cols-2">
@@ -680,10 +679,6 @@ export function DashboardCharts() {
                                 value: String(payload[0]?.payload?.jobs ?? 0),
                                 color: "hsl(var(--chart-3))",
                               },
-                              {
-                                label: "Utilization",
-                                value: `${payload[0]?.payload?.utilization ?? 0}%`,
-                              },
                             ]}
                           />
                         ) : null
@@ -703,7 +698,7 @@ export function DashboardCharts() {
           </div>
           <div>
             <p className="mb-2 text-xs font-medium text-muted-foreground">
-              Installs scheduled this week · {d.scheduledTotal} total
+              Planned starts in the next seven days · {d.scheduledTotal} total
             </p>
             {d.scheduledTotal === 0 ? (
               <EmptyChart message="Nothing scheduled" />

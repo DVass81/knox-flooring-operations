@@ -64,4 +64,8 @@ export interface Lead {
   convertedJobId?: string;
   createdAt: string;
   updatedAt: string;
+  customerId?: string | null;
+  siteId?: string | null;
+  /** @minimum 1 */
+  revision?: number;
 }

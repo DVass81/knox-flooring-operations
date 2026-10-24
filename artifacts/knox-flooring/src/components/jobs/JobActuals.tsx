@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,31 +11,41 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, Clock, Package, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useLaborEntries, useMaterialUsage } from "@/hooks/use-store";
-import { useListProducts } from "@workspace/api-client-react";
-import { ProductCombobox } from "@/components/measurements/product-combobox";
+import { useAuth } from "@/contexts/auth";
+import {
+  operation,
+  useOperation,
+  useRefreshOperations,
+  currency,
+} from "@/lib/operations";
+import type { JobEntryContext } from "@workspace/api-client-react";
 import { formatStageDate } from "@/lib/stages";
-import type { Job, Product } from "@/lib/types";
+import type { Job, Product, LaborEntry, MaterialUsage } from "@/lib/types";
 
-const CREWS = ["Crew A", "Crew B", "Crew C", "Crew D", "Unassigned"];
-
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function ProgressBar({ pct, over }: { pct: number; over: boolean }) {
-  return (
-    <div className="h-2 rounded-full bg-muted overflow-hidden">
-      <div
-        className={`h-full rounded-full ${over ? "bg-destructive" : "bg-primary"}`}
-        style={{ width: `${Math.min(pct, 100)}%` }}
-      />
-    </div>
-  );
-}
+const today = () => new Date().toLocaleDateString("en-CA");
+const blankLabor = () => ({
+  date: today(),
+  crewId: "",
+  hours: "",
+  callbackId: "",
+  notes: "",
+});
+const blankUsage = () => ({
+  productId: "",
+  material: "",
+  quantity: "",
+  cost: "",
+  callbackId: "",
+  notes: "",
+});
+const selectClass =
+  "flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm";
+const errorMessage = (error: unknown) =>
+  error instanceof Error
+    ? error.message
+    : "The change could not be saved. Please try again.";
 
 export function JobActuals({
   job,
@@ -43,185 +54,283 @@ export function JobActuals({
   job: Job;
   updateJob: (id: string, updates: Partial<Job>) => Promise<void>;
 }) {
+  const { user } = useAuth();
   const { toast } = useToast();
-  const { entries, addEntry, deleteEntry } = useLaborEntries(job.id);
-  const { usage, addUsage, deleteUsage } = useMaterialUsage(job.id);
-  const productsQuery = useListProducts();
-  const products = (productsQuery.data ?? []) as Product[];
-
-  const [estOpen, setEstOpen] = useState(false);
-  const [estForm, setEstForm] = useState({
+  const refresh = useRefreshOperations();
+  const laborQuery = useOperation<LaborEntry[]>(`/jobs/${job.id}/labor`);
+  const usageQuery = useOperation<MaterialUsage[]>(
+    `/jobs/${job.id}/material-usage`,
+  );
+  const context = useOperation<JobEntryContext>(
+    `/jobs/${job.id}/entry-context`,
+  );
+  const productsQuery = useOperation<Product[]>("/products", [
+    "owner",
+    "operations",
+    "sales",
+  ]);
+  const entries = laborQuery.data ?? [];
+  const usage = usageQuery.data ?? [];
+  const products = productsQuery.data ?? [];
+  const canEditEstimates = user?.role !== "installer";
+  const canUseStock = user?.role === "owner" || user?.role === "operations";
+  const [dialog, setDialog] = useState<"labor" | "usage" | "estimate" | null>(
+    null,
+  );
+  const [labor, setLabor] = useState(blankLabor);
+  const [material, setMaterial] = useState(blankUsage);
+  const [estimate, setEstimate] = useState({
     estLaborHours: job.estLaborHours,
     materialEstimate: job.materialEstimate,
   });
-
-  const [laborOpen, setLaborOpen] = useState(false);
-  const [laborForm, setLaborForm] = useState({
-    date: todayISO(),
-    crew: job.crewAssigned as string,
-    hours: 0,
-    notes: "",
-  });
-
-  const [usageOpen, setUsageOpen] = useState(false);
-  const [usageForm, setUsageForm] = useState({
-    material: "",
-    quantity: 0,
-    cost: 0,
-    notes: "",
-  });
-
-  const totalHours = entries.reduce((s, e) => s + e.hours, 0);
-  const totalMaterialCost = usage.reduce((s, u) => s + u.cost, 0);
-
-  const estHours = job.estLaborHours;
-  const estMaterialCost = job.materialEstimate;
-
-  const hoursPct = estHours > 0 ? (totalHours / estHours) * 100 : 0;
-  const materialPct =
-    estMaterialCost > 0 ? (totalMaterialCost / estMaterialCost) * 100 : 0;
-
-  const submitLabor = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await addEntry({
-      date: laborForm.date,
-      crew: laborForm.crew,
-      hours: Number(laborForm.hours) || 0,
-      notes: laborForm.notes.trim(),
-    });
-    setLaborOpen(false);
-    setLaborForm({ date: todayISO(), crew: job.crewAssigned, hours: 0, notes: "" });
-    toast({ title: "Labor logged" });
-  };
-
-  const submitUsage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (usageForm.material.trim() === "") {
-      toast({ title: "Material is required", variant: "destructive" });
-      return;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const consumptionKey = useRef({ payload: "", key: "" });
+  const selectedProduct = products.find((p) => p.id === material.productId);
+  const usesStock = selectedProduct?.inventoryType === "Inventory";
+  const totalHours = entries.reduce((sum, entry) => sum + entry.hours, 0);
+  const totalCost = usage.reduce((sum, entry) => sum + entry.cost, 0);
+  const callbackName = (id?: string | null) =>
+    context.data?.callbacks.find((c) => c.id === id)?.reason;
+  const run = async (
+    action: () => Promise<unknown>,
+    message: string,
+    close = false,
+  ) => {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await action();
+      await refresh();
+      if (close) setDialog(null);
+      toast({ title: message });
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
     }
-    await addUsage({
-      material: usageForm.material.trim(),
-      quantity: Number(usageForm.quantity) || 0,
-      cost: Number(usageForm.cost) || 0,
-      notes: usageForm.notes.trim(),
-    });
-    setUsageOpen(false);
-    setUsageForm({ material: "", quantity: 0, cost: 0, notes: "" });
-    toast({ title: "Material usage logged" });
   };
-
+  const open = (next: typeof dialog) => {
+    setError("");
+    setDialog(next);
+    if (next === "estimate")
+      setEstimate({
+        estLaborHours: job.estLaborHours,
+        materialEstimate: job.materialEstimate,
+      });
+  };
+  const callbackField = (value: string, onChange: (value: string) => void) => (
+    <div className="space-y-2">
+      <Label htmlFor="entry-callback">Work category</Label>
+      <select
+        id="entry-callback"
+        className={selectClass}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        <option value="">Original installation</option>
+        {context.data?.callbacks.map((c) => (
+          <option key={c.id} value={c.id}>
+            Callback · {c.reason} ({c.status})
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+  const submitLabor = (event: React.FormEvent) => {
+    event.preventDefault();
+    void run(
+      async () => {
+        await operation(`/jobs/${job.id}/labor`, "POST", {
+          date: labor.date,
+          crew:
+            context.data?.crews.find((c) => c.id === labor.crewId)?.name ??
+            "Unassigned",
+          crewId: labor.crewId || undefined,
+          callbackId: labor.callbackId || undefined,
+          hours: Number(labor.hours),
+          notes: labor.notes.trim(),
+        });
+        setLabor(blankLabor());
+      },
+      "Labor logged",
+      true,
+    );
+  };
+  const submitUsage = (event: React.FormEvent) => {
+    event.preventDefault();
+    void run(
+      async () => {
+        if (usesStock) {
+          if (!canUseStock)
+            throw new Error(
+              "An owner or operations teammate must consume stocked products.",
+            );
+          const data = {
+            productId: material.productId,
+            jobId: job.id,
+            callbackId: material.callbackId || undefined,
+            kind: "consume",
+            quantity: Number(material.quantity),
+            reason: material.notes.trim() || `Used for ${job.jobNumber}`,
+          };
+          const payload = JSON.stringify(data);
+          if (consumptionKey.current.payload !== payload)
+            consumptionKey.current = { payload, key: crypto.randomUUID() };
+          await operation("/inventory/movements", "POST", {
+            ...data,
+            idempotencyKey: consumptionKey.current.key,
+          });
+          consumptionKey.current = { payload: "", key: "" };
+        } else
+          await operation(`/jobs/${job.id}/material-usage`, "POST", {
+            material: material.material.trim(),
+            productId: material.productId || undefined,
+            callbackId: material.callbackId || undefined,
+            quantity: Number(material.quantity),
+            cost: Number(material.cost),
+            notes: material.notes.trim(),
+          });
+        setMaterial(blankUsage());
+      },
+      usesStock
+        ? "Stock consumed and material cost recorded"
+        : "Material usage logged",
+      true,
+    );
+  };
   return (
     <div className="space-y-6">
+      {error && !dialog && (
+        <p
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+        >
+          {error}
+        </p>
+      )}
+      {(laborQuery.error || usageQuery.error || context.error) && (
+        <div role="alert" className="rounded-lg border p-4 text-sm">
+          Job entries could not be loaded completely.{" "}
+          <Button variant="link" onClick={() => void refresh()}>
+            Retry
+          </Button>
+        </div>
+      )}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
-          <CardTitle>Estimated vs. Actual</CardTitle>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+          <CardTitle>Estimated vs. recorded</CardTitle>
+          {canEditEstimates && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => open("estimate")}
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit estimates
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              Labor person-hours
+            </p>
+            <p className="mt-2 text-2xl font-semibold tabular-nums">
+              {laborQuery.error ? "Unavailable" : totalHours.toLocaleString()}{" "}
+              <span className="text-sm font-normal text-muted-foreground">
+                /{" "}
+                {job.estLaborHours > 0
+                  ? job.estLaborHours.toLocaleString() + " estimated"
+                  : "estimate not set"}
+              </span>
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {entries.filter((e) => !e.crewId).length} entries without a crew;
+              these are excluded from crew utilization.
+            </p>
+          </div>
+          <div>
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Package className="h-4 w-4" />
+              Recorded material cost
+            </p>
+            <p className="mt-2 text-2xl font-semibold tabular-nums">
+              {usageQuery.error ? "Unavailable" : currency(totalCost)}{" "}
+              <span className="text-sm font-normal text-muted-foreground">
+                /{" "}
+                {job.materialEstimate > 0
+                  ? currency(job.materialEstimate) + " estimated"
+                  : "estimate not set"}
+              </span>
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Includes stock consumption and manual usage entries.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+          <CardTitle>Labor entries</CardTitle>
           <Button
-            variant="outline"
             size="sm"
-            onClick={() => {
-              setEstForm({
-                estLaborHours: job.estLaborHours,
-                materialEstimate: job.materialEstimate,
-              });
-              setEstOpen(true);
-            }}
+            onClick={() => open("labor")}
+            disabled={context.isPending || !!context.error}
+            data-training-id="job-log-labor"
           >
-            <Pencil className="w-4 h-4 mr-2" /> Edit Estimates
-          </Button>
-        </CardHeader>
-        <CardContent className="grid sm:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-medium flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-muted-foreground" /> Labor Hours
-              </span>
-              <span
-                className={
-                  estHours > 0 && totalHours > estHours
-                    ? "text-destructive font-medium"
-                    : "text-muted-foreground"
-                }
-              >
-                {totalHours.toLocaleString()} / {estHours.toLocaleString()} hrs
-              </span>
-            </div>
-            <ProgressBar pct={hoursPct} over={estHours > 0 && totalHours > estHours} />
-            <p className="text-xs text-muted-foreground">
-              {estHours > 0
-                ? `${Math.round(hoursPct)}% of estimate`
-                : "No hours estimate set"}
-            </p>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-medium flex items-center gap-1.5">
-                <Package className="w-4 h-4 text-muted-foreground" /> Material Cost
-              </span>
-              <span
-                className={
-                  estMaterialCost > 0 && totalMaterialCost > estMaterialCost
-                    ? "text-destructive font-medium"
-                    : "text-muted-foreground"
-                }
-              >
-                ${totalMaterialCost.toLocaleString()} / $
-                {estMaterialCost.toLocaleString()}
-              </span>
-            </div>
-            <ProgressBar
-              pct={materialPct}
-              over={estMaterialCost > 0 && totalMaterialCost > estMaterialCost}
-            />
-            <p className="text-xs text-muted-foreground">
-              {estMaterialCost > 0
-                ? `${Math.round(materialPct)}% of estimate`
-                : "No material estimate set"}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
-          <div>
-            <CardTitle>Labor Hours</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              {totalHours.toLocaleString()} hrs logged
-            </p>
-          </div>
-          <Button size="sm" onClick={() => setLaborOpen(true)} data-training-id="job-log-labor">
-            <Plus className="w-4 h-4 mr-2" /> Log Hours
+            <Plus className="mr-2 h-4 w-4" />
+            Log hours
           </Button>
         </CardHeader>
         <CardContent>
-          {entries.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6 bg-muted/30 rounded-md border">
-              No labor logged yet.
+          {laborQuery.isPending ? (
+            <p className="text-sm text-muted-foreground">Loading labor…</p>
+          ) : !entries.length ? (
+            <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+              Record hours after work is performed. Crew assignments make
+              capacity reporting useful.
             </p>
           ) : (
-            <div className="rounded-md border divide-y">
-              {entries.map((e) => (
+            <div className="divide-y">
+              {entries.map((entry) => (
                 <div
-                  key={e.id}
-                  className="flex items-center justify-between gap-3 p-3"
+                  key={entry.id}
+                  className="flex items-start justify-between gap-3 py-3"
                 >
                   <div className="min-w-0">
-                    <span className="font-medium">{e.hours} hrs</span>
-                    <span className="text-muted-foreground text-sm ml-2">
-                      {e.crew} · {formatStageDate(e.date)}
-                    </span>
-                    {e.notes && (
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {e.notes}
+                    <p className="font-medium">
+                      {entry.hours} person-hours · {entry.crew}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {formatStageDate(entry.date)}
+                      {entry.callbackId
+                        ? ` · Callback: ${callbackName(entry.callbackId) ?? "Linked callback"}`
+                        : ""}
+                    </p>
+                    {entry.notes && (
+                      <p className="mt-1 break-words text-sm text-muted-foreground">
+                        {entry.notes}
                       </p>
                     )}
                   </div>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive shrink-0"
-                    onClick={() => deleteEntry(e.id)}
+                    disabled={busy}
+                    aria-label={`Delete labor entry from ${entry.date}`}
+                    onClick={() =>
+                      void run(
+                        () =>
+                          operation(
+                            `/jobs/${job.id}/labor/${entry.id}`,
+                            "DELETE",
+                          ),
+                        "Labor entry deleted",
+                      )
+                    }
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -231,239 +340,379 @@ export function JobActuals({
           )}
         </CardContent>
       </Card>
-
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
-          <div>
-            <CardTitle>Materials Used</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              ${totalMaterialCost.toLocaleString()} total
-            </p>
-          </div>
-          <Button size="sm" onClick={() => setUsageOpen(true)} data-training-id="job-log-material">
-            <Plus className="w-4 h-4 mr-2" /> Log Usage
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+          <CardTitle>Materials used</CardTitle>
+          <Button
+            size="sm"
+            onClick={() => open("usage")}
+            disabled={context.isPending || !!context.error}
+            data-training-id="job-log-material"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Log usage
           </Button>
         </CardHeader>
         <CardContent>
-          {usage.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6 bg-muted/30 rounded-md border">
-              No material usage logged yet.
+          {usageQuery.isPending ? (
+            <p className="text-sm text-muted-foreground">Loading materials…</p>
+          ) : !usage.length ? (
+            <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+              Stock consumption records usage here automatically. Log purchases
+              outside inventory manually.
             </p>
           ) : (
-            <div className="rounded-md border divide-y">
-              {usage.map((u) => (
+            <div className="divide-y">
+              {usage.map((entry) => (
                 <div
-                  key={u.id}
-                  className="flex items-center justify-between gap-3 p-3"
+                  key={entry.id}
+                  className="flex items-start justify-between gap-3 py-3"
                 >
                   <div className="min-w-0">
-                    <span className="font-medium">{u.material}</span>
-                    <span className="text-muted-foreground text-sm ml-2">
-                      {u.quantity} · ${u.cost.toLocaleString()}
-                    </span>
-                    {u.notes && (
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {u.notes}
+                    <p className="font-medium">{entry.material}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {entry.quantity} units · {currency(entry.cost)} total
+                      {entry.movementId ? " · Stock recorded" : ""}
+                    </p>
+                    {entry.callbackId && (
+                      <p className="text-sm text-muted-foreground">
+                        Callback:{" "}
+                        {callbackName(entry.callbackId) ?? "Linked callback"}
+                      </p>
+                    )}
+                    {entry.notes && (
+                      <p className="mt-1 break-words text-sm text-muted-foreground">
+                        {entry.notes}
                       </p>
                     )}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive shrink-0"
-                    onClick={() => deleteUsage(u.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {!entry.movementId && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={busy}
+                      aria-label={`Delete ${entry.material} usage`}
+                      onClick={() =>
+                        void run(
+                          () =>
+                            operation(
+                              `/jobs/${job.id}/material-usage/${entry.id}`,
+                              "DELETE",
+                            ),
+                          "Material entry deleted",
+                        )
+                      }
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
           )}
+          {canUseStock && (
+            <p className="mt-4 text-xs text-muted-foreground">
+              Manage reserved stock in Materials Needed.{" "}
+              <Link href="/inventory" className="underline">
+                Review stock history
+              </Link>
+            </p>
+          )}
         </CardContent>
       </Card>
-
-      <Dialog open={laborOpen} onOpenChange={setLaborOpen}>
-        <DialogContent>
+      <Dialog
+        open={dialog !== null}
+        onOpenChange={(value) => {
+          if (!value && !busy) setDialog(null);
+        }}
+      >
+        <DialogContent className="max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Log Labor Hours</DialogTitle>
+            <DialogTitle>
+              {dialog === "labor"
+                ? "Log labor hours"
+                : dialog === "usage"
+                  ? "Log material usage"
+                  : "Edit estimates"}
+            </DialogTitle>
           </DialogHeader>
-          <form onSubmit={submitLabor} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Date</Label>
-                <Input
-                  type="date"
-                  value={laborForm.date}
-                  onChange={(e) =>
-                    setLaborForm({ ...laborForm, date: e.target.value })
-                  }
-                  required
-                />
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
+          {dialog === "labor" && (
+            <form className="space-y-4" onSubmit={submitLabor}>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="labor-date">Work date</Label>
+                  <Input
+                    id="labor-date"
+                    type="date"
+                    required
+                    value={labor.date}
+                    onChange={(e) =>
+                      setLabor({ ...labor, date: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="labor-hours">Person-hours</Label>
+                  <Input
+                    id="labor-hours"
+                    type="number"
+                    min="0.01"
+                    step="any"
+                    required
+                    value={labor.hours}
+                    onChange={(e) =>
+                      setLabor({ ...labor, hours: e.target.value })
+                    }
+                  />
+                </div>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Two people working four hours is eight person-hours.
+              </p>
               <div className="space-y-2">
-                <Label>Hours</Label>
-                <Input
-                  type="number"
-                  step="any"
-                  value={laborForm.hours}
+                <Label htmlFor="labor-crew">Crew</Label>
+                <select
+                  id="labor-crew"
+                  className={selectClass}
+                  value={labor.crewId}
                   onChange={(e) =>
-                    setLaborForm({ ...laborForm, hours: Number(e.target.value) })
+                    setLabor({ ...labor, crewId: e.target.value })
                   }
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Crew / Person</Label>
-              <Select
-                value={laborForm.crew}
-                onValueChange={(v) => setLaborForm({ ...laborForm, crew: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CREWS.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
+                >
+                  <option value="">
+                    Unassigned — excluded from utilization
+                  </option>
+                  {context.data?.crews.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Notes (optional)</Label>
-              <Input
-                value={laborForm.notes}
-                onChange={(e) =>
-                  setLaborForm({ ...laborForm, notes: e.target.value })
-                }
-                placeholder="e.g. Subfloor prep + first room"
-              />
-            </div>
-            <DialogFooter>
-              <Button type="submit">Log Hours</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={usageOpen} onOpenChange={setUsageOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Log Material Usage</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={submitUsage} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Material</Label>
-              <ProductCombobox
-                value={usageForm.material}
-                products={products}
-                field="name"
-                placeholder="Select or search material"
-                onChange={(val) =>
-                  setUsageForm({ ...usageForm, material: val })
-                }
-                onSelectProduct={(p) =>
-                  setUsageForm((f) => ({
-                    ...f,
-                    material: p.name,
-                    cost: f.cost || p.cost,
-                  }))
-                }
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+                </select>
+              </div>
+              {callbackField(labor.callbackId, (value) =>
+                setLabor({ ...labor, callbackId: value }),
+              )}
               <div className="space-y-2">
-                <Label>Quantity</Label>
+                <Label htmlFor="labor-notes">Work performed</Label>
                 <Input
-                  type="number"
-                  step="any"
-                  value={usageForm.quantity}
+                  id="labor-notes"
+                  value={labor.notes}
                   onChange={(e) =>
-                    setUsageForm({
-                      ...usageForm,
-                      quantity: Number(e.target.value),
+                    setLabor({ ...labor, notes: e.target.value })
+                  }
+                />
+              </div>
+              <DialogFooter>
+                <Button disabled={busy} type="submit">
+                  {busy ? "Saving…" : "Log hours"}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+          {dialog === "usage" && (
+            <form className="space-y-4" onSubmit={submitUsage}>
+              {productsQuery.allowed && (
+                <div className="space-y-2">
+                  <Label htmlFor="usage-product">Catalog product</Label>
+                  <select
+                    id="usage-product"
+                    className={selectClass}
+                    value={material.productId}
+                    onChange={(e) => {
+                      const product = products.find(
+                        (p) => p.id === e.target.value,
+                      );
+                      setMaterial({
+                        ...material,
+                        productId: e.target.value,
+                        material: product?.name ?? "",
+                        cost: product
+                          ? String(
+                              Math.round(
+                                product.cost *
+                                  Number(material.quantity || 1) *
+                                  100,
+                              ) / 100,
+                            )
+                          : "",
+                      });
+                    }}
+                  >
+                    <option value="">Manual purchase / material</option>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} · {p.sku || p.unit}
+                        {p.inventoryType === "Inventory" ? " · stocked" : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {productsQuery.error && (
+                    <p role="alert" className="text-sm text-destructive">
+                      Catalog unavailable. Retry before selecting stock.
+                    </p>
+                  )}
+                </div>
+              )}
+              {!selectedProduct && (
+                <div className="space-y-2">
+                  <Label htmlFor="usage-name">Material</Label>
+                  <Input
+                    id="usage-name"
+                    required
+                    value={material.material}
+                    onChange={(e) =>
+                      setMaterial({ ...material, material: e.target.value })
+                    }
+                  />
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="usage-quantity">
+                    Quantity{" "}
+                    {selectedProduct ? `(${selectedProduct.unit})` : ""}
+                  </Label>
+                  <Input
+                    id="usage-quantity"
+                    type="number"
+                    min="0.000001"
+                    step="any"
+                    required
+                    value={material.quantity}
+                    onChange={(e) =>
+                      setMaterial({
+                        ...material,
+                        quantity: e.target.value,
+                        ...(selectedProduct && !usesStock
+                          ? {
+                              cost: String(
+                                Math.round(
+                                  selectedProduct.cost *
+                                    Number(e.target.value) *
+                                    100,
+                                ) / 100,
+                              ),
+                            }
+                          : {}),
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="usage-cost">Total cost ($)</Label>
+                  {usesStock ? (
+                    <p className="py-2 font-medium">
+                      {currency(
+                        Number(material.quantity) * selectedProduct.cost,
+                      )}
+                    </p>
+                  ) : (
+                    <Input
+                      id="usage-cost"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      required
+                      value={material.cost}
+                      onChange={(e) =>
+                        setMaterial({ ...material, cost: e.target.value })
+                      }
+                    />
+                  )}
+                </div>
+              </div>
+              {usesStock && (
+                <p className="rounded-lg bg-muted p-3 text-sm">
+                  {canUseStock
+                    ? "This consumes unreserved stock and records its cost once. Use Materials Needed to consume an existing reservation."
+                    : "Ask an owner or operations teammate to consume this stocked product."}
+                </p>
+              )}
+              {callbackField(material.callbackId, (value) =>
+                setMaterial({ ...material, callbackId: value }),
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="usage-notes">Notes</Label>
+                <Input
+                  id="usage-notes"
+                  value={material.notes}
+                  onChange={(e) =>
+                    setMaterial({ ...material, notes: e.target.value })
+                  }
+                />
+              </div>
+              <DialogFooter>
+                <Button
+                  disabled={busy || Boolean(usesStock && !canUseStock)}
+                  type="submit"
+                >
+                  {busy
+                    ? "Saving…"
+                    : usesStock
+                      ? "Consume stock & record cost"
+                      : "Log usage"}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+          {dialog === "estimate" && canEditEstimates && (
+            <form
+              className="space-y-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void run(
+                  () => updateJob(job.id, estimate),
+                  "Estimates updated",
+                  true,
+                );
+              }}
+            >
+              <div className="space-y-2">
+                <Label htmlFor="est-hours">Estimated person-hours</Label>
+                <Input
+                  id="est-hours"
+                  type="number"
+                  min="0"
+                  step="any"
+                  required
+                  value={estimate.estLaborHours}
+                  onChange={(e) =>
+                    setEstimate({
+                      ...estimate,
+                      estLaborHours: Number(e.target.value),
                     })
                   }
                 />
               </div>
               <div className="space-y-2">
-                <Label>Cost ($)</Label>
+                <Label htmlFor="est-cost">Estimated material cost ($)</Label>
                 <Input
+                  id="est-cost"
                   type="number"
-                  step="any"
-                  value={usageForm.cost}
+                  min="0"
+                  step="0.01"
+                  required
+                  value={estimate.materialEstimate}
                   onChange={(e) =>
-                    setUsageForm({ ...usageForm, cost: Number(e.target.value) })
+                    setEstimate({
+                      ...estimate,
+                      materialEstimate: Number(e.target.value),
+                    })
                   }
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Notes (optional)</Label>
-              <Input
-                value={usageForm.notes}
-                onChange={(e) =>
-                  setUsageForm({ ...usageForm, notes: e.target.value })
-                }
-              />
-            </div>
-            <DialogFooter>
-              <Button type="submit">Log Usage</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={estOpen} onOpenChange={setEstOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Estimates</DialogTitle>
-          </DialogHeader>
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              await updateJob(job.id, {
-                estLaborHours: Number(estForm.estLaborHours) || 0,
-                materialEstimate: Number(estForm.materialEstimate) || 0,
-              });
-              setEstOpen(false);
-              toast({ title: "Estimates updated" });
-            }}
-            className="space-y-4"
-          >
-            <div className="space-y-2">
-              <Label>Estimated Labor Hours</Label>
-              <Input
-                type="number"
-                step="any"
-                value={estForm.estLaborHours}
-                onChange={(e) =>
-                  setEstForm({
-                    ...estForm,
-                    estLaborHours: Number(e.target.value),
-                  })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Estimated Material Cost ($)</Label>
-              <Input
-                type="number"
-                step="any"
-                value={estForm.materialEstimate}
-                onChange={(e) =>
-                  setEstForm({
-                    ...estForm,
-                    materialEstimate: Number(e.target.value),
-                  })
-                }
-              />
-            </div>
-            <DialogFooter>
-              <Button type="submit">Save Estimates</Button>
-            </DialogFooter>
-          </form>
+              <DialogFooter>
+                <Button disabled={busy} type="submit">
+                  {busy ? "Saving…" : "Save estimates"}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>

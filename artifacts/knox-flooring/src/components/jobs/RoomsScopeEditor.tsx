@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Ruler } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useUnsavedForm, useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import type { Job, Room } from "@/lib/types";
 
 function uid(): string {
@@ -45,6 +46,14 @@ export function RoomsScopeEditor({
 
   const [scopeDraft, setScopeDraft] = useState(job.scopeOfWork);
   const [savingScope, setSavingScope] = useState(false);
+  const [savingRoom, setSavingRoom] = useState(false);
+  const [error, setError] = useState("");
+  const roomGuard = useUnsavedForm(isRoomOpen, roomForm);
+  useUnsavedChanges(scopeDraft !== job.scopeOfWork);
+  const closeRoom = (next: boolean) => {
+    if (!savingRoom && (next || roomGuard.confirmDiscard()))
+      setIsRoomOpen(next);
+  };
 
   const persistRooms = async (rooms: Room[]) => {
     await updateJob(job.id, {
@@ -54,12 +63,21 @@ export function RoomsScopeEditor({
   };
 
   const openAddRoom = () => {
+    roomGuard.reset(emptyRoom);
+    setError("");
     setEditingRoomId(null);
     setRoomForm(emptyRoom);
     setIsRoomOpen(true);
   };
 
   const openEditRoom = (room: Room) => {
+    roomGuard.reset({
+      name: room.name,
+      length: room.length,
+      width: room.width,
+      scope: room.scope ?? "",
+    });
+    setError("");
     setEditingRoomId(room.id);
     setRoomForm({
       name: room.name,
@@ -72,6 +90,16 @@ export function RoomsScopeEditor({
 
   const handleRoomSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (savingRoom) return;
+    setError("");
+    if (
+      ![roomForm.length, roomForm.width].every(
+        (n) => Number.isFinite(n) && n >= 0,
+      )
+    ) {
+      setError("Room dimensions must be nonnegative numbers.");
+      return;
+    }
     const next: Room = {
       id: editingRoomId ?? uid(),
       name: roomForm.name.trim() || "Room",
@@ -82,23 +110,53 @@ export function RoomsScopeEditor({
     const rooms = editingRoomId
       ? job.rooms.map((r) => (r.id === editingRoomId ? next : r))
       : [...job.rooms, next];
-    await persistRooms(rooms);
-    setIsRoomOpen(false);
-    setEditingRoomId(null);
-    setRoomForm(emptyRoom);
-    toast({ title: editingRoomId ? "Room updated" : "Room added" });
+    setSavingRoom(true);
+    try {
+      await persistRooms(rooms);
+      setIsRoomOpen(false);
+      setEditingRoomId(null);
+      setRoomForm(emptyRoom);
+      toast({ title: editingRoomId ? "Room updated" : "Room added" });
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Room could not be saved. Your entries are preserved.",
+      );
+    } finally {
+      setSavingRoom(false);
+    }
   };
 
   const removeRoom = async (id: string) => {
-    await persistRooms(job.rooms.filter((r) => r.id !== id));
-    toast({ title: "Room removed" });
+    if (savingRoom) return;
+    setSavingRoom(true);
+    setError("");
+    try {
+      await persistRooms(job.rooms.filter((r) => r.id !== id));
+      toast({ title: "Room removed" });
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : "Room could not be removed.",
+      );
+    } finally {
+      setSavingRoom(false);
+    }
   };
 
   const saveScope = async () => {
+    if (savingScope) return;
+    setError("");
     setSavingScope(true);
     try {
       await updateJob(job.id, { scopeOfWork: scopeDraft });
       toast({ title: "Scope of work saved" });
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Scope could not be saved. Your entries are preserved.",
+      );
     } finally {
       setSavingScope(false);
     }
@@ -108,7 +166,7 @@ export function RoomsScopeEditor({
 
   return (
     <Card data-training-id="job-scope">
-      <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4 space-y-0">
         <div>
           <CardTitle>Rooms & Scope</CardTitle>
           <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
@@ -121,6 +179,11 @@ export function RoomsScopeEditor({
         </Button>
       </CardHeader>
       <CardContent className="space-y-5">
+        {error && !isRoomOpen && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
         {job.rooms.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-6 bg-muted/30 rounded-md border">
             No rooms yet. Add the rooms involved in this job.
@@ -143,6 +206,8 @@ export function RoomsScopeEditor({
                     <Button
                       variant="ghost"
                       size="icon"
+                      aria-label={`Edit ${room.name}`}
+                      disabled={savingRoom}
                       className="h-8 w-8"
                       onClick={() => openEditRoom(room)}
                     >
@@ -152,6 +217,8 @@ export function RoomsScopeEditor({
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 text-destructive hover:text-destructive"
+                      aria-label={`Remove ${room.name}`}
+                      disabled={savingRoom}
                       onClick={() => removeRoom(room.id)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -171,8 +238,10 @@ export function RoomsScopeEditor({
         <Separator />
 
         <div className="space-y-2">
-          <Label>Scope of Work (overall)</Label>
+          <Label htmlFor="job-scope-notes">Scope of Work (overall)</Label>
           <Textarea
+            id="job-scope-notes"
+            disabled={savingScope}
             value={scopeDraft}
             onChange={(e) => setScopeDraft(e.target.value)}
             placeholder="Describe the work to be done for this job…"
@@ -190,15 +259,18 @@ export function RoomsScopeEditor({
         </div>
       </CardContent>
 
-      <Dialog open={isRoomOpen} onOpenChange={setIsRoomOpen}>
+      <Dialog open={isRoomOpen} onOpenChange={closeRoom}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingRoomId ? "Edit Room" : "Add Room"}</DialogTitle>
+            <DialogTitle>
+              {editingRoomId ? "Edit Room" : "Add Room"}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleRoomSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label>Room Name</Label>
+              <Label htmlFor="job-room-name">Room Name</Label>
               <Input
+                id="job-room-name"
                 value={roomForm.name}
                 onChange={(e) =>
                   setRoomForm({ ...roomForm, name: e.target.value })
@@ -209,8 +281,10 @@ export function RoomsScopeEditor({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Length (ft)</Label>
+                <Label htmlFor="job-room-length">Length (ft)</Label>
                 <Input
+                  id="job-room-length"
+                  min={0}
                   type="number"
                   step="any"
                   value={roomForm.length}
@@ -220,8 +294,10 @@ export function RoomsScopeEditor({
                 />
               </div>
               <div className="space-y-2">
-                <Label>Width (ft)</Label>
+                <Label htmlFor="job-room-width">Width (ft)</Label>
                 <Input
+                  id="job-room-width"
+                  min={0}
                   type="number"
                   step="any"
                   value={roomForm.width}
@@ -235,8 +311,11 @@ export function RoomsScopeEditor({
               {Math.round((roomForm.length || 0) * (roomForm.width || 0))} sq ft
             </p>
             <div className="space-y-2">
-              <Label>Scope for this room (optional)</Label>
+              <Label htmlFor="job-room-scope">
+                Scope for this room (optional)
+              </Label>
               <Textarea
+                id="job-room-scope"
                 value={roomForm.scope}
                 onChange={(e) =>
                   setRoomForm({ ...roomForm, scope: e.target.value })
@@ -246,8 +325,17 @@ export function RoomsScopeEditor({
               />
             </div>
             <DialogFooter>
-              <Button type="submit">
-                {editingRoomId ? "Save Room" : "Add Room"}
+              {error && (
+                <p role="alert" className="text-sm text-destructive">
+                  {error}
+                </p>
+              )}
+              <Button type="submit" disabled={savingRoom}>
+                {savingRoom
+                  ? "Saving…"
+                  : editingRoomId
+                    ? "Save Room"
+                    : "Add Room"}
               </Button>
             </DialogFooter>
           </form>

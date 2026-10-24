@@ -1,4 +1,8 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useUnsavedForm } from "@/hooks/use-unsaved-changes";
+import { useUrlState, useQueryControls } from "@/hooks/use-url-state";
+import { useLocation } from "wouter";
+import { useAuth } from "@/contexts/auth";
 import { useStore, useTasks, useGoogleCalendar } from "@/hooks/use-store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,6 +11,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -45,7 +50,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { Task, Salesperson } from "@/lib/types";
 
-type ViewMode = "month" | "week" | "day";
+type ViewMode = "month" | "week" | "day" | "agenda";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DAY_START_HOUR = 7;
@@ -134,18 +139,30 @@ const emptyForm = (start: Date, end: Date): FormState => ({
 });
 
 export default function TaskCalendar() {
-  const { salespeople, leads } = useStore();
-  const { tasks, addTask, updateTask, deleteTask } = useTasks();
+  const { salespeople, leads, jobs = [] } = useStore();
+  const taskQuery = useTasks();
+  const { tasks, addTask, updateTask, deleteTask } = taskQuery;
   const google = useGoogleCalendar();
+  const { user } = useAuth();
+  const [, navigate] = useLocation();
+  const canManageBookings = user?.role === "owner" || user?.role === "operations";
 
-  const [view, setView] = useState<ViewMode>("week");
-  const [cursor, setCursor] = useState(() => startOfDay(new Date()));
+  const [view, setView] = useUrlState<ViewMode>("view", "agenda");
+  const [cursorValue, setCursorValue] = useUrlState<string>("date", toDateInput(new Date()));
+  const cursor = useMemo(() => { const parsed = parseLocalDate(cursorValue); return Number.isNaN(parsed.getTime()) ? startOfDay(new Date()) : parsed; }, [cursorValue]);
+  const setCursor = (value: Date) => setCursorValue(toDateInput(value));
+  const [statusFilter, setStatusFilter] = useUrlState<string>("status", "All");
+  const [assigneeFilter, setAssigneeFilter] = useUrlState<string>("assignee", "All");
+  const query = useQueryControls();
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(() =>
     emptyForm(new Date(), new Date()),
   );
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
+  const unsaved = useUnsavedForm(isFormOpen, form);
   const dragState = useRef<{
     id: string;
     mode: "move" | "resize";
@@ -219,8 +236,8 @@ export default function TaskCalendar() {
       }
     }
 
-    return out;
-  }, [tasks, leads, repById, repByName]);
+    return out.filter((entry) => (statusFilter === "All" || (entry.task?.status ?? (entry.done ? "Done" : "Open")) === statusFilter) && (assigneeFilter === "All" || (entry.assigneeId ?? "none") === assigneeFilter));
+  }, [tasks, leads, repById, repByName, statusFilter, assigneeFilter]);
 
   const entriesOnDay = (day: Date) =>
     entries
@@ -238,7 +255,7 @@ export default function TaskCalendar() {
   const shift = (dir: number) => {
     const d = new Date(cursor);
     if (view === "month") d.setMonth(d.getMonth() + dir);
-    else if (view === "week") d.setDate(d.getDate() + dir * 7);
+    else if (view === "week" || view === "agenda") d.setDate(d.getDate() + dir * 7);
     else d.setDate(d.getDate() + dir);
     setCursor(d);
   };
@@ -251,8 +268,8 @@ export default function TaskCalendar() {
         month: "long",
         year: "numeric",
       });
-    if (view === "week") {
-      const start = startOfWeek(cursor);
+    if (view === "week" || view === "agenda") {
+      const start = view === "agenda" ? cursor : startOfWeek(cursor);
       const end = addDays(start, 6);
       return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
     }
@@ -268,42 +285,54 @@ export default function TaskCalendar() {
 
   // ---- Create / edit ----
   const openCreate = (start?: Date) => {
+    setSaveError("");
     const s = start ?? new Date();
     if (!start) s.setMinutes(0, 0, 0);
     const e = new Date(s);
     e.setHours(e.getHours() + 1);
     setEditingId(null);
     setForm(emptyForm(s, e));
+    unsaved.reset(emptyForm(s, e));
     setIsFormOpen(true);
   };
 
   const openEdit = (task: Task) => {
+    if (task.bookingId) { navigate(canManageBookings ? `/calendar?booking=${encodeURIComponent(task.bookingId)}` : `/jobs/${task.relatedJobId ?? ""}`); return; }
+    setSaveError("");
     setEditingId(task.id);
     const start = new Date(task.startAt);
     const end = new Date(task.endAt);
-    setForm({
+    const initial = {
       title: task.title,
       description: task.description,
       assigneeId: task.assigneeId ?? "none",
       allDay: task.allDay,
       start: task.allDay ? toDateInput(start) : toLocalInput(start),
       end: task.allDay ? toDateInput(end) : toLocalInput(end),
-    });
+    };
+    setForm(initial);
+    unsaved.reset(initial);
     setIsFormOpen(true);
   };
 
+  const createRequested = query.params.get("create") === "1";
+  const relatedJob = jobs.find(job => job.id === query.params.get("jobId"));
+  const relatedLead = leads.find(lead => lead.id === query.params.get("leadId"));
+  const relatedLabel = relatedJob ? `${relatedJob.jobNumber} · ${relatedJob.customerName}` : relatedLead ? `Lead · ${relatedLead.customerName}` : "";
+  useEffect(() => { if (createRequested) openCreate(); }, [createRequested]);
+  const closeForm = (open: boolean) => { if (saving || (!open && !unsaved.confirmDiscard())) return; setIsFormOpen(open); if (!open) query.update({ create: null }); };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title.trim()) return;
+    if (saving) return;
+    if (!form.title.trim()) { setSaveError("Enter a task title."); return; }
 
     const startDate = form.allDay
       ? parseLocalDate(form.start)
       : new Date(form.start);
-    let endDate = form.allDay ? parseLocalDate(form.end) : new Date(form.end);
-    if (Number.isNaN(endDate.getTime()) || endDate < startDate) {
-      endDate = new Date(startDate);
-      if (!form.allDay) endDate.setHours(endDate.getHours() + 1);
-    }
+    const endDate = form.allDay ? parseLocalDate(form.end) : new Date(form.end);
+    if (!Number.isFinite(startDate.getTime()) || !Number.isFinite(endDate.getTime())) { setSaveError("Enter a valid start and end date."); return; }
+    if (endDate < startDate || (!form.allDay && endDate <= startDate)) { setSaveError("End time must be after the start time."); return; }
 
     const payload = {
       title: form.title.trim(),
@@ -312,10 +341,12 @@ export default function TaskCalendar() {
       allDay: form.allDay,
       startAt: startDate.toISOString(),
       endAt: endDate.toISOString(),
-      status: "Open" as const,
+      status: editingId ? tasks.find((task) => task.id === editingId)?.status ?? "Open" : "Open" as const,
+      ...(!editingId ? { relatedLeadId: query.params.get("leadId") ?? query.params.get("relatedLeadId"), relatedJobId: query.params.get("jobId") ?? query.params.get("relatedJobId") } : {}),
     };
 
     try {
+      setSaving(true); setSaveError("");
       if (editingId) {
         await updateTask(editingId, payload);
       } else {
@@ -323,25 +354,25 @@ export default function TaskCalendar() {
       }
       setIsFormOpen(false);
       setEditingId(null);
-    } catch {
-      toast({
-        title: "Could not save task",
-        description: "Please try again.",
-        variant: "destructive",
-      });
-    }
+      query.update({ create: null });
+      toast({ title: editingId ? "Task updated" : "Task created" });
+    } catch (error) { setSaveError(error instanceof Error ? error.message : "Could not save this task. Your changes are still here."); }
+    finally { setSaving(false); }
   };
 
   const toggleComplete = async (task: Task) => {
-    await updateTask(task.id, {
+    if (task.bookingId) { openEdit(task); return; }
+    try { await updateTask(task.id, {
       status: task.status === "Done" ? "Open" : "Done",
-    });
+    }); toast({ title: task.status === "Done" ? "Task reopened" : "Task completed" }); }
+    catch (error) { toast({ title: "Task was not updated", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" }); }
   };
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
-    await deleteTask(deleteTarget.id);
-    setDeleteTarget(null);
+    if (deleteTarget.bookingId) { openEdit(deleteTarget); return; }
+    try { await deleteTask(deleteTarget.id); setDeleteTarget(null); setIsFormOpen(false); toast({ title: "Task deleted" }); }
+    catch (error) { toast({ title: "Task was not deleted", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" }); }
   };
 
   const runSync = async () => {
@@ -367,7 +398,7 @@ export default function TaskCalendar() {
     entry: CalEntry,
     mode: "move" | "resize",
   ) => {
-    if (entry.source !== "task" || entry.allDay) return;
+    if (entry.source !== "task" || entry.allDay || entry.task?.bookingId) return;
     e.preventDefault();
     e.stopPropagation();
     dragState.current = {
@@ -407,7 +438,7 @@ export default function TaskCalendar() {
     if (deltaMin === 0) return;
 
     const task = tasks.find((t) => t.id === drag.id);
-    if (!task) return;
+    if (!task || task.bookingId) return;
 
     let newStart = new Date(drag.origStart);
     let newEnd = new Date(drag.origEnd);
@@ -419,10 +450,11 @@ export default function TaskCalendar() {
       if (newEnd <= newStart)
         newEnd = new Date(newStart.getTime() + 15 * 60000);
     }
-    await updateTask(task.id, {
+    try { await updateTask(task.id, {
       startAt: newStart.toISOString(),
       endAt: newEnd.toISOString(),
-    });
+    }); toast({ title: "Task rescheduled" }); }
+    catch (error) { const element = document.getElementById(`task-block-${task.id}`); if (element) { element.style.top = `${minutesFromDayStart(drag.origStart) / 60 * HOUR_PX}px`; element.style.height = `${Math.max(15, (drag.origEnd.getTime() - drag.origStart.getTime()) / 3600000 * HOUR_PX)}px`; } toast({ title: "Task was not rescheduled", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" }); }
   };
 
   function minutesFromDayStart(d: Date): number {
@@ -432,8 +464,7 @@ export default function TaskCalendar() {
   // ---- Renderers ----
   const EntryChip = ({ entry }: { entry: CalEntry }) => (
     <button
-      onClick={() => entry.task && openEdit(entry.task)}
-      disabled={entry.source !== "task"}
+      onClick={() => entry.task ? openEdit(entry.task) : entry.leadId && navigate(`/leads/${entry.leadId}`)}
       className={cn(
         "w-full text-left rounded px-1.5 py-0.5 text-[11px] leading-tight transition-opacity",
         entry.source === "task" ? "hover:opacity-80" : "cursor-default",
@@ -503,7 +534,8 @@ export default function TaskCalendar() {
                     s.setHours(9, 0, 0, 0);
                     openCreate(s);
                   }}
-                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground"
+                  aria-label={`Add task on ${toDateInput(day)}`}
+                  className="flex h-7 w-7 items-center justify-center text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <Plus className="w-3.5 h-3.5" />
                 </button>
@@ -641,6 +673,10 @@ export default function TaskCalendar() {
                     <div
                       key={entry.id}
                       id={`task-block-${entry.id}`}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${entry.title}, ${entry.start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`}
+                      onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); if (entry.task) openEdit(entry.task); } }}
                       className={cn(
                         "absolute left-0.5 right-0.5 rounded px-1.5 py-0.5 text-[11px] overflow-hidden select-none",
                         entry.source === "task"
@@ -698,6 +734,13 @@ export default function TaskCalendar() {
 
   const renderDay = () => renderTimeGrid([cursor]);
 
+  const renderAgenda = () => {
+    const first = view === "month" ? new Date(cursor.getFullYear(), cursor.getMonth(), 1) : view === "week" ? startOfWeek(cursor) : cursor;
+    const last = view === "month" ? new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1) : addDays(first, view === "day" ? 1 : 7);
+    const agenda = entries.filter((entry) => entry.start >= first && entry.start < last).sort((a, b) => a.start.getTime() - b.start.getTime());
+    return <div className="overflow-hidden rounded-lg border bg-white">{agenda.length === 0 ? <div className="p-8 text-center"><CalendarCheck className="mx-auto mb-3 h-6 w-6 text-muted-foreground" /><p className="font-medium">No tasks match this view</p><p className="mt-1 text-sm text-muted-foreground">Change the date or filters, or add a task.</p><Button variant="outline" className="mt-4" onClick={() => openCreate(cursor)}>Add task</Button></div> : agenda.map((entry, index) => <div key={entry.id}>{(index === 0 || !sameDay(entry.start, agenda[index - 1].start)) && <h3 className="border-y bg-muted/40 px-4 py-2 text-xs font-semibold first:border-t-0">{entry.start.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}</h3>}<button type="button" onClick={() => entry.task ? openEdit(entry.task) : entry.leadId && navigate(`/leads/${entry.leadId}`)} className="flex w-full gap-3 px-4 py-4 text-left hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"><span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ background: entry.color }} /><span className="min-w-0 flex-1"><span className={cn("block text-sm font-medium", entry.done && "line-through text-muted-foreground")}>{entry.title}</span><span className="mt-1 block text-xs text-muted-foreground">{entry.allDay ? "All day" : `${entry.start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}–${entry.end.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`} · {entry.assigneeName ?? (entry.assigneeId ? "Assigned" : "Unassigned")}</span><span className="mt-1 block text-xs text-muted-foreground">{entry.task?.bookingId ? "Installation booking · open schedule to edit" : entry.source === "lead" ? "Lead task · open lead to edit" : entry.task?.status ?? "Open"}</span></span></button></div>)}</div>;
+  };
+
   const connected = google.status?.connected ?? false;
   const lastSynced = google.status?.lastSyncedAt;
 
@@ -706,20 +749,21 @@ export default function TaskCalendar() {
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <CalendarCheck className="w-7 h-7 text-primary" /> Task Calendar
+            Tasks &amp; follow-ups
           </h1>
           <p className="text-muted-foreground mt-1">
             Internal team tasks and lead follow-ups, color-coded by assignee.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="inline-flex rounded-md border bg-background p-0.5">
-            {(["month", "week", "day"] as ViewMode[]).map((v) => (
+            {(["agenda", "month", "week", "day"] as ViewMode[]).map((v) => (
               <button
                 key={v}
+                aria-pressed={view === v}
                 onClick={() => setView(v)}
                 className={cn(
-                  "px-3 py-1.5 text-sm font-medium rounded capitalize transition-colors",
+                  "min-h-10 px-3 py-2 text-sm font-medium rounded capitalize transition-colors",
                   view === v
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground",
@@ -736,7 +780,7 @@ export default function TaskCalendar() {
       </div>
 
       {/* Google Calendar banner */}
-      <Card>
+      {google.allowed && <Card>
         <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 text-sm">
             {connected ? (
@@ -746,7 +790,7 @@ export default function TaskCalendar() {
             )}
             <div>
               <div className="font-medium">
-                {connected
+                {google.error ? "Google Calendar status unavailable" : google.isLoading ? "Checking Google Calendar…" : connected
                   ? "Google Calendar connected"
                   : "Google Calendar not connected"}
               </div>
@@ -771,15 +815,16 @@ export default function TaskCalendar() {
             {google.isSyncing ? "Syncing…" : "Sync now"}
           </Button>
         </CardContent>
-      </Card>
+      </Card>}
+      {user?.role === "operations" && <p className="text-xs text-muted-foreground">Google Calendar connection and syncing are managed by the workspace owner.</p>}
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => shift(-1)}>
+          <Button variant="outline" size="icon" aria-label="Previous period" onClick={() => shift(-1)}>
             <ChevronLeft className="w-4 h-4" />
           </Button>
-          <Button variant="outline" size="icon" onClick={() => shift(1)}>
+          <Button variant="outline" size="icon" aria-label="Next period" onClick={() => shift(1)}>
             <ChevronRight className="w-4 h-4" />
           </Button>
           <Button variant="outline" onClick={goToday}>
@@ -809,26 +854,25 @@ export default function TaskCalendar() {
         </div>
       </div>
 
-      {view === "month" && renderMonth()}
-      {view === "week" && renderWeek()}
-      {view === "day" && renderDay()}
+      <div className="flex flex-wrap gap-3 rounded-lg border bg-white p-4"><Input type="date" aria-label="Calendar date" value={toDateInput(cursor)} onChange={(event) => setCursorValue(event.target.value)} className="w-44" /><Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger aria-label="Filter tasks by status" className="w-44"><SelectValue /></SelectTrigger><SelectContent>{["All", "Open", "Done", "Cancelled"].map((status) => <SelectItem key={status} value={status}>{status === "All" ? "All statuses" : status}</SelectItem>)}</SelectContent></Select><Select value={assigneeFilter} onValueChange={setAssigneeFilter}><SelectTrigger aria-label="Filter tasks by assignee" className="w-48"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="All">All assignees</SelectItem><SelectItem value="none">Unassigned</SelectItem>{salespeople.map((person) => <SelectItem key={person.id} value={person.id}>{person.name}</SelectItem>)}</SelectContent></Select>{(statusFilter !== "All" || assigneeFilter !== "All") && <Button variant="ghost" onClick={() => query.update({ status: null, assignee: null })}>Clear filters</Button>}</div>
+      {taskQuery.isLoading ? <p role="status" className="rounded-lg border bg-white p-6 text-sm">Loading tasks…</p> : taskQuery.error ? <div role="alert" className="rounded-lg border bg-white p-6"><p className="text-sm">Tasks could not load. Your records have not changed.</p><Button variant="outline" className="mt-3" onClick={() => void taskQuery.refetch()}>Retry</Button></div> : <><div className={view === "agenda" ? "" : "md:hidden"}>{renderAgenda()}</div>{view !== "agenda" && <div className="hidden md:block">{view === "month" && renderMonth()}{view === "week" && renderWeek()}{view === "day" && renderDay()}</div>}</>}
 
       <p className="text-xs text-muted-foreground">
-        Double-click an empty slot to add a task. Drag a task to reschedule, or
-        drag its bottom edge to resize. 🏷 entries are lead follow-ups (managed
-        on the lead).
+        Open a task to edit its dates. In desktop week/day views, drag a task to reschedule or resize it. Lead tasks open the lead; installation bookings open their schedule record.
       </p>
 
       {/* Create / edit dialog */}
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+      <Dialog open={isFormOpen} onOpenChange={closeForm}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editingId ? "Edit Task" : "New Task"}</DialogTitle>
+            <DialogDescription>Set the owner and time for this task or appointment. Dates use your device timezone.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {!editingId && relatedLabel && <p className="text-sm text-muted-foreground">Linked to {relatedLabel}.</p>}
             <div className="space-y-2">
-              <Label>Title</Label>
-              <Input
+              <Label htmlFor="task-field-1">Title</Label>
+              <Input id="task-field-1"
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 placeholder="e.g. Call back the Thompson lead"
@@ -837,8 +881,8 @@ export default function TaskCalendar() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea
+              <Label htmlFor="task-field-2">Description</Label>
+              <Textarea id="task-field-2"
                 value={form.description}
                 onChange={(e) =>
                   setForm({ ...form, description: e.target.value })
@@ -853,7 +897,7 @@ export default function TaskCalendar() {
                 value={form.assigneeId}
                 onValueChange={(v) => setForm({ ...form, assigneeId: v })}
               >
-                <SelectTrigger>
+                <SelectTrigger aria-label="Assignee">
                   <SelectValue placeholder="Unassigned" />
                 </SelectTrigger>
                 <SelectContent>
@@ -877,8 +921,9 @@ export default function TaskCalendar() {
               </Select>
             </div>
             <div className="flex items-center justify-between rounded-md border p-3">
-              <Label>All-day</Label>
+              <Label htmlFor="task-all-day">All-day</Label>
               <Switch
+                id="task-all-day"
                 checked={form.allDay}
                 onCheckedChange={(v) => {
                   if (v) {
@@ -899,10 +944,10 @@ export default function TaskCalendar() {
                 }}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Start</Label>
-                <Input
+                <Label htmlFor="task-field-3">Start</Label>
+                <Input id="task-field-3"
                   type={form.allDay ? "date" : "datetime-local"}
                   value={form.start}
                   onChange={(e) =>
@@ -912,8 +957,8 @@ export default function TaskCalendar() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>End</Label>
-                <Input
+                <Label htmlFor="task-field-4">End</Label>
+                <Input id="task-field-4"
                   type={form.allDay ? "date" : "datetime-local"}
                   value={form.end}
                   onChange={(e) => setForm({ ...form, end: e.target.value })}
@@ -921,6 +966,7 @@ export default function TaskCalendar() {
                 />
               </div>
             </div>
+            {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
             <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
               <div className="flex gap-2">
                 {editingId && (
@@ -928,6 +974,7 @@ export default function TaskCalendar() {
                     <Button
                       type="button"
                       variant="outline"
+                      disabled={saving}
                       onClick={() => {
                         const t = tasks.find((x) => x.id === editingId);
                         if (t) toggleComplete(t);
@@ -943,6 +990,8 @@ export default function TaskCalendar() {
                       type="button"
                       variant="ghost"
                       className="text-destructive hover:text-destructive"
+                      aria-label="Delete task"
+                      disabled={saving}
                       onClick={() => {
                         const t = tasks.find((x) => x.id === editingId);
                         if (t) setDeleteTarget(t);
@@ -954,9 +1003,7 @@ export default function TaskCalendar() {
                   </>
                 )}
               </div>
-              <Button type="submit">
-                {editingId ? "Save Changes" : "Add Task"}
-              </Button>
+              <div className="flex gap-2"><Button type="button" variant="outline" disabled={saving} onClick={() => closeForm(false)}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? "Saving…" : editingId ? "Save Changes" : "Add Task"}</Button></div>
             </DialogFooter>
           </form>
         </DialogContent>

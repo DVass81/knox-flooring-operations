@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, or } from "drizzle-orm";
+import { eq, or, and, inArray, sql } from "drizzle-orm";
 import {
   db,
   jobsTable,
@@ -18,6 +18,7 @@ import {
   AcceptPublicQuoteBody,
   AcceptPublicQuoteResponse,
   DeclinePublicQuoteParams,
+  DeclinePublicQuoteBody,
   DeclinePublicQuoteResponse,
 } from "@workspace/api-zod";
 import { stripNulls } from "../lib/strip-nulls";
@@ -28,6 +29,7 @@ const router: IRouter = Router();
 async function publicQuotePayload(proposal: ProposalRow) {
   const [settings] = await db.select().from(settingsTable);
   return stripNulls({
+    revision: proposal.revision,
     customerName: proposal.customerName,
     projectLocation: proposal.projectLocation,
     flooringType: proposal.flooringType,
@@ -35,6 +37,18 @@ async function publicQuotePayload(proposal: ProposalRow) {
     totalSqFt: proposal.totalSqFt,
     scopeOfWork: proposal.scopeOfWork,
     estimatedPrice: proposal.estimatedPrice,
+    lineItems: proposal.lineItems.map(
+      ({ id, name, category, sku, unit, quantity, unitPrice, lineTotal }) => ({
+        id,
+        name,
+        category,
+        sku,
+        unit,
+        quantity,
+        unitPrice,
+        lineTotal,
+      }),
+    ),
     expectedTimeline: proposal.expectedTimeline,
     materialAssumptions: proposal.materialAssumptions,
     exclusions: proposal.exclusions,
@@ -49,6 +63,9 @@ async function publicQuotePayload(proposal: ProposalRow) {
     signature: proposal.signature,
     company: {
       companyName: settings?.companyName ?? "",
+      companyLogoUrl: settings?.companyLogoUrl ?? null,
+      customerAccentColor: settings?.customerAccentColor ?? "#7B00F5",
+      address: settings?.address ?? "",
       phone: settings?.phone ?? "",
       email: settings?.email ?? "",
       website: settings?.website ?? "",
@@ -101,16 +118,16 @@ router.get("/public/jobs/:token", async (req, res): Promise<void> => {
     );
   // Prefer a converted quote, then most recently created.
   const proposal =
-    [...linkedProposals]
-      .sort((a, b) => {
-        const aConv = a.convertedJobId === job.id ? 1 : 0;
-        const bConv = b.convertedJobId === job.id ? 1 : 0;
-        if (aConv !== bConv) return bConv - aConv;
-        return (b.createdAt || "").localeCompare(a.createdAt || "");
-      })[0] ?? null;
+    [...linkedProposals].sort((a, b) => {
+      const aConv = a.convertedJobId === job.id ? 1 : 0;
+      const bConv = b.convertedJobId === job.id ? 1 : 0;
+      if (aConv !== bConv) return bConv - aConv;
+      return (b.createdAt || "").localeCompare(a.createdAt || "");
+    })[0] ?? null;
 
   const quote = proposal
     ? stripNulls({
+        revision: proposal.revision,
         shareToken: proposal.shareToken,
         customerName: proposal.customerName,
         projectLocation: proposal.projectLocation,
@@ -119,6 +136,27 @@ router.get("/public/jobs/:token", async (req, res): Promise<void> => {
         totalSqFt: proposal.totalSqFt,
         scopeOfWork: proposal.scopeOfWork,
         estimatedPrice: proposal.estimatedPrice,
+        lineItems: proposal.lineItems.map(
+          ({
+            id,
+            name,
+            category,
+            sku,
+            unit,
+            quantity,
+            unitPrice,
+            lineTotal,
+          }) => ({
+            id,
+            name,
+            category,
+            sku,
+            unit,
+            quantity,
+            unitPrice,
+            lineTotal,
+          }),
+        ),
         expectedTimeline: proposal.expectedTimeline,
         materialAssumptions: proposal.materialAssumptions,
         exclusions: proposal.exclusions,
@@ -193,6 +231,9 @@ router.get("/public/jobs/:token", async (req, res): Promise<void> => {
     balance: { invoicedTotal, paidTotal, outstanding },
     company: {
       companyName: settings?.companyName ?? "",
+      companyLogoUrl: settings?.companyLogoUrl ?? null,
+      customerAccentColor: settings?.customerAccentColor ?? "#7B00F5",
+      address: settings?.address ?? "",
       phone: settings?.phone ?? "",
       email: settings?.email ?? "",
       website: settings?.website ?? "",
@@ -220,10 +261,21 @@ router.get("/public/quotes/:token", async (req, res): Promise<void> => {
     const now = new Date().toISOString();
     const [updated] = await db
       .update(proposalsTable)
-      .set({ status: "Viewed", viewedAt: proposal.viewedAt ?? now })
-      .where(eq(proposalsTable.id, proposal.id))
+      .set({
+        status: "Viewed",
+        viewedAt: proposal.viewedAt ?? now,
+        revision: sql`${proposalsTable.revision} + 1`,
+      })
+      .where(
+        and(
+          eq(proposalsTable.id, proposal.id),
+          eq(proposalsTable.status, "Sent"),
+          eq(proposalsTable.revision, proposal.revision),
+        ),
+      )
       .returning();
-    if (updated) proposal = updated;
+    proposal =
+      updated ?? (await findQuoteByToken(params.data.token)) ?? proposal;
   }
 
   res.json(GetPublicQuoteResponse.parse(await publicQuotePayload(proposal)));
@@ -238,7 +290,17 @@ router.post("/public/quotes/:token/accept", async (req, res): Promise<void> => {
 
   const parsed = AcceptPublicQuoteBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res
+      .status(400)
+      .json({
+        error:
+          "Enter your signature and refresh the current quote before responding.",
+      });
+    return;
+  }
+
+  if (!parsed.data.signature.trim()) {
+    res.status(400).json({ error: "A signature is required." });
     return;
   }
 
@@ -248,10 +310,16 @@ router.post("/public/quotes/:token/accept", async (req, res): Promise<void> => {
     return;
   }
 
-  if (!["Sent", "Viewed"].includes(proposal.status)) {
+  if (
+    proposal.revision !== parsed.data.revision ||
+    !["Sent", "Viewed"].includes(proposal.status)
+  ) {
     res
-      .status(400)
-      .json({ error: "This quote can no longer be accepted." });
+      .status(409)
+      .json({
+        error:
+          "This quote changed. Refresh and review its current terms before responding.",
+      });
     return;
   }
 
@@ -262,41 +330,93 @@ router.post("/public/quotes/:token/accept", async (req, res): Promise<void> => {
       status: "Accepted",
       acceptedAt: now,
       signature: parsed.data.signature.trim(),
+      revision: proposal.revision + 1,
     })
-    .where(eq(proposalsTable.id, proposal.id))
+    .where(
+      and(
+        eq(proposalsTable.id, proposal.id),
+        inArray(proposalsTable.status, ["Sent", "Viewed"]),
+        eq(proposalsTable.revision, proposal.revision),
+      ),
+    )
     .returning();
 
+  if (!updated) {
+    res
+      .status(409)
+      .json({
+        error: "This quote changed. Refresh and review it before accepting.",
+      });
+    return;
+  }
   res.json(AcceptPublicQuoteResponse.parse(await publicQuotePayload(updated)));
 });
 
-router.post("/public/quotes/:token/decline", async (req, res): Promise<void> => {
-  const params = DeclinePublicQuoteParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
+router.post(
+  "/public/quotes/:token/decline",
+  async (req, res): Promise<void> => {
+    const params = DeclinePublicQuoteParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
 
-  const proposal = await findQuoteByToken(params.data.token);
-  if (!proposal) {
-    res.status(404).json({ error: "Quote not found" });
-    return;
-  }
+    const parsed = DeclinePublicQuoteBody.safeParse(req.body);
+    if (!parsed.success) {
+      res
+        .status(400)
+        .json({
+          error: "Refresh and review the current quote before responding.",
+        });
+      return;
+    }
 
-  if (!["Sent", "Viewed"].includes(proposal.status)) {
-    res
-      .status(400)
-      .json({ error: "This quote can no longer be declined." });
-    return;
-  }
+    const proposal = await findQuoteByToken(params.data.token);
+    if (!proposal) {
+      res.status(404).json({ error: "Quote not found" });
+      return;
+    }
 
-  const now = new Date().toISOString();
-  const [updated] = await db
-    .update(proposalsTable)
-    .set({ status: "Declined", declinedAt: now })
-    .where(eq(proposalsTable.id, proposal.id))
-    .returning();
+    if (
+      proposal.revision !== parsed.data.revision ||
+      !["Sent", "Viewed"].includes(proposal.status)
+    ) {
+      res
+        .status(409)
+        .json({
+          error:
+            "This quote changed. Refresh and review its current terms before responding.",
+        });
+      return;
+    }
 
-  res.json(DeclinePublicQuoteResponse.parse(await publicQuotePayload(updated)));
-});
+    const now = new Date().toISOString();
+    const [updated] = await db
+      .update(proposalsTable)
+      .set({
+        status: "Declined",
+        declinedAt: now,
+        revision: proposal.revision + 1,
+      })
+      .where(
+        and(
+          eq(proposalsTable.id, proposal.id),
+          inArray(proposalsTable.status, ["Sent", "Viewed"]),
+          eq(proposalsTable.revision, parsed.data.revision),
+        ),
+      )
+      .returning();
+
+    if (!updated) {
+      res
+        .status(409)
+        .json({ error: "This quote changed. Refresh before responding." });
+      return;
+    }
+    res.json(
+      DeclinePublicQuoteResponse.parse(await publicQuotePayload(updated)),
+    );
+  },
+);
 
 export default router;

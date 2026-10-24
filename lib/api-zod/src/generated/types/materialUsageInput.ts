@@ -8,7 +8,9 @@
 
 export interface MaterialUsageInput {
   material: string;
+  /** @minimum 0.000001 */
   quantity: number;
+  /** @minimum 0 */
   cost: number;
   vendorName?: string;
   vendorExternalId?: string;
@@ -16,4 +18,6 @@ export interface MaterialUsageInput {
   transactionDate?: string;
   accountingStatus?: string;
   notes?: string;
+  productId?: string | null;
+  callbackId?: string | null;
 }

@@ -7,11 +7,14 @@
  */
 import type { DepositType } from './depositType';
 import type { FlooringType } from './flooringType';
+import type { ProposalLineItem } from './proposalLineItem';
 import type { ProposalStatus } from './proposalStatus';
 import type { PublicCompany } from './publicCompany';
 import type { Room } from './room';
 
 export interface PublicQuote {
+  /** @minimum 1 */
+  revision: number;
   customerName: string;
   projectLocation: string;
   flooringType: FlooringType;
@@ -32,4 +35,5 @@ export interface PublicQuote {
   declinedAt?: string;
   signature: string;
   company: PublicCompany;
+  lineItems?: ProposalLineItem[];
 }

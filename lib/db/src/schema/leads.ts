@@ -1,4 +1,5 @@
-import { pgTable, text, real, boolean, jsonb } from "drizzle-orm/pg-core";
+import { jobsTable } from "./jobs";
+import { index, pgTable, text, real, boolean, jsonb, integer } from "drizzle-orm/pg-core";
 
 export interface LeadActivity {
   id: string;
@@ -89,6 +90,9 @@ export interface LeadMeasurement {
 
 export const leadsTable = pgTable("leads", {
   id: text("id").primaryKey(),
+  customerId: text("customer_id"),
+  siteId: text("site_id"),
+  revision: integer("revision").notNull().default(1),
   customerName: text("customer_name").notNull(),
   phone: text("phone").notNull().default(""),
   email: text("email").notNull().default(""),
@@ -131,10 +135,10 @@ export const leadsTable = pgTable("leads", {
   measurements: jsonb("measurements").$type<LeadMeasurement[]>().notNull().default([]),
   notes: text("notes").notNull().default(""),
   lostReason: text("lost_reason"),
-  convertedJobId: text("converted_job_id"),
+  convertedJobId: text("converted_job_id").references(() => jobsTable.id, { onDelete: "restrict" }),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
-});
+}, (table) => [index("leads_converted_job_id_idx").on(table.convertedJobId)]);
 
 export type LeadRow = typeof leadsTable.$inferSelect;
 export type LeadInsert = typeof leadsTable.$inferInsert;

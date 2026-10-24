@@ -30,6 +30,7 @@ import type {
 
 interface LeadTabsProps {
   lead: Lead;
+  section?: string;
 }
 
 const TAB_TRIGGERS = [
@@ -46,25 +47,34 @@ const TAB_TRIGGERS = [
   "Quotes",
 ];
 
-export function LeadTabs({ lead }: LeadTabsProps) {
+const GROUP_TABS: Record<string, string[]> = {
+  overview: ["Contacts", "Addresses"],
+  activity: ["Notes", "Interactions", "Emails", "SMS"],
+  project: ["Samples", "Tasks", "Measurements"],
+  proposals: ["Quotes"],
+  files: ["Documents"],
+};
+
+export function LeadTabs({ lead, section }: LeadTabsProps) {
   const { updateLead, proposals, jobs } = useStore();
   const { communications, isLoading, sendEmail, sendSms } = useCommunications({
     leadId: lead.id,
   });
   const [emailOpen, setEmailOpen] = useState(false);
   const [smsOpen, setSmsOpen] = useState(false);
+  const tabs = section ? GROUP_TABS[section] ?? GROUP_TABS.overview : TAB_TRIGGERS;
 
   const save = (updates: Partial<Lead>) => updateLead(lead.id, updates);
 
   const ckey = customerKey(lead.customerName);
   const leadProposals = proposals.filter(
-    (p) => customerKey(p.customerName) === ckey,
+    (p) => lead.customerId ? p.customerId === lead.customerId : !p.customerId && customerKey(p.customerName) === ckey,
   );
 
   return (
-    <Tabs defaultValue="Notes" className="w-full">
-      <TabsList className="flex flex-wrap h-auto justify-start">
-        {TAB_TRIGGERS.map((t) => (
+    <Tabs key={section} defaultValue={tabs[0]} className="w-full">
+      <TabsList aria-label="Record details" className={cn("flex h-auto justify-start overflow-x-auto", tabs.length === 1 && "sr-only")}>
+        {tabs.map((t) => (
           <TabsTrigger key={t} value={t}>
             {t}
           </TabsTrigger>
@@ -342,7 +352,7 @@ export function LeadTabs({ lead }: LeadTabsProps) {
               return (
                 <Link
                   key={p.id}
-                  href="/proposals"
+                  href={`/proposals?proposal=${encodeURIComponent(p.id)}`}
                   className="block rounded-md border p-3 hover:border-primary/50 transition-colors"
                 >
                   <div className="flex items-center justify-between gap-3">

@@ -1,0 +1,168 @@
+name: Catalyst Works Linux verification
+
+on:
+  push:
+    branches: [codex/catalyst-works]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: catalyst-linux-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/codex/catalyst-works'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: catalyst_ci
+          POSTGRES_PASSWORD: synthetic-ci-database-password
+          POSTGRES_DB: catalyst_test
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U catalyst_ci -d catalyst_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      # All credentials in this job are disposable fixtures. No repository secrets,
+      # production connection, integration tokens, or deployment permissions are used.
+      TEST_DATABASE_URL: postgres://catalyst_ci:synthetic-ci-database-password@127.0.0.1:5432/catalyst_test
+      BACKGROUND_WORKERS_ENABLED: 'false'
+      DEMO_MODE: 'true'
+      DEMO_ACCESS_ENABLED: 'false'
+      CATALYST_ISOLATED_TEST: 'false'
+      CATALYST_ISOLATED_TEST_BUILD: 'false'
+      OWNER_EMAIL: owner@image.test
+      OWNER_INITIAL_PASSWORD: Synthetic-image-check-password
+      BASE_PATH: /
+      PORT: '8080'
+    steps:
+      - name: Check out the reviewed branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Node 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Install the locked workspace
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.19.0 --activate
+          pnpm install --frozen-lockfile --config.strict-dep-builds=false
+          pnpm rebuild esbuild
+      - name: Verify generated API contracts
+        run: |
+          pnpm --filter @workspace/api-spec codegen
+          git diff --exit-code -- lib/api-client-react/src/generated lib/api-zod/src/generated
+      - name: Check application and shared-library types
+        run: |
+          pnpm typecheck:libs
+          pnpm --filter @workspace/domain typecheck
+          pnpm --filter @workspace/api-server typecheck
+          pnpm --filter @workspace/knox-flooring typecheck
+      - name: Run migration, API, domain, and frontend tests
+        run: |
+          node --test scripts/maintenance.test.mjs
+          pnpm --filter @workspace/db test
+          pnpm --filter @workspace/api-server test
+          pnpm --filter @workspace/knox-flooring test
+      - name: Build production bundles with native Argon2
+        run: |
+          pnpm --filter @workspace/api-server build
+          pnpm --filter @workspace/knox-flooring build
+      - name: Make PostgreSQL 17 backup clients available
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/pg17-bin"
+          for tool in pg_dump pg_restore; do
+            cat > "$RUNNER_TEMP/pg17-bin/$tool" <<'WRAPPER'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          tool="$(basename "$0")"
+          exec docker run --rm --network host --user "$(id -u):$(id -g)" \
+            -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD -e PGDATABASE -e PGSSLMODE \
+            -v /tmp:/tmp postgres:17 "$tool" "$@"
+          WRAPPER
+            chmod +x "$RUNNER_TEMP/pg17-bin/$tool"
+          done
+          printf 'PG_BIN=%s/pg17-bin\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          "$RUNNER_TEMP/pg17-bin/pg_dump" --version
+      - name: Verify real PostgreSQL transactions, auth, concurrency, and backup restore
+        env:
+          TMPDIR: /tmp
+        run: pnpm --filter @workspace/db test:release
+      - name: Build the release container
+        run: docker build --tag catalyst-works-ci:release .
+      - name: Verify the release container against the empty synthetic database
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+          CI_IMAGE_MODE: release
+          CI_IMAGE_BASE_URL: http://127.0.0.1:18080
+        run: |
+          docker run --detach --name catalyst-ci-release --network host \
+            --env DATABASE_URL --env OWNER_EMAIL --env OWNER_INITIAL_PASSWORD \
+            --env BACKGROUND_WORKERS_ENABLED=false --env DEMO_MODE=true --env DEMO_ACCESS_ENABLED=false \
+            --env HOST=127.0.0.1 --env PORT=18080 --env APP_BASE_URL=http://127.0.0.1:18080 \
+            catalyst-works-ci:release
+          node scripts/ci-image-smoke.mjs
+          docker stop catalyst-ci-release
+      - name: Package the previous UI with the compatible recovery backend
+        run: |
+          node scripts/build-recovery.mjs > "$RUNNER_TEMP/recovery.json"
+          node --input-type=module <<'NODE'
+          import { readFileSync, appendFileSync } from 'node:fs';
+          import path from 'node:path';
+          const result = JSON.parse(readFileSync(path.join(process.env.RUNNER_TEMP, 'recovery.json'), 'utf8'));
+          appendFileSync(process.env.GITHUB_ENV, `RECOVERY_SOURCE=${path.dirname(result.manifest)}\n`);
+          appendFileSync(process.env.GITHUB_ENV, `RECOVERY_ARCHIVE=${result.archive}\n`);
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, `Recovery source archive SHA-256: \`${result.sha256}\`\n\nPinned prior UI: \`${result.pinnedUiCommit}\`\n\nSchema: \`${result.schemaVersion}\`\n\n`);
+          NODE
+      - name: Build the compatible recovery container
+        run: docker build --tag catalyst-works-ci:recovery "$RECOVERY_SOURCE"
+      - name: Verify recovery authentication, reads, and enforced write protection
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+          CI_IMAGE_MODE: recovery
+          CI_IMAGE_BASE_URL: http://127.0.0.1:18081
+        run: |
+          # Deliberately conflicting flags must be overridden by the recovery entrypoint.
+          docker run --detach --name catalyst-ci-recovery --network host \
+            --env DATABASE_URL --env OWNER_EMAIL --env OWNER_INITIAL_PASSWORD \
+            --env READ_ONLY_RECOVERY=false --env BACKGROUND_WORKERS_ENABLED=true \
+            --env DEMO_MODE=true --env DEMO_ACCESS_ENABLED=true \
+            --env HOST=127.0.0.1 --env PORT=18081 --env APP_BASE_URL=http://127.0.0.1:18081 \
+            catalyst-works-ci:recovery
+          node scripts/ci-image-smoke.mjs
+          docker image inspect --format 'Release image: {{.Id}}' catalyst-works-ci:release >> "$GITHUB_STEP_SUMMARY"
+          docker image inspect --format 'Recovery image: {{.Id}}' catalyst-works-ci:recovery >> "$GITHUB_STEP_SUMMARY"
+      - name: Retain the verified recovery source package and checksums
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: catalyst-recovery-${{ github.sha }}
+          path: |
+            ${{ env.RECOVERY_ARCHIVE }}
+            ${{ env.RECOVERY_ARCHIVE }}.sha256
+            ${{ env.RECOVERY_SOURCE }}/recovery-manifest.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 7
+          compression-level: 0
+      - name: Show container diagnostics on failure
+        if: failure()
+        run: |
+          docker logs catalyst-ci-release 2>&1 || true
+          docker logs catalyst-ci-recovery 2>&1 || true
+      - name: Remove disposable application containers
+        if: always()
+        run: |
+          docker rm --force catalyst-ci-release catalyst-ci-recovery 2>/dev/null || true

@@ -44,8 +44,9 @@ import {
 import { cn } from "@/lib/utils";
 import { money, formatDate } from "@/lib/portal";
 import { useToast } from "@/hooks/use-toast";
+import { useUnsavedForm } from "@/hooks/use-unsaved-changes";
 import { useMeasurements, useMeasureSquareStatus } from "@/hooks/use-store";
-import { useListProducts } from "@workspace/api-client-react";
+import { useListProducts, getListProductsQueryKey } from "@workspace/api-client-react";
 import { ProductCombobox } from "./product-combobox";
 import { SelectOrOther } from "@/components/ui/select-or-other";
 import { ROOM_NAMES } from "@/lib/options";
@@ -175,6 +176,9 @@ export function MeasurementsPanel({ scope }: MeasurementsPanelProps) {
   const { toast } = useToast();
   const {
     measurements,
+    allowed,
+    error: measurementsError,
+    refetch,
     isLoading,
     addMeasurement,
     updateMeasurement,
@@ -182,8 +186,9 @@ export function MeasurementsPanel({ scope }: MeasurementsPanelProps) {
     sync,
     isSyncing,
   } = useMeasurements(scope);
-  const { status } = useMeasureSquareStatus();
-  const productsQuery = useListProducts();
+  const statusQuery = useMeasureSquareStatus();
+  const { status } = statusQuery;
+  const productsQuery = useListProducts({ query: { queryKey: getListProductsQueryKey(), enabled: allowed } });
   const products = (productsQuery.data ?? []) as Product[];
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -191,10 +196,14 @@ export function MeasurementsPanel({ scope }: MeasurementsPanelProps) {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Measurement | null>(null);
+  const unsaved = useUnsavedForm(dialogOpen, form);
+  const closeForm = (next: boolean) => { if (!saving && (next || unsaved.confirmDiscard())) setDialogOpen(next); };
+  if (!allowed) return <p className="text-sm text-muted-foreground">Measurement records are available to sales and operations.</p>;
 
   const openCreate = () => {
     setEditing(null);
     setForm(EMPTY_FORM);
+    unsaved.reset(EMPTY_FORM);
     setDialogOpen(true);
   };
 
@@ -209,7 +218,7 @@ export function MeasurementsPanel({ scope }: MeasurementsPanelProps) {
     }));
     const computed = sumRoomSqft(rooms);
     const autoSqft = rooms.length > 0 && computed === roundSqft(m.totalSqft);
-    setForm({
+    const initial = {
       label: m.label,
       totalSqft: m.totalSqft ? String(m.totalSqft) : "",
       total: m.total ? String(m.total) : "",
@@ -225,7 +234,8 @@ export function MeasurementsPanel({ scope }: MeasurementsPanelProps) {
         sqft: p.sqft != null ? String(p.sqft) : "",
       })),
       autoSqft,
-    });
+    };
+    setForm(initial); unsaved.reset(initial);
     setDialogOpen(true);
   };
 
@@ -295,6 +305,7 @@ export function MeasurementsPanel({ scope }: MeasurementsPanelProps) {
     }));
 
   const handleSave = async () => {
+    if (saving) return;
     if (!form.label.trim()) {
       toast({ title: "Label is required", variant: "destructive" });
       return;
@@ -422,12 +433,11 @@ export function MeasurementsPanel({ scope }: MeasurementsPanelProps) {
                     : "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400",
                 )}
               >
-                {connected ? "Connected" : "Not connected"}
+                {!statusQuery.allowed ? "Managed by owner" : statusQuery.isLoading ? "Checking…" : statusQuery.error ? "Status unavailable" : connected ? "Connected" : "Not connected"}
               </Badge>
             </div>
             <p className="mt-0.5 max-w-xl text-xs text-muted-foreground">
-              {status?.message ??
-                "Two-way measurement sync with Measure Square."}
+              {!statusQuery.allowed ? "Connection settings are visible to the workspace owner. You can manage measurements here." : statusQuery.error ? "Connection status could not load." : status?.message ?? "Two-way measurement sync with Measure Square."}
             </p>
             {lastSyncedAt && (
               <p className="mt-0.5 text-xs text-muted-foreground">
@@ -436,7 +446,7 @@ export function MeasurementsPanel({ scope }: MeasurementsPanelProps) {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -456,7 +466,7 @@ export function MeasurementsPanel({ scope }: MeasurementsPanelProps) {
       </div>
 
       {/* Measurement list */}
-      {isLoading ? (
+      {measurementsError ? <div role="alert" className="rounded-md border p-4 text-sm">Could not load measurements. <Button variant="outline" className="ml-2" onClick={() => void refetch()}>Retry</Button></div> : isLoading ? (
         <p className="py-6 text-center text-sm text-muted-foreground">
           Loading measurements…
         </p>
@@ -587,7 +597,7 @@ export function MeasurementsPanel({ scope }: MeasurementsPanelProps) {
       )}
 
       {/* Add / edit dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={closeForm}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>
@@ -924,7 +934,7 @@ export function MeasurementsPanel({ scope }: MeasurementsPanelProps) {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+            <Button variant="outline" disabled={saving} onClick={() => closeForm(false)}>
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={saving}>

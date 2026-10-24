@@ -411,13 +411,13 @@ export function DemoCenter() {
     />}
     {!targetRect && !unresolvedTargetMissing && <div className="pointer-events-none fixed inset-0 z-[60] bg-[#07142F]/70" aria-hidden="true" />}
     <aside
-      className={`fixed bottom-3 z-[70] max-h-[45vh] w-[min(430px,calc(100vw-1.5rem))] overflow-y-auto rounded-2xl border border-violet-300/40 bg-card shadow-2xl sm:max-h-[calc(100vh-1.5rem)] ${panelOnLeft ? "left-3" : "right-3"}`}
+      className={`fixed bottom-3 z-[70] max-h-[45vh] w-[min(430px,calc(100vw-1.5rem))] overflow-y-auto rounded-lg border border-border bg-card shadow-2xl sm:max-h-[calc(100vh-1.5rem)] ${panelOnLeft ? "left-3" : "right-3"}`}
       role="dialog"
       aria-modal="true"
       aria-labelledby="training-step-title"
       aria-describedby="training-step-caption"
     >
-      <div className="border-b bg-gradient-to-r from-violet-600/10 via-sky-500/10 to-transparent p-4">
+      <div className="border-b bg-muted/40 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
@@ -478,8 +478,8 @@ export function DemoCenter() {
     <Dialog open={welcomeOpen} onOpenChange={(next) => { if (!next) void dismissWelcome(false); }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-sky-500 text-white shadow-lg"><BookOpen className="h-6 w-6" /></div>
-          <DialogTitle className="text-2xl">Learn Knox Operations by doing</DialogTitle>
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-white"><BookOpen className="h-6 w-6" /></div>
+          <DialogTitle className="text-2xl">Learn Catalyst Works by doing</DialogTitle>
           <DialogDescription className="text-base leading-6">Interactive missions guide you to the exact controls, explain why each step matters, and verify your progress. Choose warm narration or use captions only.</DialogDescription>
         </DialogHeader>
         <div className="rounded-xl border bg-muted/40 p-3 text-sm text-muted-foreground"><Headphones className="mr-2 inline h-4 w-4 text-primary" />Voice is optional, interruptible, and always paired with visible captions.</div>
@@ -503,7 +503,7 @@ export function DemoCenter() {
           {status?.missions.map((item, index) => {
             const run = latestRun(status.runs, item.key);
             const progress = progressFor(run, item.steps.length);
-            return <article key={item.key} className={`rounded-2xl border p-4 ${index === 0 ? "md:col-span-2 border-violet-300/50 bg-gradient-to-br from-violet-600/[.08] to-sky-500/[.06]" : "bg-card"}`}>
+            return <article key={item.key} className={`rounded-2xl border p-4 ${index === 0 ? "md:col-span-2 border-primary/25 bg-primary/5" : "bg-card"}`}>
               <div className="flex items-center justify-between gap-3"><Badge variant={index === 0 ? "default" : "secondary"}>{item.role}</Badge><span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock3 className="h-3.5 w-3.5" />{item.minutes} min</span></div>
               <h3 className="mt-3 text-base font-semibold">{item.name}</h3><p className="mt-1 text-sm leading-5 text-muted-foreground">{item.summary}</p>
               {run && <div className="mt-3"><div className="mb-1 flex justify-between text-xs text-muted-foreground"><span>{run.status === "completed" ? "Completed" : run.status === "paused" ? `Paused at step ${run.currentStep + 1}` : `${progress}% complete`}</span><span>{item.steps.length} steps</span></div><Progress value={progress} className="h-1.5" /></div>}

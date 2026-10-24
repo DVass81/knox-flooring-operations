@@ -7,6 +7,7 @@
  */
 import type { DepositType } from './depositType';
 import type { FlooringType } from './flooringType';
+import type { ProposalEstimateSnapshot } from './proposalEstimateSnapshot';
 import type { ProposalLineItem } from './proposalLineItem';
 import type { ProposalStatus } from './proposalStatus';
 import type { Room } from './room';
@@ -40,4 +41,9 @@ export interface Proposal {
   convertedJobId?: string | null;
   convertedInvoiceId?: string | null;
   createdAt: string;
+  customerId?: string | null;
+  siteId?: string | null;
+  /** @minimum 1 */
+  revision?: number;
+  estimateSnapshot?: ProposalEstimateSnapshot;
 }

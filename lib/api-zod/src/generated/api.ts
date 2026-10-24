@@ -20,6 +20,9 @@ export const HealthCheckResponse = zod.object({
 /**
  * @summary List all jobs
  */
+
+
+
 export const ListJobsResponseItem = zod.object({
   "id": zod.string(),
   "jobNumber": zod.string(),
@@ -38,11 +41,11 @@ export const ListJobsResponseItem = zod.object({
 })),
   "scopeOfWork": zod.string(),
   "squareFootage": zod.number(),
-  "crewAssigned": zod.enum(['Crew A', 'Crew B', 'Crew C', 'Crew D', 'Unassigned']),
+  "crewAssigned": zod.string(),
   "salespersonId": zod.string().nullish(),
   "estStartDate": zod.string().optional(),
   "estCompletionDate": zod.string().optional(),
-  "materialStatus": zod.enum(['Ordered', 'In Transit', 'Received', 'Delayed', 'Damaged', 'Missing Items']),
+  "materialStatus": zod.enum(['Not Ordered', 'Ordered', 'In Transit', 'Received', 'Delayed', 'Damaged', 'Missing Items']),
   "laborEstimate": zod.number(),
   "estLaborHours": zod.number(),
   "materialEstimate": zod.number(),
@@ -63,7 +66,15 @@ export const ListJobsResponseItem = zod.object({
 })),
   "shareToken": zod.string(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "customerId": zod.string().nullish(),
+  "siteId": zod.string().nullish(),
+  "revision": zod.number().min(1).optional(),
+  "estimateSnapshot": zod.record(zod.string(), zod.unknown()).nullish(),
+  "soldAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "eventDateSource": zod.string().nullish(),
+  "completionChecklist": zod.record(zod.string(), zod.boolean()).optional()
 })
 export const ListJobsResponse = zod.array(ListJobsResponseItem)
 
@@ -87,11 +98,11 @@ export const CreateJobBody = zod.object({
 })),
   "scopeOfWork": zod.string().optional(),
   "squareFootage": zod.number(),
-  "crewAssigned": zod.enum(['Crew A', 'Crew B', 'Crew C', 'Crew D', 'Unassigned']),
+  "crewAssigned": zod.string(),
   "salespersonId": zod.string().nullish(),
   "estStartDate": zod.string().optional(),
   "estCompletionDate": zod.string().optional(),
-  "materialStatus": zod.enum(['Ordered', 'In Transit', 'Received', 'Delayed', 'Damaged', 'Missing Items']),
+  "materialStatus": zod.enum(['Not Ordered', 'Ordered', 'In Transit', 'Received', 'Delayed', 'Damaged', 'Missing Items']),
   "laborEstimate": zod.number(),
   "estLaborHours": zod.number().optional(),
   "materialEstimate": zod.number(),
@@ -105,7 +116,9 @@ export const CreateJobBody = zod.object({
   "notes": zod.string(),
   "priorityLevel": zod.enum(['Low', 'Medium', 'High']),
   "riskLevel": zod.enum(['Low', 'Medium', 'High']),
-  "status": zod.enum(['New Lead', 'Estimate Scheduled', 'Estimate Completed', 'Proposal Sent', 'Approved', 'Material Ordered', 'Material Received', 'Scheduled', 'In Progress', 'Final Walkthrough', 'Completed', 'Invoiced'])
+  "status": zod.enum(['New Lead', 'Estimate Scheduled', 'Estimate Completed', 'Proposal Sent', 'Approved', 'Material Ordered', 'Material Received', 'Scheduled', 'In Progress', 'Final Walkthrough', 'Completed', 'Invoiced']),
+  "customerId": zod.string().nullish(),
+  "siteId": zod.string().nullish()
 })
 
 
@@ -115,6 +128,9 @@ export const CreateJobBody = zod.object({
 export const GetJobParams = zod.object({
   "id": zod.coerce.string()
 })
+
+
+
 
 export const GetJobResponse = zod.object({
   "id": zod.string(),
@@ -134,11 +150,11 @@ export const GetJobResponse = zod.object({
 })),
   "scopeOfWork": zod.string(),
   "squareFootage": zod.number(),
-  "crewAssigned": zod.enum(['Crew A', 'Crew B', 'Crew C', 'Crew D', 'Unassigned']),
+  "crewAssigned": zod.string(),
   "salespersonId": zod.string().nullish(),
   "estStartDate": zod.string().optional(),
   "estCompletionDate": zod.string().optional(),
-  "materialStatus": zod.enum(['Ordered', 'In Transit', 'Received', 'Delayed', 'Damaged', 'Missing Items']),
+  "materialStatus": zod.enum(['Not Ordered', 'Ordered', 'In Transit', 'Received', 'Delayed', 'Damaged', 'Missing Items']),
   "laborEstimate": zod.number(),
   "estLaborHours": zod.number(),
   "materialEstimate": zod.number(),
@@ -159,7 +175,15 @@ export const GetJobResponse = zod.object({
 })),
   "shareToken": zod.string(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "customerId": zod.string().nullish(),
+  "siteId": zod.string().nullish(),
+  "revision": zod.number().min(1).optional(),
+  "estimateSnapshot": zod.record(zod.string(), zod.unknown()).nullish(),
+  "soldAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "eventDateSource": zod.string().nullish(),
+  "completionChecklist": zod.record(zod.string(), zod.boolean()).optional()
 })
 
 
@@ -169,6 +193,9 @@ export const GetJobResponse = zod.object({
 export const UpdateJobParams = zod.object({
   "id": zod.coerce.string()
 })
+
+
+
 
 export const UpdateJobBody = zod.object({
   "customerName": zod.string().optional(),
@@ -186,11 +213,11 @@ export const UpdateJobBody = zod.object({
 })).optional(),
   "scopeOfWork": zod.string().optional(),
   "squareFootage": zod.number().optional(),
-  "crewAssigned": zod.enum(['Crew A', 'Crew B', 'Crew C', 'Crew D', 'Unassigned']).optional(),
+  "crewAssigned": zod.string().optional(),
   "salespersonId": zod.string().nullish(),
   "estStartDate": zod.string().optional(),
   "estCompletionDate": zod.string().optional(),
-  "materialStatus": zod.enum(['Ordered', 'In Transit', 'Received', 'Delayed', 'Damaged', 'Missing Items']).optional(),
+  "materialStatus": zod.enum(['Not Ordered', 'Ordered', 'In Transit', 'Received', 'Delayed', 'Damaged', 'Missing Items']).optional(),
   "laborEstimate": zod.number().optional(),
   "estLaborHours": zod.number().optional(),
   "materialEstimate": zod.number().optional(),
@@ -204,8 +231,15 @@ export const UpdateJobBody = zod.object({
   "notes": zod.string().optional(),
   "priorityLevel": zod.enum(['Low', 'Medium', 'High']).optional(),
   "riskLevel": zod.enum(['Low', 'Medium', 'High']).optional(),
-  "status": zod.enum(['New Lead', 'Estimate Scheduled', 'Estimate Completed', 'Proposal Sent', 'Approved', 'Material Ordered', 'Material Received', 'Scheduled', 'In Progress', 'Final Walkthrough', 'Completed', 'Invoiced']).optional()
+  "status": zod.enum(['New Lead', 'Estimate Scheduled', 'Estimate Completed', 'Proposal Sent', 'Approved', 'Material Ordered', 'Material Received', 'Scheduled', 'In Progress', 'Final Walkthrough', 'Completed', 'Invoiced']).optional(),
+  "customerId": zod.string().nullish(),
+  "siteId": zod.string().nullish(),
+  "revision": zod.number().min(1).optional(),
+  "completionChecklist": zod.record(zod.string(), zod.boolean()).optional()
 })
+
+
+
 
 export const UpdateJobResponse = zod.object({
   "id": zod.string(),
@@ -225,11 +259,11 @@ export const UpdateJobResponse = zod.object({
 })),
   "scopeOfWork": zod.string(),
   "squareFootage": zod.number(),
-  "crewAssigned": zod.enum(['Crew A', 'Crew B', 'Crew C', 'Crew D', 'Unassigned']),
+  "crewAssigned": zod.string(),
   "salespersonId": zod.string().nullish(),
   "estStartDate": zod.string().optional(),
   "estCompletionDate": zod.string().optional(),
-  "materialStatus": zod.enum(['Ordered', 'In Transit', 'Received', 'Delayed', 'Damaged', 'Missing Items']),
+  "materialStatus": zod.enum(['Not Ordered', 'Ordered', 'In Transit', 'Received', 'Delayed', 'Damaged', 'Missing Items']),
   "laborEstimate": zod.number(),
   "estLaborHours": zod.number(),
   "materialEstimate": zod.number(),
@@ -250,7 +284,15 @@ export const UpdateJobResponse = zod.object({
 })),
   "shareToken": zod.string(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "customerId": zod.string().nullish(),
+  "siteId": zod.string().nullish(),
+  "revision": zod.number().min(1).optional(),
+  "estimateSnapshot": zod.record(zod.string(), zod.unknown()).nullish(),
+  "soldAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "eventDateSource": zod.string().nullish(),
+  "completionChecklist": zod.record(zod.string(), zod.boolean()).optional()
 })
 
 
@@ -280,7 +322,7 @@ export const ListMaterialsResponseItem = zod.object({
   "damaged": zod.boolean(),
   "missingItems": zod.string(),
   "notes": zod.string(),
-  "status": zod.enum(['Ordered', 'In Transit', 'Received', 'Delayed', 'Damaged', 'Missing Items'])
+  "status": zod.enum(['Not Ordered', 'Ordered', 'In Transit', 'Received', 'Delayed', 'Damaged', 'Missing Items'])
 })
 export const ListMaterialsResponse = zod.array(ListMaterialsResponseItem)
 
@@ -288,6 +330,9 @@ export const ListMaterialsResponse = zod.array(ListMaterialsResponseItem)
 /**
  * @summary List all proposals
  */
+
+
+
 export const ListProposalsResponseItem = zod.object({
   "id": zod.string(),
   "jobId": zod.string().optional(),
@@ -309,7 +354,8 @@ export const ListProposalsResponseItem = zod.object({
   "sku": zod.string().optional(),
   "unit": zod.string(),
   "quantity": zod.number(),
-  "unitPrice": zod.number()
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number().optional()
 })).optional(),
   "salespersonId": zod.string().optional(),
   "totalSqFt": zod.number(),
@@ -331,7 +377,11 @@ export const ListProposalsResponseItem = zod.object({
   "signature": zod.string(),
   "convertedJobId": zod.string().nullish(),
   "convertedInvoiceId": zod.string().nullish(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "customerId": zod.string().nullish(),
+  "siteId": zod.string().nullish(),
+  "revision": zod.number().min(1).optional(),
+  "estimateSnapshot": zod.record(zod.string(), zod.unknown()).nullish()
 })
 export const ListProposalsResponse = zod.array(ListProposalsResponseItem)
 
@@ -359,7 +409,8 @@ export const CreateProposalBody = zod.object({
   "sku": zod.string().optional(),
   "unit": zod.string(),
   "quantity": zod.number(),
-  "unitPrice": zod.number()
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number().optional()
 })).optional(),
   "salespersonId": zod.string().optional(),
   "totalSqFt": zod.number(),
@@ -372,7 +423,9 @@ export const CreateProposalBody = zod.object({
   "depositType": zod.enum(['none', 'percent', 'amount']).optional(),
   "depositValue": zod.number().optional(),
   "paymentTerms": zod.string().optional(),
-  "status": zod.enum(['Draft', 'Sent', 'Viewed', 'Accepted', 'Declined', 'Expired'])
+  "status": zod.enum(['Draft', 'Sent', 'Viewed', 'Accepted', 'Declined', 'Expired']),
+  "customerId": zod.string().nullish(),
+  "siteId": zod.string().nullish()
 })
 
 
@@ -382,6 +435,9 @@ export const CreateProposalBody = zod.object({
 export const UpdateProposalParams = zod.object({
   "id": zod.coerce.string()
 })
+
+
+
 
 export const UpdateProposalBody = zod.object({
   "customerName": zod.string().optional(),
@@ -403,10 +459,17 @@ export const UpdateProposalBody = zod.object({
   "sku": zod.string().optional(),
   "unit": zod.string(),
   "quantity": zod.number(),
-  "unitPrice": zod.number()
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number().optional()
 })).optional(),
-  "salespersonId": zod.string().nullish()
+  "salespersonId": zod.string().nullish(),
+  "customerId": zod.string().nullish(),
+  "siteId": zod.string().nullish(),
+  "revision": zod.number().min(1).optional()
 })
+
+
+
 
 export const UpdateProposalResponse = zod.object({
   "id": zod.string(),
@@ -429,7 +492,8 @@ export const UpdateProposalResponse = zod.object({
   "sku": zod.string().optional(),
   "unit": zod.string(),
   "quantity": zod.number(),
-  "unitPrice": zod.number()
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number().optional()
 })).optional(),
   "salespersonId": zod.string().optional(),
   "totalSqFt": zod.number(),
@@ -451,7 +515,11 @@ export const UpdateProposalResponse = zod.object({
   "signature": zod.string(),
   "convertedJobId": zod.string().nullish(),
   "convertedInvoiceId": zod.string().nullish(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "customerId": zod.string().nullish(),
+  "siteId": zod.string().nullish(),
+  "revision": zod.number().min(1).optional(),
+  "estimateSnapshot": zod.record(zod.string(), zod.unknown()).nullish()
 })
 
 
@@ -466,6 +534,9 @@ job and invoice if the quote was already converted.
 export const ConvertProposalParams = zod.object({
   "id": zod.coerce.string()
 })
+
+
+
 
 export const ConvertProposalResponse = zod.object({
   "job": zod.object({
@@ -486,11 +557,11 @@ export const ConvertProposalResponse = zod.object({
 })),
   "scopeOfWork": zod.string(),
   "squareFootage": zod.number(),
-  "crewAssigned": zod.enum(['Crew A', 'Crew B', 'Crew C', 'Crew D', 'Unassigned']),
+  "crewAssigned": zod.string(),
   "salespersonId": zod.string().nullish(),
   "estStartDate": zod.string().optional(),
   "estCompletionDate": zod.string().optional(),
-  "materialStatus": zod.enum(['Ordered', 'In Transit', 'Received', 'Delayed', 'Damaged', 'Missing Items']),
+  "materialStatus": zod.enum(['Not Ordered', 'Ordered', 'In Transit', 'Received', 'Delayed', 'Damaged', 'Missing Items']),
   "laborEstimate": zod.number(),
   "estLaborHours": zod.number(),
   "materialEstimate": zod.number(),
@@ -511,7 +582,15 @@ export const ConvertProposalResponse = zod.object({
 })),
   "shareToken": zod.string(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "customerId": zod.string().nullish(),
+  "siteId": zod.string().nullish(),
+  "revision": zod.number().min(1).optional(),
+  "estimateSnapshot": zod.record(zod.string(), zod.unknown()).nullish(),
+  "soldAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "eventDateSource": zod.string().nullish(),
+  "completionChecklist": zod.record(zod.string(), zod.boolean()).optional()
 }),
   "invoice": zod.object({
   "id": zod.string(),
@@ -543,7 +622,8 @@ export const ConvertProposalResponse = zod.object({
   "dueDate": zod.string(),
   "notes": zod.string(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "customerId": zod.string().nullish()
 }),
   "materialsCreated": zod.number()
 })
@@ -552,6 +632,9 @@ export const ConvertProposalResponse = zod.object({
 /**
  * @summary List all leads
  */
+
+
+
 export const ListLeadsResponseItem = zod.object({
   "id": zod.string(),
   "customerName": zod.string(),
@@ -667,7 +750,10 @@ export const ListLeadsResponseItem = zod.object({
   "lostReason": zod.string().optional(),
   "convertedJobId": zod.string().optional(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "customerId": zod.string().nullish(),
+  "siteId": zod.string().nullish(),
+  "revision": zod.number().min(1).optional()
 })
 export const ListLeadsResponse = zod.array(ListLeadsResponseItem)
 
@@ -787,7 +873,9 @@ export const CreateLeadBody = zod.object({
 })).optional(),
   "notes": zod.string().optional(),
   "lostReason": zod.string().optional(),
-  "convertedJobId": zod.string().optional()
+  "convertedJobId": zod.string().optional(),
+  "customerId": zod.string().nullish(),
+  "siteId": zod.string().nullish()
 })
 
 
@@ -797,6 +885,9 @@ export const CreateLeadBody = zod.object({
 export const GetLeadParams = zod.object({
   "id": zod.coerce.string()
 })
+
+
+
 
 export const GetLeadResponse = zod.object({
   "id": zod.string(),
@@ -913,7 +1004,10 @@ export const GetLeadResponse = zod.object({
   "lostReason": zod.string().optional(),
   "convertedJobId": zod.string().optional(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "customerId": zod.string().nullish(),
+  "siteId": zod.string().nullish(),
+  "revision": zod.number().min(1).optional()
 })
 
 
@@ -923,6 +1017,9 @@ export const GetLeadResponse = zod.object({
 export const UpdateLeadParams = zod.object({
   "id": zod.coerce.string()
 })
+
+
+
 
 export const UpdateLeadBody = zod.object({
   "customerName": zod.string().optional(),
@@ -1036,8 +1133,14 @@ export const UpdateLeadBody = zod.object({
 })).optional(),
   "notes": zod.string().optional(),
   "lostReason": zod.string().nullish(),
-  "convertedJobId": zod.string().nullish()
+  "convertedJobId": zod.string().nullish(),
+  "customerId": zod.string().nullish(),
+  "siteId": zod.string().nullish(),
+  "revision": zod.number().min(1).optional()
 })
+
+
+
 
 export const UpdateLeadResponse = zod.object({
   "id": zod.string(),
@@ -1154,7 +1257,10 @@ export const UpdateLeadResponse = zod.object({
   "lostReason": zod.string().optional(),
   "convertedJobId": zod.string().optional(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "customerId": zod.string().nullish(),
+  "siteId": zod.string().nullish(),
+  "revision": zod.number().min(1).optional()
 })
 
 
@@ -1403,6 +1509,9 @@ export const GetMeasureSquareStatusResponse = zod.object({
 /**
  * @summary Get settings
  */
+export const getSettingsResponseCustomerAccentColorRegExp = new RegExp('^#[0-9a-fA-F]{6}$');
+
+
 export const GetSettingsResponse = zod.object({
   "ownerName": zod.string(),
   "ownerRole": zod.string(),
@@ -1420,13 +1529,20 @@ export const GetSettingsResponse = zod.object({
   "defaultCommissionRate": zod.number(),
   "leadStages": zod.array(zod.string()).optional(),
   "googleCalendarSyncToken": zod.string().nullish(),
-  "googleCalendarLastSyncedAt": zod.string().nullish()
+  "googleCalendarLastSyncedAt": zod.string().nullish(),
+  "companyLogoUrl": zod.string().nullish(),
+  "customerAccentColor": zod.string().regex(getSettingsResponseCustomerAccentColorRegExp).optional(),
+  "estimatePolicy": zod.record(zod.string(), zod.unknown()).nullish(),
+  "transitionPolicy": zod.record(zod.string(), zod.unknown()).nullish()
 })
 
 
 /**
  * @summary Update settings
  */
+export const updateSettingsBodyCustomerAccentColorRegExp = new RegExp('^#[0-9a-fA-F]{6}$');
+
+
 export const UpdateSettingsBody = zod.object({
   "ownerName": zod.string().optional(),
   "ownerRole": zod.string().optional(),
@@ -1444,8 +1560,15 @@ export const UpdateSettingsBody = zod.object({
   "defaultCommissionRate": zod.number().optional(),
   "leadStages": zod.array(zod.string()).optional(),
   "googleCalendarSyncToken": zod.string().nullish(),
-  "googleCalendarLastSyncedAt": zod.string().nullish()
+  "googleCalendarLastSyncedAt": zod.string().nullish(),
+  "companyLogoUrl": zod.string().nullish(),
+  "customerAccentColor": zod.string().regex(updateSettingsBodyCustomerAccentColorRegExp).optional(),
+  "estimatePolicy": zod.record(zod.string(), zod.unknown()).nullish(),
+  "transitionPolicy": zod.record(zod.string(), zod.unknown()).nullish()
 })
+
+export const updateSettingsResponseCustomerAccentColorRegExp = new RegExp('^#[0-9a-fA-F]{6}$');
+
 
 export const UpdateSettingsResponse = zod.object({
   "ownerName": zod.string(),
@@ -1464,7 +1587,11 @@ export const UpdateSettingsResponse = zod.object({
   "defaultCommissionRate": zod.number(),
   "leadStages": zod.array(zod.string()).optional(),
   "googleCalendarSyncToken": zod.string().nullish(),
-  "googleCalendarLastSyncedAt": zod.string().nullish()
+  "googleCalendarLastSyncedAt": zod.string().nullish(),
+  "companyLogoUrl": zod.string().nullish(),
+  "customerAccentColor": zod.string().regex(updateSettingsResponseCustomerAccentColorRegExp).optional(),
+  "estimatePolicy": zod.record(zod.string(), zod.unknown()).nullish(),
+  "transitionPolicy": zod.record(zod.string(), zod.unknown()).nullish()
 })
 
 
@@ -1607,7 +1734,8 @@ export const ListInvoicesResponseItem = zod.object({
   "dueDate": zod.string(),
   "notes": zod.string(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "customerId": zod.string().nullish()
 })
 export const ListInvoicesResponse = zod.array(ListInvoicesResponseItem)
 
@@ -1633,7 +1761,8 @@ export const CreateInvoiceBody = zod.object({
   "status": zod.enum(['Draft', 'Sent', 'Partial', 'Paid', 'Overdue', 'Credited', 'Refunded', 'Voided']),
   "issueDate": zod.string().optional(),
   "dueDate": zod.string().optional(),
-  "notes": zod.string().optional()
+  "notes": zod.string().optional(),
+  "customerId": zod.string().nullish()
 })
 
 
@@ -1660,7 +1789,8 @@ export const UpdateInvoiceBody = zod.object({
   "status": zod.enum(['Draft', 'Sent', 'Partial', 'Paid', 'Overdue', 'Credited', 'Refunded', 'Voided']).optional(),
   "issueDate": zod.string().optional(),
   "dueDate": zod.string().optional(),
-  "notes": zod.string().optional()
+  "notes": zod.string().optional(),
+  "customerId": zod.string().nullish()
 })
 
 export const UpdateInvoiceResponse = zod.object({
@@ -1693,7 +1823,8 @@ export const UpdateInvoiceResponse = zod.object({
   "dueDate": zod.string(),
   "notes": zod.string(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "customerId": zod.string().nullish()
 })
 
 
@@ -1708,6 +1839,23 @@ export const DeleteInvoiceParams = zod.object({
 /**
  * @summary List all catalog products
  */
+export const listProductsResponseCostMin = 0;
+
+export const listProductsResponsePriceMin = 0;
+
+export const listProductsResponseQuantityOnHandMin = 0;
+
+
+export const listProductsResponseCoveragePerUnitExclusiveMin = 0;
+
+export const listProductsResponseOrderMultipleExclusiveMin = 0;
+
+export const listProductsResponseMinimumOrderQtyMin = 0;
+
+export const listProductsResponseReorderPointMin = 0;
+
+
+
 export const ListProductsResponseItem = zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -1716,15 +1864,21 @@ export const ListProductsResponseItem = zod.object({
   "supplier": zod.string(),
   "color": zod.string(),
   "unit": zod.enum(['sqft', 'box', 'lineal ft', 'each', 'piece']),
-  "cost": zod.number(),
-  "price": zod.number(),
-  "quantityOnHand": zod.number(),
+  "cost": zod.number().min(listProductsResponseCostMin),
+  "price": zod.number().min(listProductsResponsePriceMin),
+  "quantityOnHand": zod.number().min(listProductsResponseQuantityOnHandMin),
   "inventoryType": zod.enum(['Inventory', 'Special Order', 'Service']),
   "active": zod.boolean(),
   "notes": zod.string(),
   "imageUrl": zod.string().nullish(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "revision": zod.number().min(1).optional(),
+  "coveragePerUnit": zod.number().gt(listProductsResponseCoveragePerUnitExclusiveMin).nullish(),
+  "coverageUnit": zod.string().nullish(),
+  "orderMultiple": zod.number().gt(listProductsResponseOrderMultipleExclusiveMin).nullish(),
+  "minimumOrderQty": zod.number().min(listProductsResponseMinimumOrderQtyMin).nullish(),
+  "reorderPoint": zod.number().min(listProductsResponseReorderPointMin).nullish()
 })
 export const ListProductsResponse = zod.array(ListProductsResponseItem)
 
@@ -1732,6 +1886,22 @@ export const ListProductsResponse = zod.array(ListProductsResponseItem)
 /**
  * @summary Create a catalog product
  */
+export const createProductBodyCostMin = 0;
+
+export const createProductBodyPriceMin = 0;
+
+export const createProductBodyQuantityOnHandMin = 0;
+
+export const createProductBodyCoveragePerUnitExclusiveMin = 0;
+
+export const createProductBodyOrderMultipleExclusiveMin = 0;
+
+export const createProductBodyMinimumOrderQtyMin = 0;
+
+export const createProductBodyReorderPointMin = 0;
+
+
+
 export const CreateProductBody = zod.object({
   "name": zod.string(),
   "category": zod.enum(['Vinyl Plank', 'Vinyl Tile', 'Carpet', 'Hardwood', 'Tile', 'Laminate', 'Waterproof', 'Commercial', 'Trim/Supplies', 'Padding', 'Underlayment', 'Trim', 'Installation']),
@@ -1739,13 +1909,18 @@ export const CreateProductBody = zod.object({
   "supplier": zod.string().optional(),
   "color": zod.string().optional(),
   "unit": zod.enum(['sqft', 'box', 'lineal ft', 'each', 'piece']),
-  "cost": zod.number().optional(),
-  "price": zod.number().optional(),
-  "quantityOnHand": zod.number().optional(),
+  "cost": zod.number().min(createProductBodyCostMin).optional(),
+  "price": zod.number().min(createProductBodyPriceMin).optional(),
+  "quantityOnHand": zod.number().min(createProductBodyQuantityOnHandMin).optional(),
   "inventoryType": zod.enum(['Inventory', 'Special Order', 'Service']).optional(),
   "active": zod.boolean().optional(),
   "notes": zod.string().optional(),
-  "imageUrl": zod.string().nullish()
+  "imageUrl": zod.string().nullish(),
+  "coveragePerUnit": zod.number().gt(createProductBodyCoveragePerUnitExclusiveMin).nullish(),
+  "coverageUnit": zod.string().nullish(),
+  "orderMultiple": zod.number().gt(createProductBodyOrderMultipleExclusiveMin).nullish(),
+  "minimumOrderQty": zod.number().min(createProductBodyMinimumOrderQtyMin).nullish(),
+  "reorderPoint": zod.number().min(createProductBodyReorderPointMin).nullish()
 })
 
 
@@ -1756,6 +1931,23 @@ export const UpdateProductParams = zod.object({
   "id": zod.coerce.string()
 })
 
+export const updateProductBodyCostMin = 0;
+
+export const updateProductBodyPriceMin = 0;
+
+export const updateProductBodyQuantityOnHandMin = 0;
+
+
+export const updateProductBodyCoveragePerUnitExclusiveMin = 0;
+
+export const updateProductBodyOrderMultipleExclusiveMin = 0;
+
+export const updateProductBodyMinimumOrderQtyMin = 0;
+
+export const updateProductBodyReorderPointMin = 0;
+
+
+
 export const UpdateProductBody = zod.object({
   "name": zod.string().optional(),
   "category": zod.enum(['Vinyl Plank', 'Vinyl Tile', 'Carpet', 'Hardwood', 'Tile', 'Laminate', 'Waterproof', 'Commercial', 'Trim/Supplies', 'Padding', 'Underlayment', 'Trim', 'Installation']).optional(),
@@ -1763,14 +1955,37 @@ export const UpdateProductBody = zod.object({
   "supplier": zod.string().optional(),
   "color": zod.string().optional(),
   "unit": zod.enum(['sqft', 'box', 'lineal ft', 'each', 'piece']).optional(),
-  "cost": zod.number().optional(),
-  "price": zod.number().optional(),
-  "quantityOnHand": zod.number().optional(),
+  "cost": zod.number().min(updateProductBodyCostMin).optional(),
+  "price": zod.number().min(updateProductBodyPriceMin).optional(),
+  "quantityOnHand": zod.number().min(updateProductBodyQuantityOnHandMin).optional(),
   "inventoryType": zod.enum(['Inventory', 'Special Order', 'Service']).optional(),
   "active": zod.boolean().optional(),
   "notes": zod.string().optional(),
-  "imageUrl": zod.string().nullish()
+  "imageUrl": zod.string().nullish(),
+  "revision": zod.number().min(1).optional(),
+  "coveragePerUnit": zod.number().gt(updateProductBodyCoveragePerUnitExclusiveMin).nullish(),
+  "coverageUnit": zod.string().nullish(),
+  "orderMultiple": zod.number().gt(updateProductBodyOrderMultipleExclusiveMin).nullish(),
+  "minimumOrderQty": zod.number().min(updateProductBodyMinimumOrderQtyMin).nullish(),
+  "reorderPoint": zod.number().min(updateProductBodyReorderPointMin).nullish()
 })
+
+export const updateProductResponseCostMin = 0;
+
+export const updateProductResponsePriceMin = 0;
+
+export const updateProductResponseQuantityOnHandMin = 0;
+
+
+export const updateProductResponseCoveragePerUnitExclusiveMin = 0;
+
+export const updateProductResponseOrderMultipleExclusiveMin = 0;
+
+export const updateProductResponseMinimumOrderQtyMin = 0;
+
+export const updateProductResponseReorderPointMin = 0;
+
+
 
 export const UpdateProductResponse = zod.object({
   "id": zod.string(),
@@ -1780,15 +1995,21 @@ export const UpdateProductResponse = zod.object({
   "supplier": zod.string(),
   "color": zod.string(),
   "unit": zod.enum(['sqft', 'box', 'lineal ft', 'each', 'piece']),
-  "cost": zod.number(),
-  "price": zod.number(),
-  "quantityOnHand": zod.number(),
+  "cost": zod.number().min(updateProductResponseCostMin),
+  "price": zod.number().min(updateProductResponsePriceMin),
+  "quantityOnHand": zod.number().min(updateProductResponseQuantityOnHandMin),
   "inventoryType": zod.enum(['Inventory', 'Special Order', 'Service']),
   "active": zod.boolean(),
   "notes": zod.string(),
   "imageUrl": zod.string().nullish(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "revision": zod.number().min(1).optional(),
+  "coveragePerUnit": zod.number().gt(updateProductResponseCoveragePerUnitExclusiveMin).nullish(),
+  "coverageUnit": zod.string().nullish(),
+  "orderMultiple": zod.number().gt(updateProductResponseOrderMultipleExclusiveMin).nullish(),
+  "minimumOrderQty": zod.number().min(updateProductResponseMinimumOrderQtyMin).nullish(),
+  "reorderPoint": zod.number().min(updateProductResponseReorderPointMin).nullish()
 })
 
 
@@ -1813,7 +2034,8 @@ export const ListJobMaterialsResponseItem = zod.object({
   "name": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "productId": zod.string().nullish()
 })
 export const ListJobMaterialsResponse = zod.array(ListJobMaterialsResponseItem)
 
@@ -1825,10 +2047,15 @@ export const CreateJobMaterialParams = zod.object({
   "id": zod.coerce.string()
 })
 
+export const createJobMaterialBodyQuantityMin = 0.000001;
+
+
+
 export const CreateJobMaterialBody = zod.object({
   "name": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string()
+  "quantity": zod.number().min(createJobMaterialBodyQuantityMin),
+  "unit": zod.string(),
+  "productId": zod.string().nullish()
 })
 
 
@@ -1840,10 +2067,15 @@ export const UpdateJobMaterialParams = zod.object({
   "materialId": zod.coerce.string()
 })
 
+export const updateJobMaterialBodyQuantityMin = 0.000001;
+
+
+
 export const UpdateJobMaterialBody = zod.object({
   "name": zod.string().optional(),
-  "quantity": zod.number().optional(),
-  "unit": zod.string().optional()
+  "quantity": zod.number().min(updateJobMaterialBodyQuantityMin).optional(),
+  "unit": zod.string().optional(),
+  "productId": zod.string().nullish()
 })
 
 export const UpdateJobMaterialResponse = zod.object({
@@ -1852,7 +2084,8 @@ export const UpdateJobMaterialResponse = zod.object({
   "name": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "productId": zod.string().nullish()
 })
 
 
@@ -1883,7 +2116,10 @@ export const ListLaborEntriesResponseItem = zod.object({
   "hours": zod.number(),
   "notes": zod.string(),
   "accountingStatus": zod.string(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "crewId": zod.string().nullish(),
+  "bookingId": zod.string().nullish(),
+  "callbackId": zod.string().nullish()
 })
 export const ListLaborEntriesResponse = zod.array(ListLaborEntriesResponseItem)
 
@@ -1895,15 +2131,22 @@ export const CreateLaborEntryParams = zod.object({
   "id": zod.coerce.string()
 })
 
+export const createLaborEntryBodyHoursMin = 0.01;
+
+
+
 export const CreateLaborEntryBody = zod.object({
   "date": zod.string(),
   "crew": zod.string(),
   "workerType": zod.enum(['unmapped', 'employee', 'contractor']).optional(),
   "workerExternalId": zod.string().optional(),
   "hourlyCost": zod.number().optional(),
-  "hours": zod.number(),
+  "hours": zod.number().min(createLaborEntryBodyHoursMin),
   "notes": zod.string().optional(),
-  "accountingStatus": zod.string().optional()
+  "accountingStatus": zod.string().optional(),
+  "crewId": zod.string().nullish(),
+  "bookingId": zod.string().nullish(),
+  "callbackId": zod.string().nullish()
 })
 
 
@@ -1915,15 +2158,22 @@ export const UpdateLaborEntryParams = zod.object({
   "entryId": zod.coerce.string()
 })
 
+export const updateLaborEntryBodyHoursMin = 0.01;
+
+
+
 export const UpdateLaborEntryBody = zod.object({
   "date": zod.string().optional(),
   "crew": zod.string().optional(),
   "workerType": zod.enum(['unmapped', 'employee', 'contractor']).optional(),
   "workerExternalId": zod.string().optional(),
   "hourlyCost": zod.number().optional(),
-  "hours": zod.number().optional(),
+  "hours": zod.number().min(updateLaborEntryBodyHoursMin).optional(),
   "notes": zod.string().optional(),
-  "accountingStatus": zod.string().optional()
+  "accountingStatus": zod.string().optional(),
+  "crewId": zod.string().nullish(),
+  "bookingId": zod.string().nullish(),
+  "callbackId": zod.string().nullish()
 })
 
 export const UpdateLaborEntryResponse = zod.object({
@@ -1937,7 +2187,10 @@ export const UpdateLaborEntryResponse = zod.object({
   "hours": zod.number(),
   "notes": zod.string(),
   "accountingStatus": zod.string(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "crewId": zod.string().nullish(),
+  "bookingId": zod.string().nullish(),
+  "callbackId": zod.string().nullish()
 })
 
 
@@ -1969,7 +2222,10 @@ export const ListMaterialUsageResponseItem = zod.object({
   "transactionDate": zod.string().optional(),
   "accountingStatus": zod.string(),
   "notes": zod.string(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "productId": zod.string().nullish(),
+  "movementId": zod.string().nullish(),
+  "callbackId": zod.string().nullish()
 })
 export const ListMaterialUsageResponse = zod.array(ListMaterialUsageResponseItem)
 
@@ -1981,16 +2237,24 @@ export const CreateMaterialUsageParams = zod.object({
   "id": zod.coerce.string()
 })
 
+export const createMaterialUsageBodyQuantityMin = 0.000001;
+
+export const createMaterialUsageBodyCostMin = 0;
+
+
+
 export const CreateMaterialUsageBody = zod.object({
   "material": zod.string(),
-  "quantity": zod.number(),
-  "cost": zod.number(),
+  "quantity": zod.number().min(createMaterialUsageBodyQuantityMin),
+  "cost": zod.number().min(createMaterialUsageBodyCostMin),
   "vendorName": zod.string().optional(),
   "vendorExternalId": zod.string().optional(),
   "expenseAccountExternalId": zod.string().optional(),
   "transactionDate": zod.string().optional(),
   "accountingStatus": zod.string().optional(),
-  "notes": zod.string().optional()
+  "notes": zod.string().optional(),
+  "productId": zod.string().nullish(),
+  "callbackId": zod.string().nullish()
 })
 
 
@@ -2002,16 +2266,24 @@ export const UpdateMaterialUsageParams = zod.object({
   "usageId": zod.coerce.string()
 })
 
+export const updateMaterialUsageBodyQuantityMin = 0.000001;
+
+export const updateMaterialUsageBodyCostMin = 0;
+
+
+
 export const UpdateMaterialUsageBody = zod.object({
   "material": zod.string().optional(),
-  "quantity": zod.number().optional(),
-  "cost": zod.number().optional(),
+  "quantity": zod.number().min(updateMaterialUsageBodyQuantityMin).optional(),
+  "cost": zod.number().min(updateMaterialUsageBodyCostMin).optional(),
   "vendorName": zod.string().optional(),
   "vendorExternalId": zod.string().optional(),
   "expenseAccountExternalId": zod.string().optional(),
   "transactionDate": zod.string().optional(),
   "accountingStatus": zod.string().optional(),
-  "notes": zod.string().optional()
+  "notes": zod.string().optional(),
+  "productId": zod.string().nullish(),
+  "callbackId": zod.string().nullish()
 })
 
 export const UpdateMaterialUsageResponse = zod.object({
@@ -2026,7 +2298,10 @@ export const UpdateMaterialUsageResponse = zod.object({
   "transactionDate": zod.string().optional(),
   "accountingStatus": zod.string(),
   "notes": zod.string(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "productId": zod.string().nullish(),
+  "movementId": zod.string().nullish(),
+  "callbackId": zod.string().nullish()
 })
 
 
@@ -2046,13 +2321,16 @@ export const GetPublicJobParams = zod.object({
   "token": zod.coerce.string()
 })
 
+
+
+
 export const GetPublicJobResponse = zod.object({
   "jobNumber": zod.string(),
   "customerName": zod.string(),
   "address": zod.string().optional(),
   "city": zod.string(),
   "flooringType": zod.enum(['Carpet', 'Hardwood', 'Tile', 'Laminate', 'Luxury Vinyl Plank (LVP)', 'Luxury Vinyl Tile (LVT)', 'Waterproof Flooring', 'Commercial Carpet Tile', 'Commercial LVT']),
-  "crewAssigned": zod.enum(['Crew A', 'Crew B', 'Crew C', 'Crew D', 'Unassigned']).optional(),
+  "crewAssigned": zod.string().optional(),
   "squareFootage": zod.number().optional(),
   "estStartDate": zod.string().optional(),
   "estCompletionDate": zod.string().optional(),
@@ -2070,6 +2348,7 @@ export const GetPublicJobResponse = zod.object({
   "createdAt": zod.string()
 })),
   "quote": zod.object({
+  "revision": zod.number().min(1),
   "shareToken": zod.string(),
   "customerName": zod.string(),
   "projectLocation": zod.string(),
@@ -2095,7 +2374,18 @@ export const GetPublicJobResponse = zod.object({
   "status": zod.enum(['Draft', 'Sent', 'Viewed', 'Accepted', 'Declined', 'Expired']),
   "acceptedAt": zod.string().optional(),
   "declinedAt": zod.string().optional(),
-  "signature": zod.string()
+  "signature": zod.string(),
+  "lineItems": zod.array(zod.object({
+  "id": zod.string(),
+  "productId": zod.string().optional(),
+  "name": zod.string(),
+  "category": zod.string().optional(),
+  "sku": zod.string().optional(),
+  "unit": zod.string(),
+  "quantity": zod.number(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number().optional()
+})).optional()
 }).nullish(),
   "invoices": zod.array(zod.object({
   "id": zod.string(),
@@ -2133,7 +2423,10 @@ export const GetPublicJobResponse = zod.object({
   "companyName": zod.string(),
   "phone": zod.string(),
   "email": zod.string(),
-  "website": zod.string()
+  "website": zod.string(),
+  "companyLogoUrl": zod.string().nullish(),
+  "customerAccentColor": zod.string().optional(),
+  "address": zod.string().optional()
 })
 })
 
@@ -2148,7 +2441,11 @@ export const GetPublicQuoteParams = zod.object({
   "token": zod.coerce.string()
 })
 
+
+
+
 export const GetPublicQuoteResponse = zod.object({
+  "revision": zod.number().min(1),
   "customerName": zod.string(),
   "projectLocation": zod.string(),
   "flooringType": zod.enum(['Carpet', 'Hardwood', 'Tile', 'Laminate', 'Luxury Vinyl Plank (LVP)', 'Luxury Vinyl Tile (LVT)', 'Waterproof Flooring', 'Commercial Carpet Tile', 'Commercial LVT']),
@@ -2178,8 +2475,22 @@ export const GetPublicQuoteResponse = zod.object({
   "companyName": zod.string(),
   "phone": zod.string(),
   "email": zod.string(),
-  "website": zod.string()
-})
+  "website": zod.string(),
+  "companyLogoUrl": zod.string().nullish(),
+  "customerAccentColor": zod.string().optional(),
+  "address": zod.string().optional()
+}),
+  "lineItems": zod.array(zod.object({
+  "id": zod.string(),
+  "productId": zod.string().optional(),
+  "name": zod.string(),
+  "category": zod.string().optional(),
+  "sku": zod.string().optional(),
+  "unit": zod.string(),
+  "quantity": zod.number(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number().optional()
+})).optional()
 })
 
 
@@ -2193,11 +2504,17 @@ export const AcceptPublicQuoteParams = zod.object({
 
 
 
+
 export const AcceptPublicQuoteBody = zod.object({
+  "revision": zod.number().min(1),
   "signature": zod.string().min(1)
 })
 
+
+
+
 export const AcceptPublicQuoteResponse = zod.object({
+  "revision": zod.number().min(1),
   "customerName": zod.string(),
   "projectLocation": zod.string(),
   "flooringType": zod.enum(['Carpet', 'Hardwood', 'Tile', 'Laminate', 'Luxury Vinyl Plank (LVP)', 'Luxury Vinyl Tile (LVT)', 'Waterproof Flooring', 'Commercial Carpet Tile', 'Commercial LVT']),
@@ -2227,8 +2544,22 @@ export const AcceptPublicQuoteResponse = zod.object({
   "companyName": zod.string(),
   "phone": zod.string(),
   "email": zod.string(),
-  "website": zod.string()
-})
+  "website": zod.string(),
+  "companyLogoUrl": zod.string().nullish(),
+  "customerAccentColor": zod.string().optional(),
+  "address": zod.string().optional()
+}),
+  "lineItems": zod.array(zod.object({
+  "id": zod.string(),
+  "productId": zod.string().optional(),
+  "name": zod.string(),
+  "category": zod.string().optional(),
+  "sku": zod.string().optional(),
+  "unit": zod.string(),
+  "quantity": zod.number(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number().optional()
+})).optional()
 })
 
 
@@ -2239,7 +2570,18 @@ export const DeclinePublicQuoteParams = zod.object({
   "token": zod.coerce.string()
 })
 
+
+
+
+export const DeclinePublicQuoteBody = zod.object({
+  "revision": zod.number().min(1)
+})
+
+
+
+
 export const DeclinePublicQuoteResponse = zod.object({
+  "revision": zod.number().min(1),
   "customerName": zod.string(),
   "projectLocation": zod.string(),
   "flooringType": zod.enum(['Carpet', 'Hardwood', 'Tile', 'Laminate', 'Luxury Vinyl Plank (LVP)', 'Luxury Vinyl Tile (LVT)', 'Waterproof Flooring', 'Commercial Carpet Tile', 'Commercial LVT']),
@@ -2269,8 +2611,22 @@ export const DeclinePublicQuoteResponse = zod.object({
   "companyName": zod.string(),
   "phone": zod.string(),
   "email": zod.string(),
-  "website": zod.string()
-})
+  "website": zod.string(),
+  "companyLogoUrl": zod.string().nullish(),
+  "customerAccentColor": zod.string().optional(),
+  "address": zod.string().optional()
+}),
+  "lineItems": zod.array(zod.object({
+  "id": zod.string(),
+  "productId": zod.string().optional(),
+  "name": zod.string(),
+  "category": zod.string().optional(),
+  "sku": zod.string().optional(),
+  "unit": zod.string(),
+  "quantity": zod.number(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number().optional()
+})).optional()
 })
 
 
@@ -2340,12 +2696,13 @@ export const ListTasksResponseItem = zod.object({
   "startAt": zod.string(),
   "endAt": zod.string(),
   "allDay": zod.boolean(),
-  "status": zod.enum(['Open', 'Done']),
+  "status": zod.enum(['Open', 'Done', 'Cancelled']),
   "relatedLeadId": zod.string().nullish(),
   "relatedJobId": zod.string().nullish(),
   "googleEventId": zod.string().nullish(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "bookingId": zod.string().nullish()
 })
 export const ListTasksResponse = zod.array(ListTasksResponseItem)
 
@@ -2360,7 +2717,7 @@ export const CreateTaskBody = zod.object({
   "startAt": zod.string(),
   "endAt": zod.string(),
   "allDay": zod.boolean().optional(),
-  "status": zod.enum(['Open', 'Done']).optional(),
+  "status": zod.enum(['Open', 'Done', 'Cancelled']).optional(),
   "relatedLeadId": zod.string().nullish(),
   "relatedJobId": zod.string().nullish()
 })
@@ -2380,7 +2737,7 @@ export const UpdateTaskBody = zod.object({
   "startAt": zod.string().optional(),
   "endAt": zod.string().optional(),
   "allDay": zod.boolean().optional(),
-  "status": zod.enum(['Open', 'Done']).optional(),
+  "status": zod.enum(['Open', 'Done', 'Cancelled']).optional(),
   "relatedLeadId": zod.string().nullish(),
   "relatedJobId": zod.string().nullish()
 })
@@ -2393,12 +2750,13 @@ export const UpdateTaskResponse = zod.object({
   "startAt": zod.string(),
   "endAt": zod.string(),
   "allDay": zod.boolean(),
-  "status": zod.enum(['Open', 'Done']),
+  "status": zod.enum(['Open', 'Done', 'Cancelled']),
   "relatedLeadId": zod.string().nullish(),
   "relatedJobId": zod.string().nullish(),
   "googleEventId": zod.string().nullish(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "bookingId": zod.string().nullish()
 })
 
 
@@ -2437,6 +2795,901 @@ export const SyncGoogleCalendarResponse = zod.object({
   "pushed": zod.number(),
   "lastSyncedAt": zod.string().nullish(),
   "message": zod.string().nullish()
+})
+
+
+/**
+ * @summary get Workspace Brand
+ */
+export const GetWorkspaceBrandResponse = zod.object({
+  "companyName": zod.string(),
+  "companyLogoUrl": zod.string().nullable(),
+  "customerAccentColor": zod.string(),
+  "phone": zod.string(),
+  "email": zod.string(),
+  "website": zod.string(),
+  "address": zod.string()
+})
+
+
+/**
+ * @summary list Customers
+ */
+export const ListCustomersResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string(),
+  "notes": zod.string(),
+  "mergedIntoId": zod.string().nullable(),
+  "revision": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+export const ListCustomersResponse = zod.array(ListCustomersResponseItem)
+
+
+/**
+ * @summary create Customer
+ */
+export const CreateCustomerBody = zod.object({
+  "name": zod.string(),
+  "email": zod.string().optional(),
+  "phone": zod.string().optional(),
+  "notes": zod.string().optional()
+})
+
+
+/**
+ * @summary get Customer
+ */
+export const GetCustomerParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetCustomerResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string(),
+  "notes": zod.string(),
+  "mergedIntoId": zod.string().nullable(),
+  "revision": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary update Customer
+ */
+export const UpdateCustomerParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+
+
+export const UpdateCustomerBody = zod.object({
+  "name": zod.string().optional(),
+  "email": zod.string().optional(),
+  "phone": zod.string().optional(),
+  "notes": zod.string().optional(),
+  "revision": zod.number().min(1)
+})
+
+export const UpdateCustomerResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string(),
+  "notes": zod.string(),
+  "mergedIntoId": zod.string().nullable(),
+  "revision": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary list Customer Sites
+ */
+export const ListCustomerSitesParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const ListCustomerSitesResponseItem = zod.object({
+  "id": zod.string(),
+  "customerId": zod.string(),
+  "label": zod.string(),
+  "address": zod.string(),
+  "city": zod.string(),
+  "state": zod.string(),
+  "zip": zod.string(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+export const ListCustomerSitesResponse = zod.array(ListCustomerSitesResponseItem)
+
+
+/**
+ * @summary create Customer Site
+ */
+export const CreateCustomerSiteParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const CreateCustomerSiteBody = zod.object({
+  "label": zod.string().optional(),
+  "address": zod.string(),
+  "city": zod.string().optional(),
+  "state": zod.string().optional(),
+  "zip": zod.string().optional()
+})
+
+
+/**
+ * @summary merge Customer
+ */
+export const MergeCustomerParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+
+
+export const MergeCustomerBody = zod.object({
+  "targetId": zod.string(),
+  "revision": zod.number().min(1)
+})
+
+export const MergeCustomerResponse = zod.object({
+  "customer": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string(),
+  "notes": zod.string(),
+  "mergedIntoId": zod.string().nullable(),
+  "revision": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}),
+  "integrationReconciliationRequired": zod.boolean()
+})
+
+
+/**
+ * @summary list Crews
+ */
+export const ListCrewsResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "active": zod.boolean(),
+  "timezone": zod.string(),
+  "size": zod.number().nullable(),
+  "dailyCapacityHours": zod.number().nullable(),
+  "workingDays": zod.array(zod.number()),
+  "unavailableDates": zod.array(zod.string()),
+  "revision": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+export const ListCrewsResponse = zod.array(ListCrewsResponseItem)
+
+
+/**
+ * @summary create Crew
+ */
+export const CreateCrewBody = zod.object({
+  "name": zod.string(),
+  "active": zod.boolean().optional(),
+  "timezone": zod.string().optional(),
+  "size": zod.number().nullish(),
+  "dailyCapacityHours": zod.number().nullish(),
+  "workingDays": zod.array(zod.number()).optional(),
+  "unavailableDates": zod.array(zod.string()).optional()
+})
+
+
+/**
+ * @summary update Crew
+ */
+export const UpdateCrewParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+
+
+export const UpdateCrewBody = zod.object({
+  "name": zod.string().optional(),
+  "active": zod.boolean().optional(),
+  "timezone": zod.string().optional(),
+  "size": zod.number().nullish(),
+  "dailyCapacityHours": zod.number().nullish(),
+  "workingDays": zod.array(zod.number()).optional(),
+  "unavailableDates": zod.array(zod.string()).optional(),
+  "revision": zod.number().min(1)
+})
+
+export const UpdateCrewResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "active": zod.boolean(),
+  "timezone": zod.string(),
+  "size": zod.number().nullable(),
+  "dailyCapacityHours": zod.number().nullable(),
+  "workingDays": zod.array(zod.number()),
+  "unavailableDates": zod.array(zod.string()),
+  "revision": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary list Crew Bookings
+ */
+export const ListCrewBookingsQueryParams = zod.object({
+  "from": zod.coerce.string().optional(),
+  "to": zod.coerce.string().optional(),
+  "jobId": zod.coerce.string().optional()
+})
+
+export const ListCrewBookingsResponseItem = zod.object({
+  "id": zod.string(),
+  "crewId": zod.string(),
+  "jobId": zod.string(),
+  "taskId": zod.string().nullable(),
+  "startAt": zod.string(),
+  "endAt": zod.string(),
+  "plannedLaborHours": zod.number(),
+  "status": zod.enum(['Confirmed', 'Cancelled']),
+  "notes": zod.string(),
+  "revision": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "calendarSyncStatus": zod.enum(['pending', 'synced', 'conflict']).optional(),
+  "calendarSyncError": zod.string().nullish()
+})
+export const ListCrewBookingsResponse = zod.array(ListCrewBookingsResponseItem)
+
+
+/**
+ * @summary create Crew Booking
+ */
+export const CreateCrewBookingBody = zod.object({
+  "crewId": zod.string(),
+  "jobId": zod.string(),
+  "startAt": zod.string(),
+  "endAt": zod.string(),
+  "plannedLaborHours": zod.number(),
+  "status": zod.string().optional(),
+  "notes": zod.string().optional()
+})
+
+
+/**
+ * @summary update Crew Booking
+ */
+export const UpdateCrewBookingParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+
+
+export const UpdateCrewBookingBody = zod.object({
+  "crewId": zod.string().optional(),
+  "jobId": zod.string().optional(),
+  "startAt": zod.string().optional(),
+  "endAt": zod.string().optional(),
+  "plannedLaborHours": zod.number().optional(),
+  "status": zod.string().optional(),
+  "notes": zod.string().optional(),
+  "revision": zod.number().min(1)
+})
+
+export const UpdateCrewBookingResponse = zod.object({
+  "id": zod.string(),
+  "crewId": zod.string(),
+  "jobId": zod.string(),
+  "taskId": zod.string().nullable(),
+  "startAt": zod.string(),
+  "endAt": zod.string(),
+  "plannedLaborHours": zod.number(),
+  "status": zod.enum(['Confirmed', 'Cancelled']),
+  "notes": zod.string(),
+  "revision": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "calendarSyncStatus": zod.enum(['pending', 'synced', 'conflict']).optional(),
+  "calendarSyncError": zod.string().nullish()
+})
+
+
+/**
+ * @summary list Job Callbacks
+ */
+export const ListJobCallbacksResponseItem = zod.object({
+  "id": zod.string(),
+  "jobId": zod.string(),
+  "reason": zod.string(),
+  "status": zod.enum(['Open', 'Resolved']),
+  "assignedTo": zod.string(),
+  "notes": zod.string(),
+  "resolvedAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+export const ListJobCallbacksResponse = zod.array(ListJobCallbacksResponseItem)
+
+
+/**
+ * @summary create Job Callback
+ */
+export const CreateJobCallbackBody = zod.object({
+  "jobId": zod.string(),
+  "reason": zod.string(),
+  "status": zod.string().optional(),
+  "assignedTo": zod.string().optional(),
+  "notes": zod.string().optional()
+})
+
+
+/**
+ * @summary update Job Callback
+ */
+export const UpdateJobCallbackParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateJobCallbackBody = zod.object({
+  "jobId": zod.string().optional(),
+  "reason": zod.string().optional(),
+  "status": zod.string().optional(),
+  "assignedTo": zod.string().optional(),
+  "notes": zod.string().optional()
+})
+
+export const UpdateJobCallbackResponse = zod.object({
+  "id": zod.string(),
+  "jobId": zod.string(),
+  "reason": zod.string(),
+  "status": zod.enum(['Open', 'Resolved']),
+  "assignedTo": zod.string(),
+  "notes": zod.string(),
+  "resolvedAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary get Inventory Summary
+ */
+export const GetInventorySummaryResponseItem = zod.object({
+  "productId": zod.string(),
+  "onHand": zod.number(),
+  "reserved": zod.number(),
+  "available": zod.number(),
+  "reorderPoint": zod.number().nullable(),
+  "status": zod.string()
+})
+export const GetInventorySummaryResponse = zod.array(GetInventorySummaryResponseItem)
+
+
+/**
+ * @summary list Inventory Movements
+ */
+export const ListInventoryMovementsQueryParams = zod.object({
+  "productId": zod.coerce.string().optional()
+})
+
+export const ListInventoryMovementsResponseItem = zod.object({
+  "id": zod.string(),
+  "productId": zod.string(),
+  "jobId": zod.string().nullable(),
+  "quantity": zod.number(),
+  "kind": zod.string(),
+  "reason": zod.string(),
+  "actorUserId": zod.string().nullable(),
+  "idempotencyKey": zod.string(),
+  "createdAt": zod.string()
+})
+export const ListInventoryMovementsResponse = zod.array(ListInventoryMovementsResponseItem)
+
+
+/**
+ * @summary create Inventory Movement
+ */
+export const CreateInventoryMovementBody = zod.object({
+  "productId": zod.string(),
+  "jobId": zod.string().optional(),
+  "kind": zod.string(),
+  "quantity": zod.number(),
+  "reason": zod.string(),
+  "idempotencyKey": zod.string(),
+  "overrideReason": zod.string().optional(),
+  "callbackId": zod.string().optional()
+})
+
+
+/**
+ * @summary list Inventory Reservations
+ */
+export const ListInventoryReservationsQueryParams = zod.object({
+  "productId": zod.coerce.string().optional()
+})
+
+export const ListInventoryReservationsResponseItem = zod.object({
+  "id": zod.string(),
+  "productId": zod.string(),
+  "jobId": zod.string(),
+  "quantity": zod.number(),
+  "status": zod.enum(['Active', 'Released', 'Consumed']),
+  "idempotencyKey": zod.string(),
+  "revision": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+export const ListInventoryReservationsResponse = zod.array(ListInventoryReservationsResponseItem)
+
+
+/**
+ * @summary create Inventory Reservation
+ */
+export const CreateInventoryReservationBody = zod.object({
+  "productId": zod.string(),
+  "jobId": zod.string(),
+  "quantity": zod.number(),
+  "idempotencyKey": zod.string()
+})
+
+
+/**
+ * @summary close Inventory Reservation
+ */
+export const CloseInventoryReservationParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+
+
+export const CloseInventoryReservationBody = zod.object({
+  "revision": zod.number().min(1),
+  "status": zod.enum(['Released', 'Consumed']),
+  "callbackId": zod.string().optional()
+})
+
+export const CloseInventoryReservationResponse = zod.object({
+  "id": zod.string(),
+  "productId": zod.string(),
+  "jobId": zod.string(),
+  "quantity": zod.number(),
+  "status": zod.enum(['Active', 'Released', 'Consumed']),
+  "idempotencyKey": zod.string(),
+  "revision": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary list Estimate Drafts
+ */
+export const ListEstimateDraftsResponseItem = zod.object({
+  "id": zod.string(),
+  "ownerUserId": zod.string(),
+  "title": zod.string(),
+  "customerId": zod.string().nullable(),
+  "siteId": zod.string().nullable(),
+  "leadId": zod.string().nullable(),
+  "inputs": zod.record(zod.string(), zod.unknown()),
+  "snapshot": zod.record(zod.string(), zod.unknown()).nullable(),
+  "schemaVersion": zod.number(),
+  "revision": zod.number(),
+  "state": zod.enum(['Draft', 'Converted']),
+  "convertedProposalId": zod.string().nullable(),
+  "convertedJobId": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+export const ListEstimateDraftsResponse = zod.array(ListEstimateDraftsResponseItem)
+
+
+/**
+ * @summary create Estimate Draft
+ */
+export const CreateEstimateDraftBody = zod.object({
+  "id": zod.string().optional(),
+  "title": zod.string().optional(),
+  "inputs": zod.record(zod.string(), zod.unknown())
+})
+
+
+/**
+ * @summary get Estimate Draft
+ */
+export const GetEstimateDraftParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetEstimateDraftResponse = zod.object({
+  "id": zod.string(),
+  "ownerUserId": zod.string(),
+  "title": zod.string(),
+  "customerId": zod.string().nullable(),
+  "siteId": zod.string().nullable(),
+  "leadId": zod.string().nullable(),
+  "inputs": zod.record(zod.string(), zod.unknown()),
+  "snapshot": zod.record(zod.string(), zod.unknown()).nullable(),
+  "schemaVersion": zod.number(),
+  "revision": zod.number(),
+  "state": zod.enum(['Draft', 'Converted']),
+  "convertedProposalId": zod.string().nullable(),
+  "convertedJobId": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary update Estimate Draft
+ */
+export const UpdateEstimateDraftParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+
+
+export const UpdateEstimateDraftBody = zod.object({
+  "title": zod.string().optional(),
+  "inputs": zod.record(zod.string(), zod.unknown()).optional(),
+  "revision": zod.number().min(1)
+})
+
+export const UpdateEstimateDraftResponse = zod.object({
+  "id": zod.string(),
+  "ownerUserId": zod.string(),
+  "title": zod.string(),
+  "customerId": zod.string().nullable(),
+  "siteId": zod.string().nullable(),
+  "leadId": zod.string().nullable(),
+  "inputs": zod.record(zod.string(), zod.unknown()),
+  "snapshot": zod.record(zod.string(), zod.unknown()).nullable(),
+  "schemaVersion": zod.number(),
+  "revision": zod.number(),
+  "state": zod.enum(['Draft', 'Converted']),
+  "convertedProposalId": zod.string().nullable(),
+  "convertedJobId": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary convert Estimate Draft
+ */
+export const ConvertEstimateDraftParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+
+
+export const ConvertEstimateDraftBody = zod.object({
+  "revision": zod.number().min(1),
+  "target": zod.enum(['proposal', 'job'])
+})
+
+export const ConvertEstimateDraftResponse = zod.object({
+  "draft": zod.object({
+  "id": zod.string(),
+  "ownerUserId": zod.string(),
+  "title": zod.string(),
+  "customerId": zod.string().nullable(),
+  "siteId": zod.string().nullable(),
+  "leadId": zod.string().nullable(),
+  "inputs": zod.record(zod.string(), zod.unknown()),
+  "snapshot": zod.record(zod.string(), zod.unknown()).nullable(),
+  "schemaVersion": zod.number(),
+  "revision": zod.number(),
+  "state": zod.enum(['Draft', 'Converted']),
+  "convertedProposalId": zod.string().nullable(),
+  "convertedJobId": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}),
+  "proposalId": zod.string().optional(),
+  "jobId": zod.string().optional()
+})
+
+
+/**
+ * @summary convert Lead
+ */
+export const ConvertLeadParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+
+
+export const ConvertLeadBody = zod.object({
+  "revision": zod.number().min(1).optional()
+})
+
+
+
+
+export const ConvertLeadResponse = zod.object({
+  "id": zod.string(),
+  "jobNumber": zod.string(),
+  "customerName": zod.string(),
+  "phone": zod.string(),
+  "email": zod.string(),
+  "address": zod.string(),
+  "city": zod.string(),
+  "flooringType": zod.enum(['Carpet', 'Hardwood', 'Tile', 'Laminate', 'Luxury Vinyl Plank (LVP)', 'Luxury Vinyl Tile (LVT)', 'Waterproof Flooring', 'Commercial Carpet Tile', 'Commercial LVT']),
+  "rooms": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "length": zod.number(),
+  "width": zod.number(),
+  "scope": zod.string().optional()
+})),
+  "scopeOfWork": zod.string(),
+  "squareFootage": zod.number(),
+  "crewAssigned": zod.string(),
+  "salespersonId": zod.string().nullish(),
+  "estStartDate": zod.string().optional(),
+  "estCompletionDate": zod.string().optional(),
+  "materialStatus": zod.enum(['Not Ordered', 'Ordered', 'In Transit', 'Received', 'Delayed', 'Damaged', 'Missing Items']),
+  "laborEstimate": zod.number(),
+  "estLaborHours": zod.number(),
+  "materialEstimate": zod.number(),
+  "estRevenue": zod.number(),
+  "estGrossProfit": zod.number(),
+  "grossMarginPct": zod.number(),
+  "actualRevenue": zod.number().optional(),
+  "actualLaborCost": zod.number().optional(),
+  "actualMaterialCost": zod.number().optional(),
+  "actualAddOnCost": zod.number().optional(),
+  "notes": zod.string(),
+  "priorityLevel": zod.enum(['Low', 'Medium', 'High']),
+  "riskLevel": zod.enum(['Low', 'Medium', 'High']),
+  "status": zod.enum(['New Lead', 'Estimate Scheduled', 'Estimate Completed', 'Proposal Sent', 'Approved', 'Material Ordered', 'Material Received', 'Scheduled', 'In Progress', 'Final Walkthrough', 'Completed', 'Invoiced']),
+  "stageHistory": zod.array(zod.object({
+  "stage": zod.enum(['New Lead', 'Estimate Scheduled', 'Estimate Completed', 'Proposal Sent', 'Approved', 'Material Ordered', 'Material Received', 'Scheduled', 'In Progress', 'Final Walkthrough', 'Completed', 'Invoiced']),
+  "at": zod.string()
+})),
+  "shareToken": zod.string(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "customerId": zod.string().nullish(),
+  "siteId": zod.string().nullish(),
+  "revision": zod.number().min(1).optional(),
+  "estimateSnapshot": zod.record(zod.string(), zod.unknown()).nullish(),
+  "soldAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "eventDateSource": zod.string().nullish(),
+  "completionChecklist": zod.record(zod.string(), zod.boolean()).optional()
+})
+
+
+/**
+ * @summary get Job Readiness
+ */
+export const GetJobReadinessParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetJobReadinessQueryParams = zod.object({
+  "targetStage": zod.coerce.string().optional()
+})
+
+export const GetJobReadinessResponse = zod.object({
+  "jobId": zod.string(),
+  "targetStage": zod.string(),
+  "revision": zod.number(),
+  "ready": zod.boolean(),
+  "blockers": zod.array(zod.object({
+  "code": zod.string(),
+  "message": zod.string(),
+  "href": zod.string()
+})),
+  "warnings": zod.array(zod.object({
+  "code": zod.string(),
+  "message": zod.string(),
+  "href": zod.string()
+}))
+})
+
+
+/**
+ * @summary transition Job
+ */
+export const TransitionJobParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+
+
+export const TransitionJobBody = zod.object({
+  "revision": zod.number().min(1),
+  "targetStage": zod.enum(['New Lead', 'Estimate Scheduled', 'Estimate Completed', 'Proposal Sent', 'Approved', 'Material Ordered', 'Material Received', 'Scheduled', 'In Progress', 'Final Walkthrough', 'Completed', 'Invoiced']),
+  "overrideReason": zod.string().optional(),
+  "completionChecklist": zod.record(zod.string(), zod.boolean()).optional()
+})
+
+
+
+
+export const TransitionJobResponse = zod.object({
+  "id": zod.string(),
+  "jobNumber": zod.string(),
+  "customerName": zod.string(),
+  "phone": zod.string(),
+  "email": zod.string(),
+  "address": zod.string(),
+  "city": zod.string(),
+  "flooringType": zod.enum(['Carpet', 'Hardwood', 'Tile', 'Laminate', 'Luxury Vinyl Plank (LVP)', 'Luxury Vinyl Tile (LVT)', 'Waterproof Flooring', 'Commercial Carpet Tile', 'Commercial LVT']),
+  "rooms": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "length": zod.number(),
+  "width": zod.number(),
+  "scope": zod.string().optional()
+})),
+  "scopeOfWork": zod.string(),
+  "squareFootage": zod.number(),
+  "crewAssigned": zod.string(),
+  "salespersonId": zod.string().nullish(),
+  "estStartDate": zod.string().optional(),
+  "estCompletionDate": zod.string().optional(),
+  "materialStatus": zod.enum(['Not Ordered', 'Ordered', 'In Transit', 'Received', 'Delayed', 'Damaged', 'Missing Items']),
+  "laborEstimate": zod.number(),
+  "estLaborHours": zod.number(),
+  "materialEstimate": zod.number(),
+  "estRevenue": zod.number(),
+  "estGrossProfit": zod.number(),
+  "grossMarginPct": zod.number(),
+  "actualRevenue": zod.number().optional(),
+  "actualLaborCost": zod.number().optional(),
+  "actualMaterialCost": zod.number().optional(),
+  "actualAddOnCost": zod.number().optional(),
+  "notes": zod.string(),
+  "priorityLevel": zod.enum(['Low', 'Medium', 'High']),
+  "riskLevel": zod.enum(['Low', 'Medium', 'High']),
+  "status": zod.enum(['New Lead', 'Estimate Scheduled', 'Estimate Completed', 'Proposal Sent', 'Approved', 'Material Ordered', 'Material Received', 'Scheduled', 'In Progress', 'Final Walkthrough', 'Completed', 'Invoiced']),
+  "stageHistory": zod.array(zod.object({
+  "stage": zod.enum(['New Lead', 'Estimate Scheduled', 'Estimate Completed', 'Proposal Sent', 'Approved', 'Material Ordered', 'Material Received', 'Scheduled', 'In Progress', 'Final Walkthrough', 'Completed', 'Invoiced']),
+  "at": zod.string()
+})),
+  "shareToken": zod.string(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "customerId": zod.string().nullish(),
+  "siteId": zod.string().nullish(),
+  "revision": zod.number().min(1).optional(),
+  "estimateSnapshot": zod.record(zod.string(), zod.unknown()).nullish(),
+  "soldAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "eventDateSource": zod.string().nullish(),
+  "completionChecklist": zod.record(zod.string(), zod.boolean()).optional()
+})
+
+
+/**
+ * @summary get Operational Metrics
+ */
+export const GetOperationalMetricsQueryParams = zod.object({
+  "from": zod.coerce.string().optional(),
+  "to": zod.coerce.string().optional()
+})
+
+export const GetOperationalMetricsResponse = zod.object({
+  "from": zod.string(),
+  "to": zod.string(),
+  "timezone": zod.string(),
+  "soldRevenue": zod.number(),
+  "jobsSold": zod.number(),
+  "completedRevenue": zod.number(),
+  "invoicedRevenue": zod.number(),
+  "outstanding": zod.number(),
+  "capacityHours": zod.number().nullable(),
+  "plannedLaborHours": zod.number(),
+  "actualLaborHours": zod.number(),
+  "scheduledUtilization": zod.number().nullable(),
+  "actualUtilization": zod.number().nullable(),
+  "callbacksOpened": zod.number(),
+  "callbacksOpen": zod.number(),
+  "missingSoldDates": zod.number(),
+  "missingCompletionDates": zod.number(),
+  "unassignedLaborEntries": zod.number(),
+  "sourceJobIds": zod.array(zod.string()),
+  "definition": zod.string()
+})
+
+
+export const UpdateMaterialReadinessParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateMaterialReadinessBody = zod.object({
+  "received": zod.boolean().optional(),
+  "damaged": zod.boolean().optional(),
+  "missingItems": zod.string().optional(),
+  "status": zod.enum(['Not Ordered', 'Ordered', 'In Transit', 'Received', 'Delayed', 'Damaged', 'Missing Items']).optional(),
+  "supplier": zod.string().optional(),
+  "orderedDate": zod.string().nullish(),
+  "expectedDeliveryDate": zod.string().nullish(),
+  "actualDeliveryDate": zod.string().nullish(),
+  "notes": zod.string().optional()
+})
+
+export const UpdateMaterialReadinessResponse = zod.object({
+  "id": zod.string(),
+  "jobId": zod.string(),
+  "jobNumber": zod.string(),
+  "customer": zod.string(),
+  "city": zod.string(),
+  "flooringType": zod.enum(['Carpet', 'Hardwood', 'Tile', 'Laminate', 'Luxury Vinyl Plank (LVP)', 'Luxury Vinyl Tile (LVT)', 'Waterproof Flooring', 'Commercial Carpet Tile', 'Commercial LVT']),
+  "supplier": zod.string(),
+  "orderedDate": zod.string().optional(),
+  "expectedDeliveryDate": zod.string().optional(),
+  "actualDeliveryDate": zod.string().optional(),
+  "received": zod.boolean(),
+  "damaged": zod.boolean(),
+  "missingItems": zod.string(),
+  "notes": zod.string(),
+  "status": zod.enum(['Not Ordered', 'Ordered', 'In Transit', 'Received', 'Delayed', 'Damaged', 'Missing Items'])
+})
+
+
+export const RecordJobMaterialReadinessParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const RecordJobMaterialReadinessBody = zod.object({
+  "received": zod.boolean().optional(),
+  "damaged": zod.boolean().optional(),
+  "missingItems": zod.string().optional(),
+  "status": zod.enum(['Not Ordered', 'Ordered', 'In Transit', 'Received', 'Delayed', 'Damaged', 'Missing Items']).optional(),
+  "supplier": zod.string().optional(),
+  "orderedDate": zod.string().nullish(),
+  "expectedDeliveryDate": zod.string().nullish(),
+  "actualDeliveryDate": zod.string().nullish(),
+  "notes": zod.string().optional()
+})
+
+
+export const GetJobEntryContextParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetJobEntryContextResponse = zod.object({
+  "crews": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string()
+})),
+  "bookings": zod.array(zod.object({
+  "id": zod.string(),
+  "crewId": zod.string(),
+  "startAt": zod.string(),
+  "endAt": zod.string(),
+  "status": zod.string()
+})),
+  "callbacks": zod.array(zod.object({
+  "id": zod.string(),
+  "reason": zod.string(),
+  "status": zod.string()
+}))
 })
 
 

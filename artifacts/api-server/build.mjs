@@ -11,17 +11,19 @@ globalThis.require = createRequire(import.meta.url);
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
 
 async function buildAll() {
-  const distDir = path.resolve(artifactDir, "dist");
+  const isolatedTest = process.env.CATALYST_ISOLATED_TEST_BUILD === "true";
+  const distDir = path.resolve(artifactDir, isolatedTest ? "dist-test" : "dist");
   await rm(distDir, { recursive: true, force: true });
 
   await esbuild({
-    entryPoints: [path.resolve(artifactDir, "src/index.ts")],
+    entryPoints: [path.resolve(artifactDir, "src/index.ts"), path.resolve(artifactDir, "src/seed-demo.ts"), path.resolve(artifactDir, "src/recovery.ts")],
     platform: "node",
     bundle: true,
     format: "esm",
     outdir: distDir,
     outExtension: { ".js": ".mjs" },
     logLevel: "info",
+    ...(isolatedTest ? { alias: { argon2: path.resolve(artifactDir, "test-support/argon2-node.mjs") } } : {}),
     // Some packages may not be bundleable, so we externalize them, we can add more here as needed.
     // Some of the packages below may not be imported or installed, but we're adding them in case they are in the future.
     // Examples of unbundleable packages:
@@ -34,7 +36,7 @@ async function buildAll() {
       "sqlite3",
       "canvas",
       "bcrypt",
-      "argon2",
+      ...(isolatedTest ? [] : ["argon2"]),
       "fsevents",
       "re2",
       "farmhash",

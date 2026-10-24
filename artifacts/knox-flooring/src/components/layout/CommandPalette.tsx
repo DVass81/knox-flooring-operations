@@ -16,10 +16,13 @@ import {
   FileText,
   Receipt,
   ArrowRight,
+  Search,
 } from "lucide-react";
 import { useStore } from "@/hooks/use-store";
 import { customerKey } from "@/lib/customers";
-import { navGroups } from "./nav";
+import { navGroups, utilityItems, viewItems, canAccess } from "./nav";
+import { useAuth } from "@/contexts/auth";
+import { useOperation, type Customer } from "@/lib/operations";
 
 const MAX_PER_GROUP = 5;
 
@@ -38,6 +41,10 @@ export function CommandPalette({
 }) {
   const [, navigate] = useLocation();
   const { jobs, leads, proposals, invoices } = useStore();
+  const { user } = useAuth();
+  const role = user?.role ?? "installer";
+  const salesAccess = role === "owner" || role === "sales";
+  const customers = useOperation<Customer[]>("/customers", ["owner", "sales"]);
   const [query, setQuery] = useState("");
 
   useEffect(() => {
@@ -75,16 +82,22 @@ export function CommandPalette({
     if (!q) return [];
     const seen = new Set<string>();
     const out: { key: string; name: string; city: string }[] = [];
+    for (const customer of customers.data ?? []) {
+      if (customer.mergedIntoId || !matches(q, customer.name, customer.email, customer.phone)) continue;
+      const key = encodeURIComponent(customer.id);
+      seen.add(key); out.push({ key, name: customer.name, city: customer.email || customer.phone });
+      if (out.length >= MAX_PER_GROUP) return out;
+    }
     for (const j of jobs) {
       if (!matches(q, j.customerName, j.city)) continue;
-      const key = customerKey(j.customerName);
+      const key = j.customerId ? encodeURIComponent(j.customerId) : customerKey(j.customerName);
       if (seen.has(key)) continue;
       seen.add(key);
       out.push({ key, name: j.customerName, city: j.city });
       if (out.length >= MAX_PER_GROUP) break;
     }
     return out;
-  }, [q, jobs]);
+  }, [q, jobs, customers.data]);
 
   const proposalResults = useMemo(
     () =>
@@ -140,7 +153,7 @@ export function CommandPalette({
           </CommandGroup>
         )}
 
-        {leadResults.length > 0 && (
+        {salesAccess && leadResults.length > 0 && (
           <CommandGroup heading="Leads">
             {leadResults.map((l) => (
               <CommandItem
@@ -157,7 +170,7 @@ export function CommandPalette({
           </CommandGroup>
         )}
 
-        {customerResults.length > 0 && (
+        {salesAccess && customerResults.length > 0 && (
           <CommandGroup heading="Customers">
             {customerResults.map((c) => (
               <CommandItem
@@ -173,13 +186,13 @@ export function CommandPalette({
           </CommandGroup>
         )}
 
-        {proposalResults.length > 0 && (
+        {salesAccess && proposalResults.length > 0 && (
           <CommandGroup heading="Proposals">
             {proposalResults.map((p) => (
               <CommandItem
                 key={p.id}
                 value={`proposal-${p.id}`}
-                onSelect={() => go(`/proposals`)}
+                onSelect={() => go(`/proposals?proposal=${encodeURIComponent(p.id)}`)}
               >
                 <FileText className="text-muted-foreground" />
                 <span className="font-medium">{p.customerName}</span>
@@ -190,13 +203,13 @@ export function CommandPalette({
           </CommandGroup>
         )}
 
-        {invoiceResults.length > 0 && (
+        {role === "owner" && invoiceResults.length > 0 && (
           <CommandGroup heading="Invoices">
             {invoiceResults.map((i) => (
               <CommandItem
                 key={i.id}
                 value={`invoice-${i.id}`}
-                onSelect={() => go(`/invoices`)}
+                onSelect={() => go(`/invoices?invoice=${encodeURIComponent(i.id)}`)}
               >
                 <Receipt className="text-muted-foreground" />
                 <span className="font-medium">{i.invoiceNumber}</span>
@@ -207,12 +220,16 @@ export function CommandPalette({
           </CommandGroup>
         )}
 
-        {navGroups.map((group) => {
+        {q && hasEntityResults && <CommandGroup heading="Search all matching records">
+          {[{ name: "Jobs", href: "/jobs" }, ...(salesAccess ? [{ name: "Leads", href: "/leads" }, { name: "Proposals", href: "/proposals" }, { name: "Customers", href: "/customers" }] : []), ...(role === "owner" ? [{ name: "Invoices", href: "/invoices" }] : [])].map((item) => <CommandItem key={item.href} value={`all-${item.href}`} onSelect={() => go(`${item.href}?q=${encodeURIComponent(q)}`)}><Search className="h-4 w-4" />View all {item.name.toLowerCase()} matching “{q}”<ArrowRight className="ml-auto h-4 w-4" /></CommandItem>)}
+        </CommandGroup>}
+        {[...navGroups, { label: "Views", items: viewItems }, { label: "Workspace settings", items: utilityItems }].map((group) => {
+          const allowedItems = group.items.filter((item) => canAccess(item, role));
           const items = q
-            ? group.items.filter((item) =>
+            ? allowedItems.filter((item) =>
                 matches(q, item.name, item.keywords),
               )
-            : group.items;
+            : allowedItems;
           if (items.length === 0) return null;
           if (q && hasEntityResults && items.length === 0) return null;
           return (

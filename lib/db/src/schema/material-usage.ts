@@ -1,8 +1,12 @@
-import { pgTable, text, real } from "drizzle-orm/pg-core";
+import { jobsTable } from "./jobs";
+import { index, pgTable, text, real } from "drizzle-orm/pg-core";
 
 export const materialUsageTable = pgTable("material_usage", {
   id: text("id").primaryKey(),
-  jobId: text("job_id").notNull(),
+  jobId: text("job_id").notNull().references(() => jobsTable.id, { onDelete: "restrict" }),
+  productId: text("product_id"),
+  movementId: text("movement_id"),
+  callbackId: text("callback_id"),
   material: text("material").notNull(),
   quantity: real("quantity").notNull().default(0),
   cost: real("cost").notNull().default(0),
@@ -13,7 +17,7 @@ export const materialUsageTable = pgTable("material_usage", {
   accountingStatus: text("accounting_status").notNull().default("not_ready"),
   notes: text("notes").notNull().default(""),
   createdAt: text("created_at").notNull(),
-});
+}, (table) => [index("material_usage_job_id_idx").on(table.jobId)]);
 
 export type MaterialUsageRow = typeof materialUsageTable.$inferSelect;
 export type MaterialUsageInsert = typeof materialUsageTable.$inferInsert;

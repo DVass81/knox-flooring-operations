@@ -1,359 +1,70 @@
-import { useStore } from "@/hooks/use-store";
+import { useStore, useTasks } from "@/hooks/use-store";
+import { useAuth } from "@/contexts/auth";
+import { useOperation } from "@/lib/operations";
+import type { OperationalMetrics } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import {
-  Briefcase,
-  DollarSign,
-  Package,
-  Calendar,
-  CheckCircle2,
-  AlertTriangle,
-  BarChart3,
-  Users,
-  Wrench,
-  TrendingUp,
-  RotateCcw,
-  Trophy,
-  ArrowRight,
-  Receipt,
-  Target,
-} from "lucide-react";
-import { stageIndex } from "@/lib/stages";
+import { ArrowRight, CalendarDays, Clock, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { getFollowUpStatus } from "./leads";
-import { KpiSection } from "@/components/dashboard/KpiSection";
 import { OpenInvoicesTracker } from "@/components/dashboard/OpenInvoicesTracker";
-import { DashboardCharts } from "@/components/dashboard/DashboardCharts";
-import { invoiceBalance, OUTSTANDING_STATUSES } from "@/lib/invoices";
+import { businessDate } from "@/lib/reporting";
 
-const CREWS = ["Crew A", "Crew B", "Crew C", "Crew D"];
-const CREW_CAPACITY = 5;
-const SOLD_STATUSES = [
-  "Approved",
-  "Material Ordered",
-  "Material Received",
-  "Scheduled",
-  "In Progress",
-  "Final Walkthrough",
-  "Completed",
-  "Invoiced",
-];
+const money = (value: number) => value.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+type Priority = { title: string; detail: string; href: string; urgent: boolean };
 
 export default function Dashboard() {
-  const { jobs, materials, salespeople, invoices, leads } = useStore();
-
-  const invoicePaid = invoices.reduce(
-    (acc, i) =>
-      acc +
-      Math.max(
-        0,
-        (i.depositAmount || 0) +
-          (i.paidAmount || 0) -
-          (i.refundedAmount || 0),
-      ),
-    0,
-  );
-  const invoiceOutstanding = invoices
-    .filter((i) => OUTSTANDING_STATUSES.includes(i.status))
-    .reduce((acc, i) => acc + invoiceBalance(i), 0);
-  const invoiceOverdue = invoices
-    .filter((i) => i.status === "Overdue")
-    .reduce((acc, i) => acc + invoiceBalance(i), 0);
-
-  const openLeads = leads.filter((l) => l.stage !== "Won" && l.stage !== "Lost");
-  const leadsNeedingFollowUp = leads.filter((l) => {
-    const s = getFollowUpStatus(l);
-    return s === "overdue" || s === "today";
-  });
-  const openPipelineValue = openLeads.reduce(
-    (acc, l) => acc + (l.estimatedValue || 0),
-    0,
-  );
-
-  const activeJobs = jobs.filter((j) => !["Completed", "Invoiced"].includes(j.status));
-  const completedJobs = jobs.filter((j) => ["Completed", "Invoiced"].includes(j.status));
-  const scheduledJobs = jobs.filter((j) => j.status === "Scheduled");
-  const inProgressJobs = jobs.filter((j) => j.status === "In Progress");
-  const waitingMaterial = jobs.filter((j) =>
-    ["Material Ordered", "Approved"].includes(j.status)
-  );
-  const now = new Date();
-  const isThisMonth = (iso?: string) => {
-    if (!iso) return false;
-    const d = new Date(iso);
-    return (
-      !Number.isNaN(d.getTime()) &&
-      d.getMonth() === now.getMonth() &&
-      d.getFullYear() === now.getFullYear()
-    );
-  };
-
-  const soldJobs = jobs.filter(
-    (j) => SOLD_STATUSES.includes(j.status) && isThisMonth(j.updatedAt)
-  );
-
-  // Sales highlight: rank reps by sold revenue this month (jobs at/after Approved, created this month)
-  const APPROVED_IDX = stageIndex("Approved");
-  const repStats = salespeople
-    .map((rep) => {
-      const repSold = jobs.filter(
-        (j) =>
-          j.salespersonId === rep.id &&
-          stageIndex(j.status) >= APPROVED_IDX &&
-          isThisMonth(j.createdAt)
-      );
-      return {
-        rep,
-        soldCount: repSold.length,
-        revenue: repSold.reduce((acc, j) => acc + (j.estRevenue || 0), 0),
-      };
-    })
-    .sort((a, b) => b.revenue - a.revenue);
-  const topRep = repStats.find((r) => r.revenue > 0) ?? null;
-  const teamSoldRevenue = repStats.reduce((acc, r) => acc + r.revenue, 0);
-
-  const monthlyRevenue = completedJobs
-    .filter((job) => isThisMonth(job.updatedAt))
-    .reduce((acc, job) => acc + (job.estRevenue || 0), 0);
-  const totalGrossProfit = jobs.reduce((acc, job) => acc + (job.estGrossProfit || 0), 0);
-  const avgMargin =
-    jobs.length > 0
-      ? jobs.reduce((acc, job) => acc + (job.grossMarginPct || 0), 0) / jobs.length
-      : 0;
-
-  // Crew utilization: active crewed jobs vs total crew capacity
-  const activeCrewedJobs = activeJobs.filter((j) => j.crewAssigned !== "Unassigned").length;
-  const crewUtilization = Math.min(
-    100,
-    Math.round((activeCrewedJobs / (CREWS.length * CREW_CAPACITY)) * 100)
-  );
-
-  // Rework / callbacks proxy: completed jobs flagged high risk
-  const callbackCount = completedJobs.filter((j) => j.riskLevel === "High").length;
-
-  const delayedMaterials = materials.filter((m) => m.status === "Delayed");
-
-  const kpis = [
-    { label: "Active Jobs", value: activeJobs.length, sub: "In pipeline", icon: Briefcase, href: "/jobs" },
-    {
-      label: "Leads Needing Follow-up",
-      value: leadsNeedingFollowUp.length,
-      sub: "Overdue or due today",
-      icon: Target,
-      href: "/leads",
-    },
-    {
-      label: "Open Pipeline Value",
-      value: `$${openPipelineValue.toLocaleString()}`,
-      sub: `${openLeads.length} open leads`,
-      icon: TrendingUp,
-      href: "/pipeline",
-    },
-    { label: "Jobs Sold This Month", value: soldJobs.length, sub: "Won opportunities", icon: TrendingUp, href: "/sales" },
-    {
-      label: "Monthly Revenue",
-      value: `$${monthlyRevenue.toLocaleString()}`,
-      sub: "Completed jobs",
-      icon: DollarSign,
-      href: "/invoices",
-    },
-    {
-      label: "Estimated Gross Profit",
-      value: `$${totalGrossProfit.toLocaleString()}`,
-      sub: "Across all jobs",
-      icon: BarChart3,
-      href: "/reports",
-    },
-    { label: "Average Margin", value: `${avgMargin.toFixed(1)}%`, sub: "Gross margin", icon: BarChart3, href: "/reports" },
-    { label: "Crew Utilization", value: `${crewUtilization}%`, sub: "Of capacity (est.)", icon: Users, href: "/schedule" },
-    { label: "Waiting on Material", value: waitingMaterial.length, sub: "Needs ordering", icon: Package, href: "/materials" },
-    { label: "Rework / Callbacks", value: callbackCount, sub: "High-risk (est.)", icon: RotateCcw, href: "/jobs" },
+  const { jobs, leads, materials, proposals, invoices, queryState } = useStore();
+  const taskQuery = useTasks();
+  const { user } = useAuth();
+  const role = user?.role ?? "installer";
+  const owner = role === "owner";
+  const sales = owner || role === "sales";
+  const operations = owner || role === "operations";
+  const scheduleHref = operations ? "/calendar" : "/tasks";
+  const metrics = useOperation<OperationalMetrics>("/metrics", ["owner"]);
+  const today = businessDate();
+  const nextWeek = businessDate(new Date(Date.now() + 7 * 86400000));
+  const activeJobs = jobs.filter((job) => !["Completed", "Invoiced"].includes(job.status));
+  const followUps = leads.filter((lead) => ["overdue", "today"].includes(getFollowUpStatus(lead))).sort((a, b) => (a.followUpDate ?? "").localeCompare(b.followUpDate ?? ""));
+  const installations = taskQuery.tasks.filter((task) => task.bookingId && task.status === "Open" && businessDate(new Date(task.startAt)) >= today && businessDate(new Date(task.startAt)) < nextWeek).sort((a, b) => a.startAt.localeCompare(b.startAt)).map((task) => { const job = jobs.find((item) => item.id === task.relatedJobId); return { id: task.id, jobId: job?.id, jobNumber: job?.jobNumber ?? "Installation", customerName: job?.customerName ?? task.title, crewAssigned: job?.crewAssigned ?? "See booking", estStartDate: businessDate(new Date(task.startAt)) }; });
+  const unassigned = activeJobs.filter((job) => job.crewAssigned === "Unassigned");
+  const inProgress = jobs.filter((job) => job.status === "In Progress");
+  const priorities: Priority[] = [
+    ...(sales ? followUps.map((lead) => ({ title: `Follow up with ${lead.customerName}`, detail: `${lead.followUpDate} · ${lead.stage}`, href: `/leads/${lead.id}`, urgent: getFollowUpStatus(lead) === "overdue" })) : []),
+    ...(owner ? invoices.filter((invoice) => invoice.status === "Overdue").map((invoice) => ({ title: `Review ${invoice.invoiceNumber}`, detail: `${invoice.customerName} · overdue invoice`, href: `/invoices?invoice=${encodeURIComponent(invoice.id)}`, urgent: true })) : []),
+    ...(operations ? materials.filter((material) => ["Delayed", "Damaged", "Missing Items"].includes(material.status)).map((material) => ({ title: `${material.status}: ${material.jobNumber}`, detail: `${material.customer} · ${material.supplier}`, href: "/materials", urgent: true })) : []),
+    ...activeJobs.filter((job) => job.riskLevel === "High").map((job) => ({ title: `Review ${job.jobNumber}`, detail: `${job.customerName} · flagged high risk`, href: `/jobs/${job.id}`, urgent: true })),
+    ...(operations ? unassigned.filter((job) => job.estStartDate).map((job) => ({ title: `Assign a crew to ${job.jobNumber}`, detail: `${job.customerName} · planned ${job.estStartDate}`, href: "/schedule", urgent: false })) : []),
   ];
-
-  return (
-    <div className="space-y-6" data-training-id="dashboard-priorities">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
-          Executive Overview
-        </h1>
+  const cards = owner ? [
+    { label: "Open jobs", value: activeJobs.length, detail: "Current work records", href: "/jobs" },
+    { label: "Follow-ups due", value: followUps.length, detail: "Due today or overdue", href: "/leads?followUp=due" },
+    { label: "Invoiced this month", value: metrics.data ? money(metrics.data.invoicedRevenue) : "—", detail: "Issued invoices, excluding drafts and voids", href: "/reports" },
+    { label: "Outstanding balance", value: metrics.data ? money(metrics.data.outstanding) : "—", detail: "Sent, partially paid, and overdue", href: "/invoices" },
+  ] : sales ? [
+    { label: "Open leads", value: leads.filter((lead) => !["Won", "Lost"].includes(lead.stage)).length, detail: "Across the sales team", href: "/leads" },
+    { label: "Follow-ups due", value: followUps.length, detail: "Due today or overdue", href: "/leads?followUp=due" },
+    { label: "Awaiting a decision", value: proposals.filter((proposal) => ["Sent", "Viewed"].includes(proposal.status)).length, detail: "Sent and viewed proposals", href: "/proposals" },
+    { label: "Upcoming installations", value: installations.length, detail: "Next seven days", href: scheduleHref },
+  ] : [
+    { label: "Open jobs", value: activeJobs.length, detail: "Across the team", href: "/jobs" },
+    { label: "In progress", value: inProgress.length, detail: "Current job status", href: "/jobs?status=In+Progress" },
+    { label: "Upcoming installations", value: installations.length, detail: "Next seven days", href: scheduleHref },
+    { label: "Unassigned jobs", value: unassigned.length, detail: "Crew not yet assigned", href: "/jobs?crew=Unassigned" },
+  ];
+  const loading = queryState.jobs.isLoading || taskQuery.isLoading || (sales && queryState.leads.isLoading);
+  const error = queryState.jobs.error || taskQuery.error || (sales && queryState.leads.error);
+  return <div className="space-y-6" data-training-id="dashboard-priorities">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="mb-1 text-sm text-muted-foreground">{new Date().toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "long", month: "long", day: "numeric" })}</p><h1 className="text-3xl font-semibold tracking-tight">Today</h1><p className="mt-2 text-sm text-muted-foreground">{role === "sales" ? "Follow-ups, proposals, and the next customer handoff." : role === "installer" ? "Team installations and job updates for the day ahead." : "The work that needs attention, and what is coming next."}</p></div>{role !== "installer" && <Button variant="outline" asChild><Link href="/ai-operations">Open daily brief<ArrowRight className="h-4 w-4" /></Link></Button>}</div>
+    {loading ? <p role="status" className="rounded-lg border bg-white p-4 text-sm">Loading workspace…</p> : error ? <div role="alert" className="rounded-lg border border-destructive/30 bg-white p-4"><p className="text-sm">The workspace could not load. Your records have not changed.</p><Button variant="outline" className="mt-3" onClick={() => { void queryState.jobs.refetch(); void taskQuery.refetch(); if (sales) void queryState.leads.refetch(); }}>Retry</Button></div> : <>
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">{cards.map((card) => <Link key={card.label} href={card.href} className="rounded-lg border bg-white p-4 transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><p className="text-sm text-muted-foreground">{card.label}</p><p className="mt-3 text-2xl font-semibold tabular-nums">{card.value}</p><p className="mt-2 text-xs leading-5 text-muted-foreground">{card.detail}</p></Link>)}</div>
+      {owner && metrics.isError && <p role="alert" className="text-sm text-destructive">Financial totals are unavailable. <button className="underline" onClick={() => void metrics.refetch()}>Retry totals</button></p>}
+      <div className="grid gap-6 xl:grid-cols-[1.1fr_1fr]">
+        <Card><CardHeader className="flex-row items-center justify-between"><CardTitle className="text-base">Needs attention</CardTitle><span className="text-xs text-muted-foreground">{priorities.length} items</span></CardHeader><CardContent className="space-y-1">{priorities.slice(0, 8).map((priority, index) => <Link key={`${priority.href}-${index}`} href={priority.href} className="flex items-start gap-3 rounded-md px-2 py-3 hover:bg-muted/50">{priority.urgent ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" /> : <Clock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />}<span className="min-w-0 flex-1"><span className="block text-sm font-medium">{priority.title}</span><span className="mt-1 block text-xs text-muted-foreground">{priority.detail}</span></span><ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" /></Link>)}{priorities.length === 0 && <div className="py-8 text-center"><CheckCircle2 className="mx-auto mb-3 h-6 w-6 text-muted-foreground" /><p className="text-sm font-medium">No flagged items right now</p><p className="mt-1 text-xs text-muted-foreground">Check the schedule for planned work.</p></div>}{priorities.length > 8 && <p className="border-t pt-3 text-xs text-muted-foreground">Showing the first eight items. Open Leads, Invoices, or Jobs to review the full queue.</p>}</CardContent></Card>
+        <Card><CardHeader className="flex-row items-center justify-between gap-3"><CardTitle className="text-base">Next seven days</CardTitle><Link href={scheduleHref} className="text-xs text-primary hover:underline">Open schedule</Link></CardHeader><CardContent className="space-y-1">{installations.slice(0, 8).map((job) => <Link key={job.id} href={job.jobId ? `/jobs/${job.jobId}` : scheduleHref} className="flex gap-3 rounded-md px-2 py-3 hover:bg-muted/50"><CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /><span className="min-w-0 flex-1"><span className="block text-sm font-medium">{job.customerName}</span><span className="mt-1 block text-xs text-muted-foreground">{job.jobNumber} · {job.crewAssigned}</span></span><span className="text-xs text-muted-foreground">{job.estStartDate}</span></Link>)}{installations.length === 0 && <div className="py-8 text-center"><CalendarDays className="mx-auto mb-3 h-6 w-6 text-muted-foreground" /><p className="text-sm font-medium">No confirmed installations in the next seven days</p><Link href={scheduleHref} className="mt-2 inline-block text-sm text-primary hover:underline">Review the schedule</Link></div>}</CardContent></Card>
       </div>
-
-      <KpiSection />
-
-      <OpenInvoicesTracker />
-
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        {kpis.map((kpi) => (
-          <Link
-            key={kpi.label}
-            href={kpi.href}
-            className="block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            <Card className="h-full cursor-pointer hover:border-primary/50 hover:shadow-sm transition-colors">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{kpi.label}</CardTitle>
-                <kpi.icon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl md:text-2xl font-bold">{kpi.value}</div>
-                <p className="text-xs text-muted-foreground">{kpi.sub}</p>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
-
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        <Link
-          href="/schedule"
-          className="block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-          <Card className="h-full bg-muted/30 cursor-pointer hover:border-primary/50 hover:shadow-sm transition-colors">
-            <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-xs font-medium uppercase text-muted-foreground flex items-center gap-2">
-                <Calendar className="w-3.5 h-3.5" /> Scheduled
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <div className="text-xl font-bold">{scheduledJobs.length}</div>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link
-          href="/jobs"
-          className="block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-          <Card className="h-full bg-muted/30 cursor-pointer hover:border-primary/50 hover:shadow-sm transition-colors">
-            <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-xs font-medium uppercase text-muted-foreground flex items-center gap-2">
-                <Wrench className="w-3.5 h-3.5" /> In Progress
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <div className="text-xl font-bold">{inProgressJobs.length}</div>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link
-          href="/jobs"
-          className="block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-          <Card className="h-full bg-muted/30 cursor-pointer hover:border-primary/50 hover:shadow-sm transition-colors">
-            <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-xs font-medium uppercase text-muted-foreground flex items-center gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Completed
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <div className="text-xl font-bold">{completedJobs.length}</div>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link
-          href="/materials"
-          className="block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-          <Card className="h-full bg-destructive/5 border-destructive/20 cursor-pointer hover:border-destructive/50 hover:shadow-sm transition-colors">
-            <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-xs font-medium uppercase text-destructive flex items-center gap-2">
-                <AlertTriangle className="w-3.5 h-3.5" /> Material Delays
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <div className="text-xl font-bold text-destructive">{delayedMaterials.length}</div>
-            </CardContent>
-          </Card>
-        </Link>
-      </div>
-
-      <Card>
-        <CardContent className="p-5">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-2">
-                <Receipt className="w-3.5 h-3.5" /> Invoicing
-              </p>
-              <div className="mt-3 flex flex-wrap gap-8">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                    Paid
-                  </p>
-                  <p className="text-2xl font-bold text-green-600">
-                    ${invoicePaid.toLocaleString()}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                    Outstanding
-                  </p>
-                  <p className="text-2xl font-bold">
-                    ${invoiceOutstanding.toLocaleString()}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                    Overdue
-                  </p>
-                  <p className="text-2xl font-bold text-destructive">
-                    ${invoiceOverdue.toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <Link href="/invoices">
-              <button className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline whitespace-nowrap">
-                View Invoices <ArrowRight className="w-4 h-4" />
-              </button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-gradient-to-br from-primary/5 to-transparent border-primary/20">
-        <CardContent className="p-5">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <Trophy className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Top Salesperson This Month
-                </p>
-                {topRep ? (
-                  <>
-                    <p className="text-xl font-bold">{topRep.rep.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {topRep.soldCount} {topRep.soldCount === 1 ? "job" : "jobs"} sold ·{" "}
-                      ${topRep.revenue.toLocaleString()}
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-lg font-semibold text-muted-foreground">
-                    No sales recorded yet this month
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-6">
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                  Team Sold
-                </p>
-                <p className="text-2xl font-bold">
-                  ${teamSoldRevenue.toLocaleString()}
-                </p>
-              </div>
-              <Link href="/sales">
-                <button className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline whitespace-nowrap">
-                  View Performance <ArrowRight className="w-4 h-4" />
-                </button>
-              </Link>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <DashboardCharts />
-    </div>
-  );
+      {owner && <details className="rounded-lg border bg-white"><summary className="cursor-pointer px-5 py-4 text-sm font-medium">Open invoice register</summary><OpenInvoicesTracker /></details>}
+    </>}
+  </div>;
 }

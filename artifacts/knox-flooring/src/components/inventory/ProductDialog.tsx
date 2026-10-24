@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useUpload } from "@workspace/object-storage-web";
 import { useStore } from "@/hooks/use-store";
+import { useUnsavedForm } from "@/hooks/use-unsaved-changes";
 import {
   Dialog,
   DialogContent,
@@ -65,7 +66,55 @@ export function ProductDialog({ open, onOpenChange, product }: Props) {
   const [notes, setNotes] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [coverage, setCoverage] = useState<number | null>(null);
+  const [multiple, setMultiple] = useState(1);
+  const [minimum, setMinimum] = useState(0);
+  const [reorder, setReorder] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const values = {
+    name,
+    category,
+    sku,
+    supplier,
+    color,
+    unit,
+    cost,
+    price,
+    quantityOnHand,
+    inventoryType,
+    active,
+    notes,
+    imageUrl,
+    coverage,
+    multiple,
+    minimum,
+    reorder,
+  };
+  const initialValues = {
+    name: product?.name ?? "",
+    category: product?.category ?? "Vinyl Plank",
+    sku: product?.sku ?? "",
+    supplier: product?.supplier ?? "",
+    color: product?.color ?? "",
+    unit: product?.unit ?? "sqft",
+    cost: product?.cost ?? 0,
+    price: product?.price ?? 0,
+    quantityOnHand: product?.quantityOnHand ?? 0,
+    inventoryType: product?.inventoryType ?? "Inventory",
+    active: product?.active ?? true,
+    notes: product?.notes ?? "",
+    imageUrl: product?.imageUrl ?? "",
+    coverage: product?.coveragePerUnit ?? null,
+    multiple: product?.orderMultiple ?? 1,
+    minimum: product?.minimumOrderQty ?? 0,
+    reorder: product?.reorderPoint ?? null,
+  };
+  const guard = useUnsavedForm(open, values);
+  const close = (next: boolean) => {
+    if (!saving && !isUploading && (next || guard.confirmDiscard()))
+      onOpenChange(next);
+  };
 
   const { uploadFile, isUploading } = useUpload({
     onError: (err: Error) =>
@@ -78,6 +127,12 @@ export function ProductDialog({ open, onOpenChange, product }: Props) {
 
   useEffect(() => {
     if (!open) return;
+    guard.reset(initialValues);
+    setError("");
+    setCoverage(product?.coveragePerUnit ?? null);
+    setMultiple(product?.orderMultiple ?? 1);
+    setMinimum(product?.minimumOrderQty ?? 0);
+    setReorder(product?.reorderPoint ?? null);
     if (product) {
       setName(product.name);
       setCategory(product.category);
@@ -107,7 +162,7 @@ export function ProductDialog({ open, onOpenChange, product }: Props) {
       setNotes("");
       setImageUrl("");
     }
-  }, [open, product]);
+  }, [open, product?.id]);
 
   const handleImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -123,8 +178,24 @@ export function ProductDialog({ open, onOpenChange, product }: Props) {
   const margin = marginPct(cost, price);
 
   const handleSave = async () => {
+    if (saving || isUploading) return;
+    setError("");
     if (name.trim() === "") {
-      toast({ title: "Product name is required", variant: "destructive" });
+      setError("Product name is required.");
+      return;
+    }
+    if (
+      ![cost, price, quantityOnHand, minimum].every(
+        (v) => Number.isFinite(v) && v >= 0,
+      ) ||
+      !Number.isFinite(multiple) ||
+      multiple <= 0 ||
+      (coverage !== null && (!Number.isFinite(coverage) || coverage <= 0)) ||
+      (reorder !== null && (!Number.isFinite(reorder) || reorder < 0))
+    ) {
+      setError(
+        "Use nonnegative costs, prices, stock, minimums and reorder points. Coverage and order multiples must be positive.",
+      );
       return;
     }
     const payload = {
@@ -136,11 +207,19 @@ export function ProductDialog({ open, onOpenChange, product }: Props) {
       unit,
       cost,
       price,
-      quantityOnHand: inventoryType === "Special Order" || inventoryType === "Service" ? 0 : quantityOnHand,
+      quantityOnHand:
+        inventoryType === "Special Order" || inventoryType === "Service"
+          ? 0
+          : quantityOnHand,
       inventoryType,
       active,
       notes: notes.trim(),
       imageUrl: imageUrl || null,
+      coveragePerUnit: unit === "sqft" ? 1 : coverage,
+      coverageUnit: "sqft",
+      orderMultiple: multiple,
+      minimumOrderQty: minimum,
+      reorderPoint: reorder,
     };
     setSaving(true);
     try {
@@ -152,21 +231,25 @@ export function ProductDialog({ open, onOpenChange, product }: Props) {
         toast({ title: "Product added" });
       }
       onOpenChange(false);
-    } catch {
-      toast({ title: "Save failed", variant: "destructive" });
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Save failed. Your entries are preserved.",
+      );
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={close}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit Product" : "Add Product"}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <fieldset disabled={saving} className="space-y-4">
           <div className="space-y-1.5">
             <Label>Product Photo</Label>
             <div className="flex items-center gap-4">
@@ -223,9 +306,10 @@ export function ProductDialog({ open, onOpenChange, product }: Props) {
           </div>
 
           <div className="space-y-1.5">
-            <Label>Product Name</Label>
+            <Label htmlFor="product-name">Product Name</Label>
             <Input
-              placeholder="e.g. Coretec Pro Plus 7&quot; Oak"
+              id="product-name"
+              placeholder='e.g. Coretec Pro Plus 7" Oak'
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
@@ -233,12 +317,12 @@ export function ProductDialog({ open, onOpenChange, product }: Props) {
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>Category</Label>
+              <Label htmlFor="product-category">Category</Label>
               <Select
                 value={category}
                 onValueChange={(v: ProductCategory) => setCategory(v)}
               >
-                <SelectTrigger>
+                <SelectTrigger id="product-category">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -251,16 +335,18 @@ export function ProductDialog({ open, onOpenChange, product }: Props) {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>SKU / Style #</Label>
+              <Label htmlFor="product-sku">SKU / Style #</Label>
               <Input
+                id="product-sku"
                 placeholder="e.g. CP-7OAK-NAT"
                 value={sku}
                 onChange={(e) => setSku(e.target.value)}
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Supplier / Manufacturer</Label>
+              <Label htmlFor="product-supplier">Supplier / Manufacturer</Label>
               <SelectOrOther
+                id="product-supplier"
                 value={supplier}
                 options={SUPPLIERS}
                 placeholder="Select supplier"
@@ -269,8 +355,9 @@ export function ProductDialog({ open, onOpenChange, product }: Props) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Color / Finish</Label>
+              <Label htmlFor="product-color">Color / Finish</Label>
               <Input
+                id="product-color"
                 placeholder="e.g. Natural Oak"
                 value={color}
                 onChange={(e) => setColor(e.target.value)}
@@ -280,9 +367,12 @@ export function ProductDialog({ open, onOpenChange, product }: Props) {
 
           <div className="grid sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">
-              <Label>Unit</Label>
-              <Select value={unit} onValueChange={(v: ProductUnit) => setUnit(v)}>
-                <SelectTrigger>
+              <Label htmlFor="product-unit">Unit</Label>
+              <Select
+                value={unit}
+                onValueChange={(v: ProductUnit) => setUnit(v)}
+              >
+                <SelectTrigger id="product-unit">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -295,8 +385,9 @@ export function ProductDialog({ open, onOpenChange, product }: Props) {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Cost ($/{unit})</Label>
+              <Label htmlFor="product-cost">Cost ($/{unit})</Label>
               <Input
+                id="product-cost"
                 type="number"
                 min={0}
                 step="0.01"
@@ -305,8 +396,9 @@ export function ProductDialog({ open, onOpenChange, product }: Props) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Sell Price ($/{unit})</Label>
+              <Label htmlFor="product-price">Sell Price ($/{unit})</Label>
               <Input
+                id="product-price"
                 type="number"
                 min={0}
                 step="0.01"
@@ -318,12 +410,12 @@ export function ProductDialog({ open, onOpenChange, product }: Props) {
 
           <div className="grid sm:grid-cols-3 gap-4 items-end">
             <div className="space-y-1.5">
-              <Label>Inventory Type</Label>
+              <Label htmlFor="product-type">Inventory Type</Label>
               <Select
                 value={inventoryType}
                 onValueChange={(v: ProductInventoryType) => setInventoryType(v)}
               >
-                <SelectTrigger>
+                <SelectTrigger id="product-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -336,13 +428,18 @@ export function ProductDialog({ open, onOpenChange, product }: Props) {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>On-Hand Qty ({unit})</Label>
+              <Label htmlFor="product-stock">On-Hand Qty ({unit})</Label>
               <Input
+                id="product-stock"
                 type="number"
                 min={0}
                 step="any"
                 value={quantityOnHand}
-                disabled={inventoryType === "Special Order" || inventoryType === "Service"}
+                disabled={
+                  isEdit ||
+                  inventoryType === "Special Order" ||
+                  inventoryType === "Service"
+                }
                 onChange={(e) => setQuantityOnHand(Number(e.target.value))}
               />
             </div>
@@ -356,33 +453,111 @@ export function ProductDialog({ open, onOpenChange, product }: Props) {
             </div>
           </div>
 
+          {isEdit && (
+            <p className="text-xs text-muted-foreground">
+              Record receipts, usage and adjustments through Stock activity to
+              preserve the inventory history.
+            </p>
+          )}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="space-y-1.5 text-sm">
+              Coverage (sq ft per {unit})
+              <Input
+                type="number"
+                min="0.000001"
+                step="any"
+                disabled={unit === "sqft"}
+                value={unit === "sqft" ? 1 : (coverage ?? "")}
+                placeholder="Verify manufacturer coverage"
+                onChange={(e) =>
+                  setCoverage(
+                    e.target.value === "" ? null : Number(e.target.value),
+                  )
+                }
+              />
+            </label>
+            <label className="space-y-1.5 text-sm">
+              Order multiple ({unit})
+              <Input
+                type="number"
+                min="0.000001"
+                step="any"
+                value={multiple}
+                onChange={(e) => setMultiple(Number(e.target.value))}
+              />
+            </label>
+            <label className="space-y-1.5 text-sm">
+              Minimum order ({unit})
+              <Input
+                type="number"
+                min="0"
+                step="any"
+                value={minimum}
+                onChange={(e) => setMinimum(Number(e.target.value))}
+              />
+            </label>
+            <label className="space-y-1.5 text-sm">
+              Reorder point ({unit})
+              <Input
+                type="number"
+                min="0"
+                step="any"
+                value={reorder ?? ""}
+                placeholder="Not configured"
+                onChange={(e) =>
+                  setReorder(
+                    e.target.value === "" ? null : Number(e.target.value),
+                  )
+                }
+              />
+            </label>
+          </div>
           <div className="flex items-center justify-between rounded-md border px-3 py-2.5">
             <div>
-              <Label className="cursor-pointer">Active</Label>
+              <Label htmlFor="product-active" className="cursor-pointer">
+                Active
+              </Label>
               <p className="text-xs text-muted-foreground">
                 Archived products stay hidden from the catalog.
               </p>
             </div>
-            <Switch checked={active} onCheckedChange={setActive} />
+            <Switch
+              id="product-active"
+              checked={active}
+              onCheckedChange={setActive}
+            />
           </div>
 
           <div className="space-y-1.5">
-            <Label>Notes</Label>
+            <Label htmlFor="product-notes">Notes</Label>
             <Textarea
+              id="product-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Lead time, packaging, warranty, etc."
               rows={2}
             />
           </div>
-        </div>
+        </fieldset>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        {error && (
+          <p
+            role="alert"
+            className="rounded-lg bg-red-50 p-3 text-sm text-red-900"
+          >
+            {error}
+          </p>
+        )}
+        <DialogFooter className="sticky bottom-0 border-t bg-background pt-4">
+          <Button
+            disabled={saving || isUploading}
+            variant="outline"
+            onClick={() => close(false)}
+          >
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={saving || isUploading}>
-            {isEdit ? "Save Changes" : "Add Product"}
+            {saving ? "Saving…" : isEdit ? "Save changes" : "Add product"}
           </Button>
         </DialogFooter>
       </DialogContent>

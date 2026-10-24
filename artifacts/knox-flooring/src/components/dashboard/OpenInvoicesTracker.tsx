@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useLocation } from "wouter";
+import { Link } from "wouter";
 import { useStore } from "@/hooks/use-store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -49,7 +49,6 @@ const fmtDate = (iso: string) => {
 
 export function OpenInvoicesTracker() {
   const { invoices, jobs, salespeople } = useStore();
-  const [, navigate] = useLocation();
   const [search, setSearch] = useState("");
 
   const repByJob = useMemo(() => {
@@ -97,6 +96,7 @@ export function OpenInvoicesTracker() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search open invoices..."
+            aria-label="Search open invoices"
             className="pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -104,7 +104,7 @@ export function OpenInvoicesTracker() {
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="max-h-[360px] overflow-y-auto">
+        <div className="max-h-[360px] overflow-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur supports-[backdrop-filter]:bg-muted/60">
               <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -121,8 +121,7 @@ export function OpenInvoicesTracker() {
               {openInvoices.map((inv) => (
                 <tr
                   key={inv.id}
-                  onClick={() => navigate(`/invoices?invoice=${inv.id}`)}
-                  className="border-t border-border cursor-pointer hover:bg-muted/50 transition-colors"
+                  className="border-t border-border hover:bg-muted/50 transition-colors"
                 >
                   <td className="px-4 py-3">
                     <span
@@ -134,7 +133,7 @@ export function OpenInvoicesTracker() {
                       {STATUS_LABEL[inv.status]}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-medium">{inv.invoiceNumber}</td>
+                  <td className="px-4 py-3 font-medium"><Link className="text-primary underline-offset-4 hover:underline focus-visible:underline" href={`/invoices?invoice=${encodeURIComponent(inv.id)}`}>{inv.invoiceNumber}</Link></td>
                   <td className="px-4 py-3">{inv.customerName}</td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {fmtDate(inv.issueDate)}
@@ -143,10 +142,10 @@ export function OpenInvoicesTracker() {
                     {repByJob(inv)}
                   </td>
                   <td className="px-4 py-3 text-right font-medium">
-                    {currency(invoiceBalance(inv))}
+                    {currency(inv.total)}
                   </td>
                   <td className="px-4 py-3 text-right font-semibold">
-                    {currency(inv.total)}
+                    {currency(invoiceBalance(inv))}
                   </td>
                 </tr>
               ))}
@@ -157,7 +156,7 @@ export function OpenInvoicesTracker() {
                       <Receipt className="w-8 h-8 opacity-40" />
                       {search.trim()
                         ? "No open invoices match your search."
-                        : "No open invoices — everything is paid up."}
+                        : "No sent invoices have an open balance."}
                     </div>
                   </td>
                 </tr>

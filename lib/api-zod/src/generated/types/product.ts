@@ -17,8 +17,11 @@ export interface Product {
   supplier: string;
   color: string;
   unit: ProductUnit;
+  /** @minimum 0 */
   cost: number;
+  /** @minimum 0 */
   price: number;
+  /** @minimum 0 */
   quantityOnHand: number;
   inventoryType: ProductInventoryType;
   active: boolean;
@@ -26,4 +29,15 @@ export interface Product {
   imageUrl?: string | null;
   createdAt: string;
   updatedAt: string;
+  /** @minimum 1 */
+  revision?: number;
+  /** @exclusiveMinimum 0 */
+  coveragePerUnit?: number | null;
+  coverageUnit?: string | null;
+  /** @exclusiveMinimum 0 */
+  orderMultiple?: number | null;
+  /** @minimum 0 */
+  minimumOrderQty?: number | null;
+  /** @minimum 0 */
+  reorderPoint?: number | null;
 }

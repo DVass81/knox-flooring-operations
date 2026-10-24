@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useId } from "react";
 import { useStore } from "@/hooks/use-store";
+import { useUnsavedForm } from "@/hooks/use-unsaved-changes";
 import {
   Dialog,
   DialogContent,
@@ -30,14 +31,31 @@ export function JobCostingDialog({ open, onOpenChange, job }: Props) {
   const [actualMaterialCost, setActualMaterialCost] = useState(0);
   const [actualAddOnCost, setActualAddOnCost] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const guard = useUnsavedForm(open, {
+    actualRevenue,
+    actualLaborCost,
+    actualMaterialCost,
+    actualAddOnCost,
+  });
+  const close = (next: boolean) => {
+    if (!saving && (next || guard.confirmDiscard())) onOpenChange(next);
+  };
 
   useEffect(() => {
     if (!open) return;
+    setError("");
+    guard.reset({
+      actualRevenue: job.actualRevenue || 0,
+      actualLaborCost: job.actualLaborCost || 0,
+      actualMaterialCost: job.actualMaterialCost || 0,
+      actualAddOnCost: job.actualAddOnCost || 0,
+    });
     setActualRevenue(job.actualRevenue || 0);
     setActualLaborCost(job.actualLaborCost || 0);
     setActualMaterialCost(job.actualMaterialCost || 0);
     setActualAddOnCost(job.actualAddOnCost || 0);
-  }, [open, job]);
+  }, [open, job.id]);
 
   const actualCost = actualLaborCost + actualMaterialCost + actualAddOnCost;
   const actualProfit = actualRevenue - actualCost;
@@ -45,6 +63,19 @@ export function JobCostingDialog({ open, onOpenChange, job }: Props) {
     actualRevenue > 0 ? (actualProfit / actualRevenue) * 100 : 0;
 
   const handleSave = async () => {
+    if (saving) return;
+    setError("");
+    if (
+      ![
+        actualRevenue,
+        actualLaborCost,
+        actualMaterialCost,
+        actualAddOnCost,
+      ].every((n) => Number.isFinite(n) && n >= 0)
+    ) {
+      setError("Enter nonnegative amounts for revenue and costs.");
+      return;
+    }
     setSaving(true);
     try {
       await updateJob(job.id, {
@@ -55,8 +86,12 @@ export function JobCostingDialog({ open, onOpenChange, job }: Props) {
       });
       toast({ title: "Actuals saved", description: "Job costing updated." });
       onOpenChange(false);
-    } catch {
-      toast({ title: "Save failed", variant: "destructive" });
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Save failed. Your amounts are still here.",
+      );
     } finally {
       setSaving(false);
     }
@@ -69,39 +104,8 @@ export function JobCostingDialog({ open, onOpenChange, job }: Props) {
     setActualAddOnCost(0);
   };
 
-  const NumberField = ({
-    label,
-    value,
-    onChange,
-    hint,
-  }: {
-    label: string;
-    value: number;
-    onChange: (n: number) => void;
-    hint?: string;
-  }) => (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-          $
-        </span>
-        <Input
-          type="number"
-          min={0}
-          step="0.01"
-          className="pl-6"
-          value={value === 0 ? "" : value}
-          placeholder="0"
-          onChange={(e) => onChange(Number(e.target.value) || 0)}
-        />
-      </div>
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-    </div>
-  );
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={close}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Record Actual Costs</DialogTitle>
@@ -111,7 +115,7 @@ export function JobCostingDialog({ open, onOpenChange, job }: Props) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <fieldset disabled={saving} className="space-y-4">
           <NumberField
             label="Actual Revenue"
             value={actualRevenue}
@@ -169,17 +173,61 @@ export function JobCostingDialog({ open, onOpenChange, job }: Props) {
           >
             Prefill from estimate
           </Button>
-        </div>
+        </fieldset>
 
+        {error && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            disabled={saving}
+            variant="outline"
+            onClick={() => close(false)}
+          >
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={saving}>
-            Save Actuals
+            {saving ? "Saving…" : "Save Actuals"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+
+const NumberField = ({
+  label,
+  value,
+  onChange,
+  hint,
+}: {
+  label: string;
+  value: number;
+  onChange: (n: number) => void;
+  hint?: string;
+}) => {
+  const fieldId = useId();
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={fieldId}>{label}</Label>
+      <div className="relative">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+          $
+        </span>
+        <Input
+          id={fieldId}
+          type="number"
+          min={0}
+          step="0.01"
+          className="pl-6"
+          value={value === 0 ? "" : value}
+          placeholder="0"
+          onChange={(e) => onChange(Number(e.target.value) || 0)}
+        />
+      </div>
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
+};

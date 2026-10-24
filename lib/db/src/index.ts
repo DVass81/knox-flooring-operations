@@ -17,3 +17,4 @@ export const pool = new Pool({ connectionString: databaseUrl.toString() });
 export const db = drizzle(pool, { schema });
 
 export * from "./schema";
+export * from "./migration-state";

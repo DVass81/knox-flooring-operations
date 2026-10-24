@@ -1,3 +1,4 @@
+import { stripNulls } from "../lib/strip-nulls";
 import { Router, type IRouter } from "express";
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
@@ -17,6 +18,8 @@ import {
   DeleteMaterialUsageParams,
 } from "@workspace/api-zod";
 
+import { domainRoute } from "../lib/domain-http";
+import { validateUsageReferences } from "../lib/entry-references";
 const router: IRouter = Router();
 
 router.get("/jobs/:id/material-usage", async (req, res): Promise<void> => {
@@ -31,10 +34,10 @@ router.get("/jobs/:id/material-usage", async (req, res): Promise<void> => {
     .from(materialUsageTable)
     .where(eq(materialUsageTable.jobId, params.data.id));
 
-  res.json(ListMaterialUsageResponse.parse(rows));
+  res.json(ListMaterialUsageResponse.parse(rows.map(stripNulls)));
 });
 
-router.post("/jobs/:id/material-usage", async (req, res): Promise<void> => {
+router.post("/jobs/:id/material-usage", domainRoute(async (req, res) => {
   const params = CreateMaterialUsageParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -61,10 +64,13 @@ router.post("/jobs/:id/material-usage", async (req, res): Promise<void> => {
     return;
   }
 
+  await validateUsageReferences(params.data.id, parsed.data);
   const values: MaterialUsageInsert = {
     id: randomUUID(),
     jobId: params.data.id,
     material: parsed.data.material,
+    productId: parsed.data.productId,
+    callbackId: parsed.data.callbackId,
     quantity: parsed.data.quantity,
     cost: parsed.data.cost,
     notes: parsed.data.notes ?? "",
@@ -73,11 +79,11 @@ router.post("/jobs/:id/material-usage", async (req, res): Promise<void> => {
 
   const [row] = await db.insert(materialUsageTable).values(values).returning();
   res.status(201).json(row);
-});
+}));
 
 router.patch(
   "/jobs/:id/material-usage/:usageId",
-  async (req, res): Promise<void> => {
+  domainRoute(async (req, res) => {
     const params = UpdateMaterialUsageParams.safeParse(req.params);
     if (!params.success) {
       res.status(400).json({ error: params.error.message });
@@ -94,6 +100,9 @@ router.patch(
       return;
     }
 
+    const [existing] = await db.select().from(materialUsageTable).where(and(eq(materialUsageTable.id, params.data.usageId), eq(materialUsageTable.jobId, params.data.id)));
+    if (existing?.movementId) { res.status(409).json({ error: "This usage comes from stock history. Record a return or correction in Inventory." }); return; }
+    await validateUsageReferences(params.data.id, { ...existing, ...parsed.data });
     const [row] = await db
       .update(materialUsageTable)
       .set(parsed.data)
@@ -111,18 +120,20 @@ router.patch(
     }
 
     res.json(row);
-  },
+  }),
 );
 
 router.delete(
   "/jobs/:id/material-usage/:usageId",
-  async (req, res): Promise<void> => {
+  domainRoute(async (req, res) => {
     const params = DeleteMaterialUsageParams.safeParse(req.params);
     if (!params.success) {
       res.status(400).json({ error: params.error.message });
       return;
     }
 
+    const [existing] = await db.select().from(materialUsageTable).where(and(eq(materialUsageTable.id, params.data.usageId), eq(materialUsageTable.jobId, params.data.id)));
+    if (existing?.movementId) { res.status(409).json({ error: "Stock-linked usage is retained for audit. Record a return or correction in Inventory." }); return; }
     const [row] = await db
       .delete(materialUsageTable)
       .where(
@@ -139,7 +150,7 @@ router.delete(
     }
 
     res.sendStatus(204);
-  },
+  }),
 );
 
 export default router;

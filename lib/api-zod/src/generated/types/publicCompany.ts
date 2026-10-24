@@ -11,4 +11,7 @@ export interface PublicCompany {
   phone: string;
   email: string;
   website: string;
+  companyLogoUrl?: string | null;
+  customerAccentColor?: string;
+  address?: string;
 }

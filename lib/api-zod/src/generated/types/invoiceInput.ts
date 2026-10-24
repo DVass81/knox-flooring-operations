@@ -21,4 +21,5 @@ export interface InvoiceInput {
   issueDate?: string;
   dueDate?: string;
   notes?: string;
+  customerId?: string | null;
 }

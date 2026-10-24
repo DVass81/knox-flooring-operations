@@ -8,8 +8,13 @@
     "./schema": "./src/schema/index.ts"
   },
   "scripts": {
-    "push": "drizzle-kit push --config ./drizzle.config.ts",
-    "push-force": "drizzle-kit push --force --config ./drizzle.config.ts"
+    "migrate": "node scripts/migrate.mjs",
+    "migrate:check": "node scripts/migrate.mjs --check",
+    "migration:generate": "drizzle-kit generate --dialect postgresql --schema ./src/schema/index.ts --out ./migrations",
+    "reconcile": "node scripts/reconcile.mjs",
+    "test": "node --test scripts/migration-runner.test.mjs",
+    "test:release": "node --test scripts/release-workflows.test.mjs",
+    "rehearse:backup": "node scripts/rehearse-backup.mjs"
   },
   "dependencies": {
     "drizzle-orm": "catalog:",
@@ -18,6 +23,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.11",
     "@types/node": "catalog:",
     "@types/pg": "^8.20.0",
     "drizzle-kit": "^0.31.10"

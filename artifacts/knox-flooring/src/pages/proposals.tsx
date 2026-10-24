@@ -1,3 +1,4 @@
+import { DataBoundary } from "@/components/layout/DataBoundary";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useStore } from "@/hooks/use-store";
@@ -48,6 +49,9 @@ import {
   User,
 } from "lucide-react";
 import { Proposal, ProposalStatus, DepositType, ProposalLineItem } from "@/lib/types";
+import { useUrlState, useQueryControls } from "@/hooks/use-url-state";
+import { FilterSummary } from "@/components/layout/FilterSummary";
+import { CompanyBrand } from "@/components/layout/Brand";
 
 const STATUS_FLOW: ProposalStatus[] = ["Draft", "Sent", "Viewed", "Accepted"];
 
@@ -67,7 +71,7 @@ function statusVariant(status: ProposalStatus) {
 
 function depositAmount(p: Pick<Proposal, "depositType" | "depositValue" | "estimatedPrice">) {
   if (p.depositType === "percent") {
-    return Math.round((p.estimatedPrice * p.depositValue) / 100);
+    return Math.round(p.estimatedPrice * p.depositValue) / 100;
   }
   if (p.depositType === "amount") {
     return p.depositValue;
@@ -76,7 +80,7 @@ function depositAmount(p: Pick<Proposal, "depositType" | "depositValue" | "estim
 }
 
 function lineItemsTotal(items: ProposalLineItem[]): number {
-  return items.reduce((sum, li) => sum + (li.quantity || 0) * (li.unitPrice || 0), 0);
+  return items.reduce((sum, li) => sum + (li.lineTotal ?? (li.quantity || 0) * (li.unitPrice || 0)), 0);
 }
 
 function formatDate(iso?: string) {
@@ -92,6 +96,7 @@ function formatDate(iso?: string) {
 
 export default function Proposals() {
   const {
+    queryState,
     proposals,
     products,
     salespeople,
@@ -103,7 +108,12 @@ export default function Proposals() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedQuery, setSelectedQuery] = useUrlState<string>("proposal", "");
+  const selectedId = selectedQuery || null;
+  const setSelectedId = (id: string | null) => setSelectedQuery(id ?? "");
+  const [search, setSearch] = useUrlState<string>("q", "");
+  const [status, setStatus] = useUrlState<string>("status", "All");
+  const query = useQueryControls();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [converting, setConverting] = useState(false);
   const [addProductId, setAddProductId] = useState("");
@@ -111,6 +121,7 @@ export default function Proposals() {
 
   const selected = proposals.find((p) => p.id === selectedId) ?? null;
   const activeProducts = products.filter((p) => p.active);
+  const filtered = proposals.filter((proposal) => (status === "All" || proposal.status === status) && [proposal.customerName, proposal.projectLocation, proposal.flooringType].some((value) => value.toLowerCase().includes(search.trim().toLowerCase())));
 
   const quoteLink = (token: string) =>
     `${window.location.origin}${import.meta.env.BASE_URL}q/${token}`;
@@ -126,11 +137,13 @@ export default function Proposals() {
   };
 
   const sendQuote = async (p: Proposal) => {
+    try {
     await updateProposalStatus(p.id, "Sent");
     toast({
-      title: "Quote marked as sent",
+      title: "Proposal marked as sent",
       description: "Copy the customer link to share it.",
     });
+    } catch (error) { toast({ title: "Status was not saved", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" }); }
   };
 
   const handleAddLineItem = async () => {
@@ -186,7 +199,7 @@ export default function Proposals() {
       const job = await convertProposal(selected.id);
       toast({
         title: "Converted to job + invoice",
-        description: `Job ${job.jobNumber} is ready to schedule. A draft invoice now carries the deposit.`,
+        description: `Job ${job.jobNumber} is ready for material and crew planning. A draft invoice carries the agreed price; payments remain unrecorded.`,
       });
       setConfirmOpen(false);
       setSelectedId(null);
@@ -204,21 +217,24 @@ export default function Proposals() {
   };
 
   const isLocked = (status: ProposalStatus) =>
-    status === "Accepted" || status === "Declined";
+    status === "Accepted" || status === "Declined" || status === "Expired";
 
   return (
+    <DataBoundary query={queryState.proposals} name="proposals">
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Quotes</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Proposals</h1>
           <p className="text-muted-foreground mt-1">
             Send signable quotes, track their status, and convert accepted ones into jobs.
           </p>
         </div>
+        <Button asChild><Link href="/estimator"><Plus className="h-4 w-4" />New estimate</Link></Button>
       </div>
-
+      <div className="flex flex-col gap-3 rounded-lg border bg-white p-4 sm:flex-row"><Input aria-label="Search proposals" placeholder="Search customer, location, flooring" value={search} onChange={(event) => setSearch(event.target.value)} className="sm:max-w-sm" /><Select value={status} onValueChange={setStatus}><SelectTrigger aria-label="Filter proposals by status" className="sm:w-48"><SelectValue /></SelectTrigger><SelectContent>{["All", "Draft", "Sent", "Viewed", "Accepted", "Declined", "Expired"].map((item) => <SelectItem key={item} value={item}>{item === "All" ? "All statuses" : item}</SelectItem>)}</SelectContent></Select></div>
+      <FilterSummary count={filtered.length} noun="proposals" filters={[...(search ? [{ label: `Search: ${search}`, clear: () => setSearch("") }] : []), ...(status !== "All" ? [{ label: status, clear: () => setStatus("All") }] : [])]} onClear={() => query.update({ q: null, status: null })} />
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {proposals.map((proposal) => {
+        {filtered.map((proposal) => {
           const dep = depositAmount(proposal);
           return (
             <Card key={proposal.id} className="flex flex-col">
@@ -236,13 +252,13 @@ export default function Proposals() {
                   <div>
                     <div className="text-muted-foreground">Total Value</div>
                     <div className="font-semibold text-base">
-                      ${proposal.estimatedPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      ${proposal.estimatedPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
                   <div>
                     <div className="text-muted-foreground">Deposit</div>
                     <div className="font-medium">
-                      {dep > 0 ? `$${dep.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "None"}
+                      {dep > 0 ? `$${dep.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "None"}
                     </div>
                   </div>
                   <div className="col-span-2">
@@ -266,8 +282,8 @@ export default function Proposals() {
                 )}
               </CardContent>
               <CardFooter className="pt-4 border-t flex gap-2">
-                <Button className="flex-1" variant="default" onClick={() => setSelectedId(proposal.id)}>
-                  <Eye className="w-4 h-4 mr-2" /> View
+                <Button className="flex-1" variant="outline" onClick={() => setSelectedId(proposal.id)}>
+                  <Eye className="w-4 h-4 mr-2" /> Open proposal
                 </Button>
                 {proposal.status === "Draft" && (
                   <Button variant="outline" size="icon" title="Mark as Sent" onClick={() => sendQuote(proposal)}>
@@ -288,9 +304,9 @@ export default function Proposals() {
             </Card>
           );
         })}
-        {proposals.length === 0 && (
+        {filtered.length === 0 && (
           <div className="col-span-full py-12 text-center text-muted-foreground">
-            No quotes found. Generate one from the AI Estimator.
+            {proposals.length ? "No proposals match these filters." : "No proposals yet. Start with a new estimate."}
           </div>
         )}
       </div>
@@ -306,8 +322,7 @@ export default function Proposals() {
               {/* Letterhead */}
               <div className="flex items-start justify-between border-b pb-4">
                 <div>
-                  <h2 className="text-xl font-bold text-foreground">{settings.companyName}</h2>
-                  <p className="text-sm text-muted-foreground">Family-owned in East Tennessee since 1982</p>
+                  <CompanyBrand companyName={settings.companyName} companyLogoUrl={settings.companyLogoUrl} />
                   {settings.phone && <p className="text-sm text-muted-foreground">{settings.phone}</p>}
                 </div>
                 <Badge variant={statusVariant(selected.status)} className="text-sm">
@@ -366,7 +381,7 @@ export default function Proposals() {
                 <div className="sm:text-right">
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Total Investment</div>
                   <div className="text-2xl font-bold text-primary">
-                    ${selected.estimatedPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    ${selected.estimatedPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                   <div className="text-sm text-muted-foreground">
                     {selected.flooringType} · {selected.totalSqFt} sq ft
@@ -404,7 +419,7 @@ export default function Proposals() {
                       }
                       disabled={isLocked(selected.status)}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger aria-label="Deposit Type">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -433,7 +448,7 @@ export default function Proposals() {
                   <div className="space-y-1">
                     <Label className="text-xs">Deposit Due</Label>
                     <div className="h-10 flex items-center font-semibold">
-                      ${depositAmount(selected).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      ${depositAmount(selected).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
                 </div>
@@ -478,7 +493,7 @@ export default function Proposals() {
               {/* Materials from catalog */}
               <section className="py-4 border-b space-y-3">
                 <h3 className="font-semibold flex items-center gap-2">
-                  <Package className="w-4 h-4 text-primary" /> Materials & Products
+                  <Package className="w-4 h-4 text-primary" /> Quoted items
                 </h3>
                 {selected.lineItems.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
@@ -487,15 +502,15 @@ export default function Proposals() {
                 ) : (
                   <div className="rounded-md border divide-y">
                     {selected.lineItems.map((li) => (
-                      <div key={li.id} className="flex items-center gap-3 px-3 py-2 text-sm">
+                      <div key={li.id} className="flex flex-wrap items-center gap-3 px-3 py-2 text-sm">
                         <div className="min-w-0 flex-1">
                           <div className="font-medium truncate">{li.name}</div>
                           <div className="text-xs text-muted-foreground">
                             {li.category}
-                            {li.sku ? ` · ${li.sku}` : ""} · ${li.unitPrice.toFixed(2)}/{li.unit}
+                            {li.sku ? ` · ${li.sku}` : ""}{li.lineTotal === undefined ? ` · ${li.unitPrice.toFixed(2)}/${li.unit}` : " · Quoted line amount"}
                           </div>
                         </div>
-                        {!selected.convertedJobId ? (
+                        {!selected.convertedJobId && !selected.estimateSnapshot && !isLocked(selected.status) ? (
                           <Input
                             type="number"
                             min={0}
@@ -509,9 +524,9 @@ export default function Proposals() {
                         )}
                         <span className="w-12 text-muted-foreground">{li.unit}</span>
                         <span className="w-24 text-right font-medium">
-                          ${(li.quantity * li.unitPrice).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          ${(li.lineTotal ?? li.quantity * li.unitPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
-                        {!selected.convertedJobId && (
+                        {!selected.convertedJobId && !selected.estimateSnapshot && !isLocked(selected.status) && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -524,20 +539,20 @@ export default function Proposals() {
                       </div>
                     ))}
                     <div className="flex justify-between px-3 py-2 text-sm font-semibold bg-muted/30">
-                      <span>Materials Total</span>
+                      <span>Items subtotal</span>
                       <span>
-                        ${lineItemsTotal(selected.lineItems).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        ${lineItemsTotal(selected.lineItems).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
                   </div>
                 )}
 
-                {!selected.convertedJobId && (
+                {!selected.convertedJobId && !selected.estimateSnapshot && !isLocked(selected.status) && (
                   <div className="flex flex-wrap items-end gap-2">
                     <div className="flex-1 min-w-[180px] space-y-1">
                       <Label className="text-xs">Add from catalog</Label>
                       <Select value={addProductId} onValueChange={setAddProductId}>
-                        <SelectTrigger>
+                        <SelectTrigger aria-label="Add from catalog">
                           <SelectValue placeholder="Select a product" />
                         </SelectTrigger>
                         <SelectContent>
@@ -553,8 +568,8 @@ export default function Proposals() {
                       </Select>
                     </div>
                     <div className="w-24 space-y-1">
-                      <Label className="text-xs">Qty</Label>
-                      <Input
+                      <Label className="text-xs" htmlFor="proposals-field-1">Qty</Label>
+                      <Input id="proposals-field-1"
                         type="number"
                         min={0}
                         step="any"
@@ -710,16 +725,16 @@ export default function Proposals() {
               />
               <SummaryRow
                 label="Estimated revenue"
-                value={`$${selected.estimatedPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                value={`$${selected.estimatedPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
               />
               <SummaryRow
                 label="Deposit"
-                value={`$${depositAmount(selected).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                value={`$${depositAmount(selected).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
               />
               <div className="rounded-md bg-muted/40 border p-3 text-xs text-muted-foreground">
                 The job starts at the <span className="font-medium text-foreground">Approved</span> stage. Selected
                 materials become the job's material list, a readiness record is created for tracking, and a draft
-                invoice is generated with the deposit.
+                invoice is generated with the agreed total. Requested deposits are not marked as paid.
               </div>
             </div>
           )}
@@ -735,6 +750,7 @@ export default function Proposals() {
         </DialogContent>
       </Dialog>
     </div>
+    </DataBoundary>
   );
 }
 

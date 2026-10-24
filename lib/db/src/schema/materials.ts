@@ -1,8 +1,9 @@
-import { pgTable, text, boolean } from "drizzle-orm/pg-core";
+import { jobsTable } from "./jobs";
+import { index, pgTable, text, boolean } from "drizzle-orm/pg-core";
 
 export const materialsTable = pgTable("materials", {
   id: text("id").primaryKey(),
-  jobId: text("job_id").notNull(),
+  jobId: text("job_id").notNull().references(() => jobsTable.id, { onDelete: "restrict" }),
   jobNumber: text("job_number").notNull(),
   customer: text("customer").notNull(),
   city: text("city").notNull().default(""),
@@ -16,7 +17,7 @@ export const materialsTable = pgTable("materials", {
   missingItems: text("missing_items").notNull().default(""),
   notes: text("notes").notNull().default(""),
   status: text("status").notNull(),
-});
+}, (table) => [index("materials_job_id_idx").on(table.jobId)]);
 
 export type MaterialRow = typeof materialsTable.$inferSelect;
 export type MaterialInsert = typeof materialsTable.$inferInsert;

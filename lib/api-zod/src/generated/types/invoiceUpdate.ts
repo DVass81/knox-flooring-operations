@@ -19,4 +19,5 @@ export interface InvoiceUpdate {
   issueDate?: string;
   dueDate?: string;
   notes?: string;
+  customerId?: string | null;
 }

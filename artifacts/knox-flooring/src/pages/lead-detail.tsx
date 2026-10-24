@@ -1,4 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useUrlState } from "@/hooks/use-url-state";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { DataBoundary, blocksLoadedData } from "@/components/layout/DataBoundary";
 import { useStore } from "@/hooks/use-store";
 import { useParams, Link, useLocation } from "wouter";
 import {
@@ -136,7 +139,7 @@ function leadToForm(lead?: Lead): LeadForm {
 export default function LeadDetail() {
   const { id } = useParams();
   const [, navigate] = useLocation();
-  const { leads, jobs, updateLead, addJob, settings } = useStore();
+  const { leads, jobs, updateLead, addJob, settings, queryState } = useStore();
   const { toast } = useToast();
 
   const lead = leads.find((l) => l.id === id);
@@ -148,20 +151,27 @@ export default function LeadDetail() {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [form, setForm] = useState<LeadForm>(() => leadToForm(lead));
   const [saving, setSaving] = useState(false);
+  const [recordTab, setRecordTab] = useUrlState<string>("tab", "overview");
+  const baseline = useRef({ id, form: leadToForm(lead) });
+  const isDirty = JSON.stringify(form) !== JSON.stringify(leadToForm(lead));
+  const confirmDiscard = useUnsavedChanges(isDirty);
 
   useEffect(() => {
-    setForm(leadToForm(lead));
+    const previous = baseline.current;
+    const next = leadToForm(lead);
+    setForm((current) => previous.id === id && JSON.stringify(current) !== JSON.stringify(previous.form) ? current : next);
+    baseline.current = { id, form: next };
     // Re-sync the editable form when the lead loads, switches, or is saved
     // (updatedAt changes). While typing nothing is written, so updatedAt is
     // stable and in-progress edits are preserved.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, lead?.updatedAt]);
-
+  if ((queryState.leads.isLoading || queryState.leads.isError) && blocksLoadedData(queryState.leads)) return <DataBoundary query={queryState.leads} name="lead"><span /></DataBoundary>;
   if (!lead) {
     return (
       <div className="space-y-4">
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/leads">
+          <Link href="/leads" aria-label="Back to leads">
             <ArrowLeft className="w-4 h-4 mr-2" /> Back to pipeline
           </Link>
         </Button>
@@ -177,7 +187,6 @@ export default function LeadDetail() {
 
   const patchField = (updates: Partial<Lead>) => updateLead(lead.id, updates);
 
-  const isDirty = JSON.stringify(form) !== JSON.stringify(leadToForm(lead));
 
   const handleSave = async () => {
     if (!isDirty || saving) return;
@@ -245,6 +254,7 @@ export default function LeadDetail() {
   };
 
   const handleConvert = async () => {
+    if (!confirmDiscard()) return;
     if (lead.convertedJobId) {
       navigate(`/jobs/${lead.convertedJobId}`);
       return;
@@ -275,10 +285,11 @@ export default function LeadDetail() {
   const isClosed = lead.stage === WON_STAGE || lead.stage === LOST_STAGE;
 
   return (
+    <DataBoundary query={queryState.leads} name="lead">
     <div className="space-y-6 max-w-5xl mx-auto">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/leads">
+          <Link href="/leads" aria-label="Back to leads">
             <ArrowLeft className="w-5 h-5" />
           </Link>
         </Button>
@@ -348,16 +359,18 @@ export default function LeadDetail() {
       )}
 
       <div className="grid md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 space-y-6">
-          <Card>
+        <div className="md:col-span-2 min-w-0 space-y-6">
+          <div className="flex gap-1 overflow-x-auto border-b" role="group" aria-label="Lead record sections">{[["overview", "Overview"], ["activity", "Activity"], ["project", "Project"], ["proposals", "Proposals"], ["files", "Files"]].map(([value, label]) => <Button key={value} variant={recordTab === value ? "secondary" : "ghost"} aria-pressed={recordTab === value} onClick={() => setRecordTab(value)}>{label}</Button>)}</div>
+          {isDirty && <div className="sticky top-20 z-10 flex items-center justify-between gap-3 rounded-md border bg-white p-3"><span className="text-sm">You have unsaved detail changes.</span><Button size="sm" onClick={handleSave} disabled={saving}>{saving ? "Saving…" : "Save changes"}</Button></div>}
+          {recordTab === "overview" && <Card>
             <CardHeader>
               <CardTitle>Lead Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Customer Name</Label>
-                  <Input
+                  <Label htmlFor="lead-detail-field-1">Customer Name</Label>
+                  <Input id="lead-detail-field-1"
                     value={form.customerName}
                     onChange={(e) =>
                       setForm({ ...form, customerName: e.target.value })
@@ -365,22 +378,22 @@ export default function LeadDetail() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Phone</Label>
-                  <Input
+                  <Label htmlFor="lead-detail-field-2">Phone</Label>
+                  <Input id="lead-detail-field-2"
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input
+                  <Label htmlFor="lead-detail-field-3">Email</Label>
+                  <Input id="lead-detail-field-3"
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Address</Label>
-                  <Input
+                  <Label htmlFor="lead-detail-field-4">Address</Label>
+                  <Input id="lead-detail-field-4"
                     value={form.address}
                     onChange={(e) =>
                       setForm({ ...form, address: e.target.value })
@@ -388,8 +401,8 @@ export default function LeadDetail() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>City</Label>
-                  <Input
+                  <Label htmlFor="lead-detail-field-5">City</Label>
+                  <Input id="lead-detail-field-5"
                     value={form.city}
                     onChange={(e) => setForm({ ...form, city: e.target.value })}
                   />
@@ -402,7 +415,7 @@ export default function LeadDetail() {
                       setForm({ ...form, flooringInterest: v })
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger aria-label="Flooring Interest">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -415,8 +428,8 @@ export default function LeadDetail() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Estimated Value ($)</Label>
-                  <Input
+                  <Label htmlFor="lead-detail-field-6">Estimated Value ($)</Label>
+                  <Input id="lead-detail-field-6"
                     type="number"
                     value={form.estimatedValue}
                     onChange={(e) =>
@@ -435,7 +448,7 @@ export default function LeadDetail() {
                       setForm({ ...form, source: v })
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger aria-label="Lead Source">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -448,8 +461,8 @@ export default function LeadDetail() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Salesperson</Label>
-                  <Input
+                  <Label htmlFor="lead-detail-field-7">Salesperson</Label>
+                  <Input id="lead-detail-field-7"
                     value={form.salesperson}
                     onChange={(e) =>
                       setForm({ ...form, salesperson: e.target.value })
@@ -459,7 +472,7 @@ export default function LeadDetail() {
                 <div className="space-y-2">
                   <Label>Stage</Label>
                   <Select value={lead.stage} onValueChange={handleStageChange}>
-                    <SelectTrigger>
+                    <SelectTrigger aria-label="Stage">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -474,8 +487,8 @@ export default function LeadDetail() {
               </div>
               <Separator />
               <div className="space-y-2">
-                <Label>Notes</Label>
-                <Textarea
+                <Label htmlFor="lead-detail-field-8">Notes</Label>
+                <Textarea id="lead-detail-field-8"
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
                   rows={3}
@@ -492,9 +505,9 @@ export default function LeadDetail() {
                 </Button>
               </div>
             </CardContent>
-          </Card>
+          </Card>}
 
-          <Card>
+          {recordTab === "activity" && <Card>
             <CardHeader>
               <CardTitle>Activity Log</CardTitle>
               <CardDescription>
@@ -560,7 +573,8 @@ export default function LeadDetail() {
                 )}
               </div>
             </CardContent>
-          </Card>
+          </Card>}
+          <LeadTabs lead={lead} section={recordTab} />
         </div>
 
         <div className="space-y-6">
@@ -572,8 +586,8 @@ export default function LeadDetail() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-2">
-                <Label>Next follow-up date</Label>
-                <Input
+                <Label htmlFor="lead-detail-field-9">Next follow-up date</Label>
+                <Input id="lead-detail-field-9"
                   type="date"
                   value={lead.followUpDate ?? ""}
                   onChange={(e) =>
@@ -716,19 +730,6 @@ export default function LeadDetail() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Lead Workspace</CardTitle>
-          <CardDescription>
-            Notes, interactions, samples, tasks, communications, documents,
-            contacts, addresses, measurements, and quotes.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <LeadTabs lead={lead} />
-        </CardContent>
-      </Card>
-
       <Dialog open={lostOpen} onOpenChange={setLostOpen}>
         <DialogContent>
           <DialogHeader>
@@ -739,8 +740,8 @@ export default function LeadDetail() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label>Reason</Label>
-            <Textarea
+            <Label htmlFor="lead-detail-field-10">Reason</Label>
+            <Textarea id="lead-detail-field-10"
               value={lostReason}
               onChange={(e) => setLostReason(e.target.value)}
               placeholder="e.g. Went with a competitor on price, project postponed..."
@@ -782,5 +783,6 @@ export default function LeadDetail() {
         </DialogContent>
       </Dialog>
     </div>
+    </DataBoundary>
   );
 }

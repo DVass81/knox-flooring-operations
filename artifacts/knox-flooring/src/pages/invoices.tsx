@@ -1,3 +1,4 @@
+import { DataBoundary } from "@/components/layout/DataBoundary";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearch } from "wouter";
 import { useStore } from "@/hooks/use-store";
@@ -43,27 +44,36 @@ import {
   OUTSTANDING_STATUSES,
 } from "@/lib/invoices";
 import type { Invoice, InvoiceStatus } from "@/lib/types";
+import { useUrlState, useQueryControls } from "@/hooks/use-url-state";
+import { FilterSummary } from "@/components/layout/FilterSummary";
+import { useToast } from "@/hooks/use-toast";
+import { useCreateContext } from "@/hooks/use-create-context";
 
 type Filter = "All" | InvoiceStatus;
 
 const currency = (n: number) =>
-  `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function Invoices() {
-  const { invoices, deleteInvoice } = useStore();
+  const { queryState, invoices, deleteInvoice } = useStore();
   const searchParams = useSearch();
-  const [filter, setFilter] = useState<Filter>("All");
-  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useUrlState<Filter>("status", "All");
+  const [search, setSearch] = useUrlState<string>("q", "");
+  const query = useQueryControls();
+  const createRequested = query.params.get("create") === "1";
+  const context = useCreateContext(searchParams, createRequested);
+  const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Invoice | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Invoice | null>(null);
 
   useEffect(() => {
     const id = new URLSearchParams(searchParams).get("invoice");
+    if (new URLSearchParams(searchParams).get("create") === "1") { setEditing(null); setDialogOpen(true); return; }
     if (!id) return;
     const target = invoices.find((inv) => inv.id === id);
     if (target) {
-      setEditing(target);
+      setEditing((current) => current?.id === target.id ? current : target);
       setDialogOpen(true);
     }
   }, [searchParams, invoices]);
@@ -108,22 +118,25 @@ export default function Invoices() {
   }, [invoices, filter, search]);
 
   const openCreate = () => {
+    query.update({ create: "1", invoice: null });
     setEditing(null);
     setDialogOpen(true);
   };
   const openEdit = (inv: Invoice) => {
+    query.update({ invoice: inv.id, create: null });
     setEditing(inv);
     setDialogOpen(true);
   };
 
   const confirmDelete = async () => {
-    if (deleteTarget) await deleteInvoice(deleteTarget.id);
-    setDeleteTarget(null);
+    try { if (deleteTarget) await deleteInvoice(deleteTarget.id); setDeleteTarget(null); toast({ title: "Invoice deleted" }); }
+    catch (error) { toast({ title: "Invoice was not deleted", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" }); }
   };
 
   return (
+    <DataBoundary query={queryState.invoices} name="invoices">
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
             Invoices
@@ -157,7 +170,7 @@ export default function Invoices() {
             <div className="text-2xl font-bold">
               {currency(totals.outstanding)}
             </div>
-            <p className="text-xs text-muted-foreground">Sent + overdue</p>
+            <p className="text-xs text-muted-foreground">Sent, partially paid, and overdue</p>
           </CardContent>
         </Card>
         <Card className="border-destructive/20 bg-destructive/5">
@@ -181,9 +194,10 @@ export default function Invoices() {
           {(["All", ...INVOICE_STATUSES] as Filter[]).map((s) => (
             <button
               key={s}
+              aria-pressed={filter === s}
               onClick={() => setFilter(s)}
               className={cn(
-                "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
+                "min-h-10 px-3 py-2 rounded-md text-sm font-medium transition-colors border",
                 filter === s
                   ? "bg-primary text-primary-foreground border-primary"
                   : "bg-background text-muted-foreground hover:bg-muted border-border",
@@ -197,6 +211,7 @@ export default function Invoices() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search invoices..."
+            aria-label="Search invoices"
             className="pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -204,7 +219,9 @@ export default function Invoices() {
         </div>
       </div>
 
-      <Card>
+      <FilterSummary count={filtered.length} noun="invoices" filters={[...(search ? [{ label: `Search: ${search}`, clear: () => setSearch("") }] : []), ...(filter !== "All" ? [{ label: filter, clear: () => setFilter("All") }] : [])]} onClear={() => query.update({ q: null, status: null })} />
+      <div className="space-y-3 md:hidden">{filtered.map((inv) => <article key={inv.id} className="rounded-lg border bg-white p-4"><div className="flex items-start justify-between gap-3"><button type="button" className="text-left font-semibold text-primary hover:underline" onClick={() => openEdit(inv)}>{inv.customerName}<span className="mt-1 block text-xs font-normal text-muted-foreground">{inv.invoiceNumber} · {inv.jobNumber}</span></button><Badge variant={invoiceStatusVariant(inv.status)}>{inv.status}</Badge></div><dl className="mt-4 grid grid-cols-3 gap-2 text-sm"><div><dt className="text-xs text-muted-foreground">Total</dt><dd className="mt-1 tabular-nums">{currency(inv.total)}</dd></div><div><dt className="text-xs text-muted-foreground">Balance</dt><dd className="mt-1 font-semibold tabular-nums">{currency(invoiceBalance(inv))}</dd></div><div><dt className="text-xs text-muted-foreground">Due</dt><dd className="mt-1">{inv.dueDate || "Not set"}</dd></div></dl><div className="mt-3 flex justify-end gap-2"><Button variant="outline" size="sm" onClick={() => openEdit(inv)}>Open invoice</Button><Button variant="ghost" size="icon" aria-label={`Delete ${inv.invoiceNumber}`} onClick={() => setDeleteTarget(inv)}><Trash2 /></Button></div></article>)}{filtered.length === 0 && <div className="rounded-lg border bg-white p-8 text-center"><p>No invoices found.</p><Button variant="outline" className="mt-4" onClick={() => query.update({ q: null, status: null })}>Clear filters</Button></div>}</div>
+      <Card className="hidden md:block">
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -224,11 +241,11 @@ export default function Invoices() {
               {filtered.map((inv) => (
                 <TableRow key={inv.id}>
                   <TableCell className="font-medium">
-                    {inv.invoiceNumber}
+                    <button type="button" className="text-primary hover:underline" onClick={() => openEdit(inv)}>{inv.invoiceNumber}</button>
                   </TableCell>
                   <TableCell>
                     <Link
-                      href={`/customers/${customerKey(inv.customerName)}`}
+                      href={`/customers/${inv.customerId ? encodeURIComponent(inv.customerId) : customerKey(inv.customerName)}`}
                       className="hover:underline"
                     >
                       {inv.customerName}
@@ -270,6 +287,7 @@ export default function Invoices() {
                         variant="ghost"
                         size="icon"
                         onClick={() => openEdit(inv)}
+                        aria-label={`Edit ${inv.invoiceNumber}`}
                       >
                         <Pencil className="w-4 h-4" />
                       </Button>
@@ -277,6 +295,7 @@ export default function Invoices() {
                         variant="ghost"
                         size="icon"
                         onClick={() => setDeleteTarget(inv)}
+                        aria-label={`Delete ${inv.invoiceNumber}`}
                       >
                         <Trash2 className="w-4 h-4 text-muted-foreground" />
                       </Button>
@@ -286,7 +305,7 @@ export default function Invoices() {
               ))}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8}>
+                  <TableCell colSpan={9}>
                     <div className="py-12 text-center text-muted-foreground flex flex-col items-center gap-2">
                       <FileText className="w-8 h-8 opacity-40" />
                       No invoices found.
@@ -300,8 +319,13 @@ export default function Invoices() {
       </Card>
 
       <InvoiceDialog
+        presetJobId={createRequested && !editing ? context.jobId : undefined}
+        customerJobIds={createRequested && !editing && !context.jobId && (context.found || context.refs.customerId) ? context.customerJobs.map(job => job.id) : undefined}
+        contextLabel={createRequested && !editing ? context.label : undefined}
+        contextLoading={createRequested && !editing && context.loading}
+        contextKey={createRequested && !editing ? context.key : undefined}
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        onOpenChange={(open) => { setDialogOpen(open); if (!open) query.update({ invoice: null, create: null }); }}
         invoice={editing}
       />
 
@@ -326,5 +350,6 @@ export default function Invoices() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </DataBoundary>
   );
 }

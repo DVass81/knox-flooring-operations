@@ -7,10 +7,13 @@
  */
 import type { DepositType } from './depositType';
 import type { FlooringType } from './flooringType';
+import type { ProposalLineItem } from './proposalLineItem';
 import type { ProposalStatus } from './proposalStatus';
 import type { Room } from './room';
 
 export interface PublicPortalQuote {
+  /** @minimum 1 */
+  revision: number;
   shareToken: string;
   customerName: string;
   projectLocation: string;
@@ -31,4 +34,5 @@ export interface PublicPortalQuote {
   acceptedAt?: string;
   declinedAt?: string;
   signature: string;
+  lineItems?: ProposalLineItem[];
 }

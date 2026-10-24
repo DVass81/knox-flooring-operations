@@ -1,4 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useAuth } from "@/contexts/auth";
+import { useOperation } from "@/lib/operations";
 import {
   useListJobs,
   useListMaterials,
@@ -139,15 +142,22 @@ const DEFAULT_SETTINGS: Settings = {
 
 export function useStore() {
   const queryClient = useQueryClient();
-
-  const jobsQuery = useListJobs();
-  const materialsQuery = useListMaterials();
-  const proposalsQuery = useListProposals();
-  const leadsQuery = useListLeads();
-  const settingsQuery = useGetSettings();
-  const salespeopleQuery = useListSalespeople();
-  const invoicesQuery = useListInvoices();
-  const productsQuery = useListProducts();
+  const { user } = useAuth();
+  const signedIn = Boolean(user);
+  const salesAccess = user?.role === "owner" || user?.role === "sales";
+  const operationsAccess = user?.role === "owner" || user?.role === "operations";
+  const ownerAccess = user?.role === "owner";
+  const catalogAccess = signedIn && user?.role !== "installer";
+  const jobsQuery = useListJobs({ query: { queryKey: getListJobsQueryKey(), enabled: signedIn } });
+  const materialsQuery = useListMaterials({ query: { queryKey: getListMaterialsQueryKey(), enabled: operationsAccess } });
+  const proposalsQuery = useListProposals({ query: { queryKey: getListProposalsQueryKey(), enabled: salesAccess } });
+  const leadsQuery = useListLeads({ query: { queryKey: getListLeadsQueryKey(), enabled: salesAccess } });
+  const settingsQuery = useGetSettings({ query: { queryKey: getGetSettingsQueryKey(), enabled: salesAccess } });
+  const salespeopleQuery = useListSalespeople({ query: { queryKey: getListSalespeopleQueryKey(), enabled: salesAccess } });
+  const invoicesQuery = useListInvoices({ query: { queryKey: getListInvoicesQueryKey(), enabled: ownerAccess } });
+  const productsQuery = useListProducts({ query: { queryKey: getListProductsQueryKey(), enabled: catalogAccess } });
+  const brandQuery = useOperation<Partial<Settings>>("/workspace-brand");
+  const workspaceSettings = useMemo(() => ({ ...DEFAULT_SETTINGS, ...brandQuery.data, ...(salesAccess ? settingsQuery.data : {}) }) as Settings, [brandQuery.data, salesAccess, settingsQuery.data]);
 
   const createJobMutation = useCreateJob();
   const updateJobMutation = useUpdateJobMutation();
@@ -405,14 +415,17 @@ export function useStore() {
   };
 
   return {
-    jobs: (jobsQuery.data ?? []) as Job[],
-    materials: (materialsQuery.data ?? []) as MaterialRecord[],
-    proposals: (proposalsQuery.data ?? []) as Proposal[],
-    leads: (leadsQuery.data ?? []) as Lead[],
-    settings: (settingsQuery.data ?? DEFAULT_SETTINGS) as Settings,
-    salespeople: (salespeopleQuery.data ?? []) as Salesperson[],
-    invoices: (invoicesQuery.data ?? []) as Invoice[],
-    products: (productsQuery.data ?? []) as Product[],
+    jobs: (signedIn ? jobsQuery.data ?? [] : []) as Job[],
+    materials: (operationsAccess ? materialsQuery.data ?? [] : []) as MaterialRecord[],
+    proposals: (salesAccess ? proposalsQuery.data ?? [] : []) as Proposal[],
+    leads: (salesAccess ? leadsQuery.data ?? [] : []) as Lead[],
+    settings: workspaceSettings,
+    salespeople: (salesAccess ? salespeopleQuery.data ?? [] : []) as Salesperson[],
+    invoices: (ownerAccess ? invoicesQuery.data ?? [] : []) as Invoice[],
+    products: (catalogAccess ? productsQuery.data ?? [] : []) as Product[],
+    isLoading: jobsQuery.isLoading || brandQuery.isLoading || (salesAccess && (leadsQuery.isLoading || proposalsQuery.isLoading)),
+    error: jobsQuery.error || brandQuery.error || (salesAccess ? leadsQuery.error || proposalsQuery.error : null),
+    queryState: { jobs: jobsQuery, materials: materialsQuery, proposals: proposalsQuery, leads: leadsQuery, invoices: invoicesQuery, products: productsQuery, settings: settingsQuery, salespeople: salespeopleQuery },
     addJob,
     updateJob,
     deleteJob,
@@ -646,6 +659,9 @@ export function useTasks() {
   return {
     tasks: (listQuery.data ?? []) as Task[],
     isLoading: listQuery.isLoading,
+    error: listQuery.error,
+    isError: listQuery.isError,
+    refetch: listQuery.refetch,
     addTask,
     updateTask,
     deleteTask,
@@ -653,8 +669,10 @@ export function useTasks() {
 }
 
 export function useGoogleCalendar() {
+  const { user } = useAuth();
+  const allowed = user?.role === "owner";
   const queryClient = useQueryClient();
-  const statusQuery = useGetGoogleCalendarStatus();
+  const statusQuery = useGetGoogleCalendarStatus({ query: { queryKey: getGetGoogleCalendarStatusQueryKey(), enabled: allowed } });
   const syncMutation = useSyncGoogleCalendar();
 
   const sync = async () => {
@@ -667,8 +685,10 @@ export function useGoogleCalendar() {
   };
 
   return {
-    status: statusQuery.data,
-    isLoading: statusQuery.isLoading,
+    status: allowed ? statusQuery.data : undefined,
+    isLoading: allowed && statusQuery.isLoading,
+    error: allowed ? statusQuery.error : null,
+    allowed,
     isSyncing: syncMutation.isPending,
     sync,
   };
@@ -741,13 +761,15 @@ type MeasurementsFilter =
 
 export function useMeasurements(filter: MeasurementsFilter) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const allowed = Boolean(user && user.role !== "installer");
   const params =
     "leadId" in filter && filter.leadId
       ? { leadId: filter.leadId }
       : "jobId" in filter && filter.jobId
         ? { jobId: filter.jobId }
         : {};
-  const enabled = Boolean(params.leadId || params.jobId);
+  const enabled = allowed && Boolean(params.leadId || params.jobId);
 
   const listQuery = useListMeasurements(params, {
     query: {
@@ -802,8 +824,11 @@ export function useMeasurements(filter: MeasurementsFilter) {
   };
 
   return {
-    measurements: (listQuery.data ?? []) as Measurement[],
-    isLoading: listQuery.isLoading,
+    measurements: (allowed ? listQuery.data ?? [] : []) as Measurement[],
+    allowed,
+    isLoading: allowed && listQuery.isLoading,
+    error: allowed ? listQuery.error : null,
+    refetch: listQuery.refetch,
     addMeasurement,
     updateMeasurement,
     removeMeasurement,
@@ -813,11 +838,16 @@ export function useMeasurements(filter: MeasurementsFilter) {
 }
 
 export function useMeasureSquareStatus() {
+  const { user } = useAuth();
+  const allowed = user?.role === "owner";
   const statusQuery = useGetMeasureSquareStatus({
-    query: { queryKey: getGetMeasureSquareStatusQueryKey() },
+    query: { queryKey: [...getGetMeasureSquareStatusQueryKey(), user?.id, user?.role], enabled: allowed },
   });
   return {
-    status: statusQuery.data as MeasureSquareStatus | undefined,
-    isLoading: statusQuery.isLoading,
+    status: (allowed ? statusQuery.data : undefined) as MeasureSquareStatus | undefined,
+    allowed,
+    isLoading: allowed && statusQuery.isLoading,
+    error: allowed ? statusQuery.error : null,
+    refetch: statusQuery.refetch,
   };
 }

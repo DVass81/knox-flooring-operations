@@ -26,6 +26,10 @@ import {
 } from "@workspace/api-zod";
 import { stripNulls } from "../lib/strip-nulls";
 import { queueQuickBooksReview } from "../lib/quickbooks-queue";
+import { convertProposal } from "../lib/conversions";
+import { domainRoute } from "../lib/domain-http";
+import { ensureCustomer, validateCustomerLinks } from "../lib/estimate-service";
+import { assertRevision, DomainError } from "../lib/operations-rules";
 
 const router: IRouter = Router();
 
@@ -48,7 +52,11 @@ export function depositAmountFor(proposal: {
   estimatedPrice: number;
 }): number {
   if (proposal.depositType === "percent") {
-    return Math.round(((proposal.estimatedPrice || 0) * (proposal.depositValue || 0)) / 100);
+    return (
+      Math.round(
+        (proposal.estimatedPrice || 0) * (proposal.depositValue || 0),
+      ) / 100
+    );
   }
   if (proposal.depositType === "amount") {
     return proposal.depositValue || 0;
@@ -61,294 +69,132 @@ router.get("/proposals", async (_req, res): Promise<void> => {
   res.json(ListProposalsResponse.parse(proposals.map(stripNulls)));
 });
 
-router.post("/proposals", async (req, res): Promise<void> => {
-  const parsed = CreateProposalBody.safeParse(req.body);
-  if (!parsed.success) {
-    req.log.warn({ errors: parsed.error.message }, "Invalid proposal body");
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-
-  const now = new Date().toISOString();
-  const values: ProposalInsert = {
-    ...parsed.data,
-    id: randomUUID(),
-    shareToken: generateShareToken(),
-    sentAt: parsed.data.status === "Sent" ? now : null,
-    createdAt: now,
-  };
-
-  const [proposal] = await db.insert(proposalsTable).values(values).returning();
-  await queueQuickBooksReview("estimate", proposal.id, "create", stripNulls(proposal), ["Customer must be reconciled before this estimate is approved"]);
-  res.status(201).json(UpdateProposalResponse.parse(stripNulls(proposal)));
-});
-
-router.patch("/proposals/:id", async (req, res): Promise<void> => {
-  const params = UpdateProposalParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-
-  const parsed = UpdateProposalBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-
-  const [current] = await db
-    .select()
-    .from(proposalsTable)
-    .where(eq(proposalsTable.id, params.data.id));
-
-  if (!current) {
-    res.status(404).json({ error: "Proposal not found" });
-    return;
-  }
-
-  const now = new Date().toISOString();
-  const updates: Partial<ProposalInsert> = { ...parsed.data };
-
-  if (parsed.data.status && parsed.data.status !== current.status) {
-    switch (parsed.data.status) {
-      case "Sent":
-        if (!current.shareToken) updates.shareToken = generateShareToken();
-        if (!current.sentAt) updates.sentAt = now;
-        break;
-      case "Viewed":
-        if (!current.viewedAt) updates.viewedAt = now;
-        break;
-      case "Accepted":
-        updates.acceptedAt = now;
-        break;
-      case "Declined":
-        updates.declinedAt = now;
-        break;
-    }
-  }
-
-  const [proposal] = await db
-    .update(proposalsTable)
-    .set(updates)
-    .where(eq(proposalsTable.id, params.data.id))
-    .returning();
-
-  await queueQuickBooksReview("estimate", proposal.id, "update", stripNulls(proposal), ["Customer must be reconciled before this estimate is approved"]);
-
-  res.json(UpdateProposalResponse.parse(stripNulls(proposal)));
-});
-
-router.post("/proposals/:id/convert", async (req, res): Promise<void> => {
-  const params = ConvertProposalParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-
-  const [proposal] = await db
-    .select()
-    .from(proposalsTable)
-    .where(eq(proposalsTable.id, params.data.id));
-
-  if (!proposal) {
-    res.status(404).json({ error: "Proposal not found" });
-    return;
-  }
-  await queueQuickBooksReview("estimate", proposal.id, "update", stripNulls(proposal), ["Customer must be reconciled before this estimate is approved"]);
-
-  // Idempotent: if already converted, return the existing job + invoice instead
-  // of creating duplicates. This is the duplicate-conversion guard.
-  if (proposal.convertedJobId && proposal.convertedInvoiceId) {
-    const [job] = await db
-      .select()
-      .from(jobsTable)
-      .where(eq(jobsTable.id, proposal.convertedJobId));
-    const [invoice] = await db
-      .select()
-      .from(invoicesTable)
-      .where(eq(invoicesTable.id, proposal.convertedInvoiceId));
-    if (job && invoice) {
-      const existingMaterials = await db
-        .select({ id: jobMaterialsTable.id })
-        .from(jobMaterialsTable)
-        .where(eq(jobMaterialsTable.jobId, job.id));
-      res.json(
-        ConvertProposalResponse.parse({
-          job: stripNulls(job),
-          invoice: stripNulls(invoice),
-          materialsCreated: existingMaterials.length,
-        }),
-      );
+router.post(
+  "/proposals",
+  domainRoute(async (req, res) => {
+    const parsed = CreateProposalBody.safeParse(req.body);
+    if (!parsed.success) {
+      req.log.warn({ errors: parsed.error.message }, "Invalid proposal body");
+      res.status(400).json({ error: parsed.error.message });
       return;
     }
-  }
 
-  if (proposal.status !== "Accepted") {
-    res
-      .status(400)
-      .json({ error: "Only accepted quotes can be converted to a job." });
-    return;
-  }
-
-  const now = new Date().toISOString();
-  const lineItems = proposal.lineItems ?? [];
-
-  // Sum catalog line items as the material estimate for the job.
-  const materialEstimate = lineItems.reduce(
-    (sum, li) => sum + (li.quantity || 0) * (li.unitPrice || 0),
-    0,
-  );
-
-  const estRevenue = proposal.estimatedPrice;
-  const estGrossProfit = Math.round(estRevenue * 0.4);
-  const grossMarginPct = estRevenue > 0 ? 40 : 0;
-
-  // --- Create the job (pre-filled from the quote) ---
-  const existingJobNumbers = await db
-    .select({ jobNumber: jobsTable.jobNumber })
-    .from(jobsTable);
-  const jobValues: JobInsert = {
-    id: randomUUID(),
-    jobNumber: nextNumber(
-      existingJobNumbers.map((j) => j.jobNumber),
-      "J",
-    ),
-    customerName: proposal.customerName,
-    phone: "",
-    email: "",
-    address: "",
-    city: proposal.projectLocation,
-    flooringType: proposal.flooringType,
-    rooms: proposal.roomList ?? [],
-    scopeOfWork: proposal.scopeOfWork,
-    squareFootage: proposal.totalSqFt,
-    crewAssigned: "Unassigned",
-    salespersonId: proposal.salespersonId ?? null,
-    materialStatus: "Ordered",
-    laborEstimate: 0,
-    estLaborHours: 0,
-    materialEstimate,
-    estRevenue,
-    estGrossProfit,
-    grossMarginPct,
-    actualRevenue: 0,
-    actualLaborCost: 0,
-    actualMaterialCost: 0,
-    actualAddOnCost: 0,
-    notes: `Created from accepted quote for ${proposal.customerName}.`,
-    priorityLevel: "Medium",
-    riskLevel: "Low",
-    status: "Approved",
-    stageHistory: [{ stage: "Approved", at: now }],
-    shareToken: generateShareToken(),
-    createdAt: now,
-    updatedAt: now,
-  };
-  const [job] = await db.insert(jobsTable).values(jobValues).returning();
-
-  // Each selected catalog product becomes a per-job material (the job's
-  // "Materials Needed" list).
-  if (lineItems.length > 0) {
-    const materialRows: JobMaterialInsert[] = lineItems.map((li) => ({
+    const now = new Date().toISOString();
+    const values: ProposalInsert = {
+      ...parsed.data,
       id: randomUUID(),
-      jobId: job.id,
-      name: li.name,
-      quantity: li.quantity || 0,
-      unit: li.unit || "",
+      shareToken: generateShareToken(),
+      sentAt: parsed.data.status === "Sent" ? now : null,
       createdAt: now,
-    }));
-    await db.insert(jobMaterialsTable).values(materialRows);
-  }
+    };
 
-  // Seed a per-job material-readiness record so the new job shows up on the
-  // materials tracking board.
-  const readiness: MaterialInsert = {
-    id: randomUUID(),
-    jobId: job.id,
-    jobNumber: job.jobNumber,
-    customer: job.customerName,
-    city: job.city,
-    flooringType: job.flooringType,
-    supplier: "",
-    orderedDate: now.slice(0, 10),
-    received: false,
-    damaged: false,
-    missingItems: "",
-    notes: "Created from converted quote.",
-    status: "Ordered",
-  };
-  await db.insert(materialsTable).values(readiness);
+    const proposal = await db.transaction(async (tx) => {
+      const customerId = await ensureCustomer(tx, parsed.data);
+      const [row] = await tx
+        .insert(proposalsTable)
+        .values({ ...values, customerId })
+        .returning();
+      return row;
+    });
+    await queueQuickBooksReview(
+      "estimate",
+      proposal.id,
+      "create",
+      stripNulls(proposal),
+      ["Customer must be reconciled before this estimate is approved"],
+    );
+    res.status(201).json(UpdateProposalResponse.parse(stripNulls(proposal)));
+  }),
+);
 
-  // --- Create the draft invoice ---
-  const invoiceLineItems: InvoiceLineItem[] = [
-    {
-      id: randomUUID(),
-      description:
-        proposal.scopeOfWork ||
-        `${proposal.flooringType} flooring — ${proposal.totalSqFt} sq ft`,
-      category: "Materials",
-      quantity: 1,
-      unitPrice: proposal.estimatedPrice,
-    },
-  ];
-  const subtotal = invoiceLineItems.reduce(
-    (acc, item) => acc + (item.quantity || 0) * (item.unitPrice || 0),
-    0,
-  );
-  const depositAmount = depositAmountFor(proposal);
+router.patch(
+  "/proposals/:id",
+  domainRoute(async (req, res) => {
+    const params = UpdateProposalParams.parse(req.params);
+    const parsed = UpdateProposalBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const { revision, ...data } = parsed.data;
+    const proposal = await db.transaction(async (tx) => {
+      const [current] = await tx
+        .select()
+        .from(proposalsTable)
+        .where(eq(proposalsTable.id, params.id))
+        .for("update");
+      if (!current) throw new DomainError(404, "Proposal not found");
+      assertRevision(current.revision, revision);
+      if (["Accepted", "Declined"].includes(current.status))
+        throw new DomainError(
+          409,
+          "Accepted and declined quotes are preserved. Create a new draft for changes.",
+        );
+      await validateCustomerLinks(
+        tx,
+        data.customerId === undefined ? current.customerId : data.customerId,
+        data.siteId === undefined ? current.siteId : data.siteId,
+      );
+      const now = new Date().toISOString();
+      const updates: Partial<ProposalInsert> = {
+        ...data,
+        revision: current.revision + 1,
+      };
+      if (data.status === "Sent" && !current.sentAt) updates.sentAt = now;
+      if (data.status === "Viewed" && !current.viewedAt) updates.viewedAt = now;
+      if (data.status === "Accepted" && !current.acceptedAt)
+        updates.acceptedAt = now;
+      if (data.status === "Declined" && !current.declinedAt)
+        updates.declinedAt = now;
+      if (data.status === "Sent" && !current.shareToken)
+        updates.shareToken = generateShareToken();
+      if (
+        current.estimateSnapshot &&
+        [
+          "lineItems",
+          "estimatedPrice",
+          "roomList",
+          "totalSqFt",
+          "flooringType",
+          "estimateSnapshot",
+        ].some((key) => key in data)
+      )
+        throw new DomainError(
+          409,
+          "Revise pricing through a new estimate draft to keep the reviewed cost snapshot consistent.",
+        );
+      const [row] = await tx
+        .update(proposalsTable)
+        .set(updates)
+        .where(eq(proposalsTable.id, current.id))
+        .returning();
+      return row;
+    });
+    await queueQuickBooksReview(
+      "estimate",
+      proposal.id,
+      "update",
+      stripNulls(proposal),
+      ["Customer must be reconciled before approval"],
+    );
+    res.json(UpdateProposalResponse.parse(stripNulls(proposal)));
+  }),
+);
 
-  const existingInvoiceNumbers = await db
-    .select({ invoiceNumber: invoicesTable.invoiceNumber })
-    .from(invoicesTable);
-  const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
-  const invoiceValues: InvoiceInsert = {
-    id: randomUUID(),
-    invoiceNumber: nextNumber(
-      existingInvoiceNumbers.map((i) => i.invoiceNumber),
-      "INV",
-    ),
-    jobId: job.id,
-    jobNumber: job.jobNumber,
-    customerName: proposal.customerName,
-    lineItems: invoiceLineItems,
-    subtotal,
-    taxableAmount: subtotal,
-    total: subtotal,
-    depositAmount,
-    balanceAmount: Math.max(0, subtotal - depositAmount),
-    status: "Draft",
-    issueDate: now.slice(0, 10),
-    dueDate,
-    notes: proposal.paymentTerms
-      ? `Payment terms: ${proposal.paymentTerms}`
-      : "",
-    createdAt: now,
-    updatedAt: now,
-  };
-  const [invoice] = await db
-    .insert(invoicesTable)
-    .values(invoiceValues)
-    .returning();
-
-  // --- Link the proposal to the created records ---
-  await db
-    .update(proposalsTable)
-    .set({ jobId: job.id, convertedJobId: job.id, convertedInvoiceId: invoice.id })
-    .where(eq(proposalsTable.id, proposal.id));
-
-  await queueQuickBooksReview("customer", job.id, "create", stripNulls(job));
-  await queueQuickBooksReview("project", job.id, "create", stripNulls(job), ["Customer must be linked before this project is approved"]);
-  await queueQuickBooksReview("invoice", invoice.id, "create", stripNulls(invoice), ["Confirm the QuickBooks tax code before approval"]);
-
-  res.status(201).json(
-    ConvertProposalResponse.parse({
-      job: stripNulls(job),
-      invoice: stripNulls(invoice),
-      materialsCreated: lineItems.length,
-    }),
-  );
-});
+router.post(
+  "/proposals/:id/convert",
+  domainRoute(async (req, res) => {
+    const result = await db.transaction((tx) =>
+      convertProposal(tx, String(req.params.id)),
+    );
+    res.json(
+      ConvertProposalResponse.parse({
+        job: stripNulls(result.job),
+        invoice: stripNulls(result.invoice),
+        materialsCreated: result.materialsCreated,
+      }),
+    );
+  }),
+);
 
 export default router;

@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CommissionBasis } from './commissionBasis';
+import type { SettingsEstimatePolicy } from './settingsEstimatePolicy';
+import type { SettingsTransitionPolicy } from './settingsTransitionPolicy';
 
 export interface Settings {
   ownerName: string;
@@ -25,4 +27,9 @@ export interface Settings {
   leadStages?: string[];
   googleCalendarSyncToken?: string | null;
   googleCalendarLastSyncedAt?: string | null;
+  companyLogoUrl?: string | null;
+  /** @pattern ^#[0-9a-fA-F]{6}$ */
+  customerAccentColor?: string;
+  estimatePolicy?: SettingsEstimatePolicy;
+  transitionPolicy?: SettingsTransitionPolicy;
 }

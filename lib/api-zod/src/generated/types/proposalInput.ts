@@ -30,4 +30,6 @@ export interface ProposalInput {
   depositValue?: number;
   paymentTerms?: string;
   status: ProposalStatus;
+  customerId?: string | null;
+  siteId?: string | null;
 }

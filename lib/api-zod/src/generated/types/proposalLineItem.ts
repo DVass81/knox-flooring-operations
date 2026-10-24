@@ -15,4 +15,5 @@ export interface ProposalLineItem {
   unit: string;
   quantity: number;
   unitPrice: number;
+  lineTotal?: number;
 }

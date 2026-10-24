@@ -42,9 +42,9 @@ export function requireOwner(req: Request, res: Response, next: NextFunction) {
 
 const ROLE_PREFIXES: Record<AppRole, string[]> = {
   owner: ["/"],
-  sales: ["/demo", "/ai", "/leads", "/measurements", "/products", "/proposals", "/salespeople", "/communications", "/tasks", "/jobs", "/settings"],
-  operations: ["/demo", "/ai", "/jobs", "/photos", "/job-materials", "/labor-entries", "/material-usage", "/materials", "/products", "/tasks", "/measurements", "/google-calendar", "/integrations"],
-  installer: ["/demo", "/jobs", "/photos", "/labor-entries", "/material-usage", "/tasks", "/storage", "/integrations"],
+  sales: ["/workspace-brand", "/customers", "/estimate-drafts", "/demo", "/ai", "/leads", "/measurements", "/products", "/proposals", "/salespeople", "/communications", "/tasks", "/jobs", "/settings"],
+  operations: ["/workspace-brand", "/crews", "/bookings", "/callbacks", "/inventory", "/demo", "/ai", "/jobs", "/photos", "/job-materials", "/labor-entries", "/material-usage", "/materials", "/products", "/tasks", "/measurements", "/google-calendar", "/integrations"],
+  installer: ["/workspace-brand", "/demo", "/jobs", "/photos", "/labor-entries", "/material-usage", "/tasks", "/storage", "/integrations"],
 };
 
 export function enforceRoleAccess(req: Request, res: Response, next: NextFunction) {

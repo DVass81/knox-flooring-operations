@@ -33,4 +33,5 @@ export interface Invoice {
   notes: string;
   createdAt: string;
   updatedAt: string;
+  customerId?: string | null;
 }

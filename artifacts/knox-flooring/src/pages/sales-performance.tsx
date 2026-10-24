@@ -1,5 +1,10 @@
 import { useMemo, useState } from "react";
+import { useUrlState } from "@/hooks/use-url-state";
+import { recordedJobDate, inReportingPeriod } from "@/lib/reporting";
+import { useToast } from "@/hooks/use-toast";
 import { useStore } from "@/hooks/use-store";
+import { DataBoundary } from "@/components/layout/DataBoundary";
+import { useUnsavedForm } from "@/hooks/use-unsaved-changes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -112,7 +117,9 @@ const emptyForm = {
 
 export default function SalesPerformance() {
   const {
+    queryState,
     jobs,
+    proposals,
     salespeople,
     settings,
     addSalesperson,
@@ -121,32 +128,21 @@ export default function SalesPerformance() {
   } = useStore();
   const now = new Date();
 
-  const [range, setRange] = useState<RangeKey>("year");
-  const [customStart, setCustomStart] = useState("");
-  const [customEnd, setCustomEnd] = useState("");
+  const [range, setRange] = useUrlState<RangeKey>("period", "year");
+  const [customStart, setCustomStart] = useUrlState<string>("from", "");
+  const [customEnd, setCustomEnd] = useUrlState<string>("to", "");
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const unsaved = useUnsavedForm(isFormOpen, form);
   const [deleteTarget, setDeleteTarget] = useState<Salesperson | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const { toast } = useToast();
 
   const filteredJobs = useMemo(() => {
-    let start: Date | null = null;
-    let end: Date | null = null;
-    if (range === "custom") {
-      start = customStart ? new Date(customStart) : null;
-      end = customEnd ? new Date(customEnd) : null;
-      if (end) end.setHours(23, 59, 59, 999);
-    } else {
-      start = rangeStart(range, now);
-    }
-    return jobs.filter((job) => {
-      const created = new Date(job.createdAt);
-      if (Number.isNaN(created.getTime())) return false;
-      if (start && created < start) return false;
-      if (end && created > end) return false;
-      return true;
-    });
+    return jobs.filter((job) => inReportingPeriod(recordedJobDate(job, "sold"), range, customStart, customEnd));
   }, [jobs, range, customStart, customEnd, now]);
 
   const metrics = useMemo<RepMetrics[]>(() => {
@@ -156,13 +152,10 @@ export default function SalesPerformance() {
         const soldJobs = repJobs.filter(
           (j) => stageIndex(j.status) >= APPROVED_IDX,
         );
-        const proposalsSent = repJobs.filter(
-          (j) => stageIndex(j.status) >= PROPOSAL_IDX,
-        ).length;
-        const approvals = soldJobs.length;
-        const closedJobs = repJobs.filter((j) =>
-          COMPLETED_STATUSES.includes(j.status),
-        );
+        const proposalCohort = proposals.filter((proposal) => proposal.salespersonId === rep.id && inReportingPeriod(proposal.sentAt, range, customStart, customEnd));
+        const proposalsSent = proposalCohort.length;
+        const approvals = proposalCohort.filter((proposal) => proposal.status === "Accepted").length;
+        const closedJobs = jobs.filter((job) => job.salespersonId === rep.id && COMPLETED_STATUSES.includes(job.status) && inReportingPeriod(recordedJobDate(job, "completed"), range, customStart, customEnd));
         const totalRevenue = soldJobs.reduce(
           (acc, j) => acc + (j.estRevenue || 0),
           0,
@@ -185,7 +178,7 @@ export default function SalesPerformance() {
         return {
           rep,
           totalJobs: repJobs.length,
-          soldJobs: approvals,
+          soldJobs: soldJobs.length,
           proposalsSent,
           approvals,
           winRate: proposalsSent > 0 ? (approvals / proposalsSent) * 100 : 0,
@@ -197,7 +190,7 @@ export default function SalesPerformance() {
         };
       })
       .sort((a, b) => b.totalRevenue - a.totalRevenue);
-  }, [salespeople, filteredJobs, settings]);
+  }, [salespeople, filteredJobs, settings, proposals, jobs, range, customStart, customEnd]);
 
   const teamTotals = useMemo(() => {
     const totalSold = metrics.reduce((acc, m) => acc + m.soldJobs, 0);
@@ -217,12 +210,13 @@ export default function SalesPerformance() {
   const openAdd = () => {
     setEditingId(null);
     setForm(emptyForm);
+    unsaved.reset(emptyForm);
     setIsFormOpen(true);
   };
 
   const openEdit = (rep: Salesperson) => {
     setEditingId(rep.id);
-    setForm({
+    const initial = {
       name: rep.name,
       email: rep.email,
       phone: rep.phone,
@@ -232,12 +226,14 @@ export default function SalesPerformance() {
           ? ""
           : String(rep.commissionRate),
       color: rep.color ?? REP_COLORS[0],
-    });
+    };
+    setForm(initial); unsaved.reset(initial);
     setIsFormOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
     if (!form.name.trim()) return;
     const trimmedRate = form.commissionRate.trim();
     const payload = {
@@ -248,6 +244,8 @@ export default function SalesPerformance() {
       commissionRate: trimmedRate === "" ? null : Number(trimmedRate),
       color: form.color,
     };
+    setSaving(true); setSaveError("");
+    try {
     if (editingId) {
       await updateSalesperson(editingId, payload);
     } else {
@@ -256,12 +254,15 @@ export default function SalesPerformance() {
     setIsFormOpen(false);
     setForm(emptyForm);
     setEditingId(null);
+    toast({ title: editingId ? "Salesperson updated" : "Salesperson added" });
+    } catch (error) { setSaveError(error instanceof Error ? error.message : "Unable to save. Please try again."); }
+    finally { setSaving(false); }
   };
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
-    await deleteSalesperson(deleteTarget.id);
-    setDeleteTarget(null);
+    try { await deleteSalesperson(deleteTarget.id); setDeleteTarget(null); toast({ title: "Salesperson removed" }); }
+    catch (error) { toast({ title: "Salesperson was not removed", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" }); }
   };
 
   const fmtMoney = (n: number) => `$${Math.round(n).toLocaleString()}`;
@@ -280,19 +281,21 @@ export default function SalesPerformance() {
       icon: TrendingUp,
     },
     {
-      label: "Sold Revenue",
+      label: "Sold value (estimated)",
       value: fmtMoney(teamTotals.totalRevenue),
       sub: "Team total",
       icon: DollarSign,
     },
     {
-      label: "Team Win Rate",
+      label: "Proposal acceptance",
       value: `${teamTotals.winRate.toFixed(0)}%`,
-      sub: "Proposals → approvals",
+      sub: "Accepted proposals sent in this period",
       icon: Percent,
     },
   ];
 
+  const failedQuery = [queryState.jobs, queryState.salespeople, queryState.proposals].find((query) => query.isLoading || query.isError);
+  if (failedQuery) return <DataBoundary query={failedQuery} name="sales records"><span /></DataBoundary>;
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -301,12 +304,12 @@ export default function SalesPerformance() {
             Sales Performance
           </h1>
           <p className="text-muted-foreground mt-1">
-            Per-rep results and leaderboard, attributed by job created date.
+            Sales use recorded approval dates. Completed values use recorded completion dates; both are estimated contract values.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={range} onValueChange={(v: RangeKey) => setRange(v)}>
-            <SelectTrigger className="w-[150px] bg-background">
+            <SelectTrigger aria-label="Reporting period" className="w-[150px] bg-background">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -326,8 +329,8 @@ export default function SalesPerformance() {
       {range === "custom" && (
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1">
-            <Label className="text-xs">From</Label>
-            <Input
+            <Label className="text-xs" htmlFor="sales-performance-field-1">From</Label>
+            <Input id="sales-performance-field-1"
               type="date"
               value={customStart}
               onChange={(e) => setCustomStart(e.target.value)}
@@ -335,8 +338,8 @@ export default function SalesPerformance() {
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">To</Label>
-            <Input
+            <Label className="text-xs" htmlFor="sales-performance-field-2">To</Label>
+            <Input id="sales-performance-field-2"
               type="date"
               value={customEnd}
               onChange={(e) => setCustomEnd(e.target.value)}
@@ -377,9 +380,9 @@ export default function SalesPerformance() {
                   <TableHead className="w-12">#</TableHead>
                   <TableHead>Salesperson</TableHead>
                   <TableHead className="text-right">Jobs Sold</TableHead>
-                  <TableHead className="text-right">Sold Revenue</TableHead>
-                  <TableHead className="text-right">Closed Revenue</TableHead>
-                  <TableHead className="text-right">Win Rate</TableHead>
+                  <TableHead className="text-right">Sold value (est.)</TableHead>
+                  <TableHead className="text-right">Completed value (est.)</TableHead>
+                  <TableHead className="text-right">Acceptance</TableHead>
                   <TableHead className="text-right">Avg Margin</TableHead>
                   <TableHead className="text-right">Commission</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -447,6 +450,7 @@ export default function SalesPerformance() {
                           size="icon"
                           className="h-8 w-8"
                           onClick={() => openEdit(m.rep)}
+                          aria-label={`Edit ${m.rep.name}`}
                         >
                           <Pencil className="w-4 h-4" />
                         </Button>
@@ -455,6 +459,7 @@ export default function SalesPerformance() {
                           size="icon"
                           className="h-8 w-8 text-destructive"
                           onClick={() => setDeleteTarget(m.rep)}
+                          aria-label={`Remove ${m.rep.name}`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -468,7 +473,7 @@ export default function SalesPerformance() {
         </CardContent>
       </Card>
 
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+      <Dialog open={isFormOpen} onOpenChange={(next) => { if (!saving && (next || unsaved.confirmDiscard())) setIsFormOpen(next); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
@@ -477,8 +482,8 @@ export default function SalesPerformance() {
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label>Name</Label>
-              <Input
+              <Label htmlFor="sales-performance-field-3">Name</Label>
+              <Input id="sales-performance-field-3"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="Full name"
@@ -486,8 +491,8 @@ export default function SalesPerformance() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Email</Label>
-              <Input
+              <Label htmlFor="sales-performance-field-4">Email</Label>
+              <Input id="sales-performance-field-4"
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -495,16 +500,16 @@ export default function SalesPerformance() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Phone</Label>
-              <Input
+              <Label htmlFor="sales-performance-field-5">Phone</Label>
+              <Input id="sales-performance-field-5"
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 placeholder="865-555-0000"
               />
             </div>
             <div className="space-y-2">
-              <Label>Commission Rate Override (%)</Label>
-              <Input
+              <Label htmlFor="sales-performance-field-6">Commission Rate Override (%)</Label>
+              <Input id="sales-performance-field-6"
                 type="number"
                 min={0}
                 step="0.1"
@@ -562,8 +567,10 @@ export default function SalesPerformance() {
               />
             </div>
             <DialogFooter>
-              <Button type="submit">
-                {editingId ? "Save Changes" : "Add Rep"}
+              {saveError && <p role="alert" className="mr-auto text-sm text-destructive">{saveError}</p>}
+              <Button type="button" variant="outline" disabled={saving} onClick={() => { if (unsaved.confirmDiscard()) setIsFormOpen(false); }}>Cancel</Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? "Saving…" : editingId ? "Save Changes" : "Add Rep"}
               </Button>
             </DialogFooter>
           </form>

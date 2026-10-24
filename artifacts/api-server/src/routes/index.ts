@@ -26,6 +26,12 @@ import aiEstimatesRouter from "./ai-estimates";
 import aiOperationsRouter from "./ai-operations";
 import integrationHealthRouter from "./integration-health";
 
+import customersRouter from "./customers";
+import schedulingRouter from "./scheduling";
+import inventoryOperationsRouter from "./inventory-operations";
+import estimateDraftsRouter from "./estimate-drafts";
+import jobOperationsRouter from "./job-operations";
+
 const router: IRouter = Router();
 
 router.use(healthRouter);
@@ -38,6 +44,11 @@ router.use(demoRouter);
 router.use(aiEstimatesRouter);
 router.use(aiOperationsRouter);
 router.use(integrationHealthRouter);
+router.use(customersRouter);
+router.use(schedulingRouter);
+router.use(inventoryOperationsRouter);
+router.use(estimateDraftsRouter);
+router.use(jobOperationsRouter);
 router.use(jobsRouter);
 router.use(photosRouter);
 router.use(leadsRouter);
