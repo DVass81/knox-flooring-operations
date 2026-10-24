@@ -14,7 +14,7 @@ export type JobStatus =
 
 export type PriorityLevel = 'Low' | 'Medium' | 'High';
 export type RiskLevel = 'Low' | 'Medium' | 'High';
-export type CrewAssigned = 'Crew A' | 'Crew B' | 'Crew C' | 'Crew D' | 'Unassigned';
+export type CrewAssigned = string;
 
 export type FlooringType = 
   | 'Carpet'
@@ -28,6 +28,7 @@ export type FlooringType =
   | 'Commercial LVT';
 
 export type MaterialStatusBadge = 
+  | 'Not Ordered'
   | 'Ordered'
   | 'In Transit'
   | 'Received'
@@ -44,6 +45,7 @@ export interface Room {
 }
 
 export interface JobMaterial {
+  productId?: string | null;
   id: string;
   jobId: string;
   name: string;
@@ -53,6 +55,9 @@ export interface JobMaterial {
 }
 
 export interface LaborEntry {
+  crewId?: string | null;
+  bookingId?: string | null;
+  callbackId?: string | null;
   id: string;
   jobId: string;
   date: string;
@@ -63,6 +68,9 @@ export interface LaborEntry {
 }
 
 export interface MaterialUsage {
+  productId?: string | null;
+  movementId?: string | null;
+  callbackId?: string | null;
   id: string;
   jobId: string;
   material: string;
@@ -87,6 +95,13 @@ export interface JobPhoto {
 }
 
 export interface Job {
+  customerId?: string | null;
+  siteId?: string | null;
+  revision?: number;
+  soldAt?: string | null;
+  completedAt?: string | null;
+  estimateSnapshot?: import("@workspace/domain").EstimateSnapshot | null;
+  completionChecklist?: Record<string, boolean>;
   id: string;
   jobNumber: string;
   customerName: string;
@@ -153,9 +168,13 @@ export interface ProposalLineItem {
   unit: string;
   quantity: number;
   unitPrice: number;
+  lineTotal?: number;
 }
 
 export interface Proposal {
+  customerId?: string | null;
+  siteId?: string | null;
+  estimateSnapshot?: import("@workspace/domain").EstimateSnapshot | null;
   id: string;
   jobId?: string;
   customerName: string;
@@ -198,6 +217,7 @@ export interface InvoiceLineItem {
 }
 
 export interface Invoice {
+  customerId?: string | null;
   id: string;
   invoiceNumber: string;
   jobId: string;
@@ -244,6 +264,11 @@ export type ProductUnit = 'sqft' | 'box' | 'lineal ft' | 'each' | 'piece';
 export type ProductInventoryType = 'Inventory' | 'Special Order' | 'Service';
 
 export interface Product {
+  coveragePerUnit?: number | null;
+  coverageUnit?: string | null;
+  orderMultiple?: number | null;
+  minimumOrderQty?: number | null;
+  reorderPoint?: number | null;
   id: string;
   name: string;
   category: ProductCategory;
@@ -428,6 +453,9 @@ export interface SyncMeasurementsResult {
 }
 
 export interface Lead {
+  customerId?: string | null;
+  siteId?: string | null;
+  revision?: number;
   id: string;
   customerName: string;
   phone: string;
@@ -489,9 +517,10 @@ export interface Salesperson {
   createdAt: string;
 }
 
-export type TaskStatus = 'Open' | 'Done';
+export type TaskStatus = 'Open' | 'Done' | 'Cancelled';
 
 export interface Task {
+  bookingId?: string | null;
   id: string;
   title: string;
   description: string;
@@ -536,6 +565,10 @@ export interface Communication {
 export type CommissionBasis = 'Revenue' | 'Gross Profit';
 
 export interface Settings {
+  companyLogoUrl?: string | null;
+  customerAccentColor?: string;
+  estimatePolicy?: import("@workspace/domain").EstimatePolicy | null;
+  transitionPolicy?: { requireReceivedMaterials?: boolean; requiredCompletionChecks?: string[] } | null;
   ownerName: string;
   ownerRole: string;
   companyName: string;

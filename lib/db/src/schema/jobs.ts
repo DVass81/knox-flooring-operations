@@ -1,4 +1,4 @@
-import { pgTable, text, real, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, real, jsonb, integer } from "drizzle-orm/pg-core";
 
 export interface Room {
   id: string;
@@ -15,6 +15,14 @@ export interface StageEvent {
 
 export const jobsTable = pgTable("jobs", {
   id: text("id").primaryKey(),
+  customerId: text("customer_id"),
+  siteId: text("site_id"),
+  estimateSnapshot: jsonb("estimate_snapshot").$type<Record<string, unknown>>(),
+  soldAt: text("sold_at"),
+  completedAt: text("completed_at"),
+  eventDateSource: text("event_date_source"),
+  completionChecklist: jsonb("completion_checklist").$type<Record<string, boolean>>().notNull().default({}),
+  revision: integer("revision").notNull().default(1),
   jobNumber: text("job_number").notNull(),
   customerName: text("customer_name").notNull(),
   phone: text("phone").notNull().default(""),

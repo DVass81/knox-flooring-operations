@@ -19,4 +19,7 @@ export interface LaborEntry {
   notes: string;
   accountingStatus: string;
   createdAt: string;
+  crewId?: string | null;
+  bookingId?: string | null;
+  callbackId?: string | null;
 }

@@ -30,6 +30,7 @@ import {
 import { stageIndex } from "@/lib/stages";
 import { computeCosting, fmtMoney } from "@/lib/costing";
 import { invoiceBalance, OUTSTANDING_STATUSES } from "@/lib/invoices";
+import { recordedJobDate } from "@/lib/reporting";
 
 const COLORS = [
   "hsl(var(--chart-1))",
@@ -83,20 +84,18 @@ function MiniKpi({
 }
 
 export function KpiSection() {
-  const { jobs, invoices, leads, salespeople } = useStore();
+  const { jobs, invoices, leads, salespeople, proposals } = useStore();
   const [view, setView] = useState<ViewKey>("overview");
 
   const data = useMemo(() => {
     const soldJobs = jobs.filter((j) => stageIndex(j.status) >= APPROVED_IDX);
-    const proposalsSent = jobs.filter(
-      (j) => stageIndex(j.status) >= PROPOSAL_IDX,
-    ).length;
+    const proposalsSent = proposals.filter((proposal) => proposal.sentAt).length;
     const soldRevenue = soldJobs.reduce(
-      (acc, j) => acc + computeCosting(j).effectiveRevenue,
+      (acc, j) => acc + j.estRevenue,
       0,
     );
     const avgTicket = soldJobs.length > 0 ? soldRevenue / soldJobs.length : 0;
-    const winRate = proposalsSent > 0 ? (soldJobs.length / proposalsSent) * 100 : 0;
+    const winRate = proposalsSent > 0 ? (proposals.filter((proposal) => proposal.sentAt && proposal.status === "Accepted").length / proposalsSent) * 100 : 0;
     const outstanding = invoices
       .filter((i) => OUTSTANDING_STATUSES.includes(i.status))
       .reduce((acc, i) => acc + invoiceBalance(i), 0);
@@ -118,16 +117,17 @@ export function KpiSection() {
         (now.getMonth() - d.getMonth());
     };
     soldJobs.forEach((j) => {
-      const off = monthOffset(j.createdAt);
+      const soldDate = recordedJobDate(j, "sold");
+      const off = soldDate ? monthOffset(soldDate) : -1;
       if (off >= 0 && off <= 5) {
-        trend[5 - off].value += computeCosting(j).effectiveRevenue;
+        trend[5 - off].value += j.estRevenue;
       }
     });
 
     // Breakdown: revenue by flooring type
     const byFlooring = soldJobs.reduce((acc: Record<string, number>, j) => {
       acc[j.flooringType] =
-        (acc[j.flooringType] || 0) + computeCosting(j).effectiveRevenue;
+        (acc[j.flooringType] || 0) + j.estRevenue;
       return acc;
     }, {});
     const flooringData = Object.entries(byFlooring)
@@ -172,12 +172,9 @@ export function KpiSection() {
     const ranks = salespeople
       .map((rep) => {
         const repSold = soldJobs.filter((j) => j.salespersonId === rep.id);
-        const repProposals = jobs.filter(
-          (j) =>
-            j.salespersonId === rep.id && stageIndex(j.status) >= PROPOSAL_IDX,
-        ).length;
+        const repProposals = proposals.filter((proposal) => proposal.salespersonId === rep.id && proposal.sentAt);
         const revenue = repSold.reduce(
-          (acc, j) => acc + computeCosting(j).effectiveRevenue,
+          (acc, j) => acc + j.estRevenue,
           0,
         );
         return {
@@ -185,7 +182,7 @@ export function KpiSection() {
           name: rep.name,
           soldCount: repSold.length,
           revenue,
-          winRate: repProposals > 0 ? (repSold.length / repProposals) * 100 : 0,
+          winRate: repProposals.length > 0 ? (repProposals.filter((proposal) => proposal.status === "Accepted").length / repProposals.length) * 100 : 0,
         };
       })
       .filter((r) => r.revenue > 0 || r.soldCount > 0)
@@ -204,7 +201,7 @@ export function KpiSection() {
       conversionStats,
       ranks,
     };
-  }, [jobs, invoices, leads, salespeople]);
+  }, [jobs, invoices, leads, salespeople, proposals]);
 
   return (
     <Card>
@@ -218,6 +215,7 @@ export function KpiSection() {
           {VIEWS.map((v) => (
             <button
               key={v.key}
+              aria-pressed={view === v.key}
               onClick={() => setView(v.key)}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
@@ -239,7 +237,7 @@ export function KpiSection() {
           <div className="space-y-6">
             <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
               <MiniKpi
-                label="Sold Revenue"
+                label="Sold value (estimated)"
                 value={fmtMoney(data.soldRevenue)}
                 sub="All sold jobs"
                 icon={DollarSign}
@@ -257,9 +255,9 @@ export function KpiSection() {
                 icon={Ticket}
               />
               <MiniKpi
-                label="Win Rate"
+                label="Proposal acceptance"
                 value={`${data.winRate.toFixed(0)}%`}
-                sub="Proposals → sold"
+                sub="Accepted / sent proposals"
                 icon={Percent}
               />
               <MiniKpi
@@ -271,7 +269,7 @@ export function KpiSection() {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground mb-2">
-                Sold revenue · last 6 months
+                Estimated sold value · last six months · recorded approval dates
               </p>
               <div className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
@@ -415,7 +413,7 @@ export function KpiSection() {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground mb-2">
-                Conversion funnel
+                Current lead stages (all dates)
               </p>
               <div className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
@@ -516,7 +514,7 @@ export function KpiSection() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{r.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {r.soldCount} sold · {r.winRate.toFixed(0)}% win rate
+                        {r.soldCount} sold · {r.winRate.toFixed(0)}% proposal acceptance
                       </p>
                     </div>
                     <p className="font-semibold whitespace-nowrap">

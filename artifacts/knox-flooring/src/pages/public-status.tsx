@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { PublicLoadError } from "@/components/layout/PublicLoadError";
+import { SellingQuoteLines } from "@/components/jobs/SellingQuoteLines";
+import { useEffect } from "react";
+import { ClientBrandScope, CompanyBrand } from "@/components/layout/Brand";
 import { useParams } from "wouter";
 import {
   useGetPublicJob,
   getGetPublicJobQueryKey,
-  useAcceptPublicQuote,
-  useDeclinePublicQuote,
 } from "@workspace/api-client-react";
+import { usePublicQuoteResponse } from "@/hooks/use-public-quote-response";
 import type {
   PublicJob,
   PublicPortalQuote,
@@ -42,7 +44,12 @@ import {
 } from "lucide-react";
 import { invoiceBalance } from "@/lib/invoices";
 import { stageProgressPct } from "@/lib/stages";
-import { money, formatDate, nextStepMessage, publicInvoiceVariant } from "@/lib/portal";
+import {
+  money,
+  formatDate,
+  nextStepMessage,
+  publicInvoiceVariant,
+} from "@/lib/portal";
 import type { JobPhoto } from "@/lib/types";
 
 function printUrl(token: string, path: string): string {
@@ -51,13 +58,24 @@ function printUrl(token: string, path: string): string {
 
 export default function PublicStatus() {
   const { token } = useParams();
-  const { data: job, isLoading, isError } = useGetPublicJob(token ?? "", {
+  const {
+    data: job,
+    isLoading,
+    error: loadError,
+    refetch,
+  } = useGetPublicJob(token ?? "", {
     query: {
       queryKey: getGetPublicJobQueryKey(token ?? ""),
       enabled: Boolean(token),
       retry: false,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
     },
   });
+
+  useEffect(() => {
+    if (job) document.title = `${job.company.companyName} · Your project`;
+  }, [job]);
 
   if (isLoading) {
     return (
@@ -67,15 +85,10 @@ export default function PublicStatus() {
     );
   }
 
-  if (isError || !job) {
+  // Keep QuoteTab mounted on refresh failure so its signature and review block survive.
+  if (!job) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-muted/30 px-6 text-center">
-        <h1 className="text-2xl font-semibold text-foreground">Project not found</h1>
-        <p className="text-muted-foreground mt-2 max-w-md">
-          This link is invalid or has expired. Please contact your flooring team for
-          an updated link.
-        </p>
-      </div>
+      <PublicLoadError label="Project" error={loadError} retry={refetch} />
     );
   }
 
@@ -87,55 +100,75 @@ export default function PublicStatus() {
     : false;
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      <header className="bg-primary text-primary-foreground">
-        <div className="max-w-3xl mx-auto px-6 py-8">
-          <p className="text-xs uppercase tracking-[0.2em] opacity-80">
-            {job.company.companyName}
-          </p>
-          <h1 className="text-2xl md:text-3xl font-semibold mt-1">
-            Your Flooring Project
-          </h1>
-          <p className="opacity-90 mt-1">
-            {job.jobNumber} · {job.customerName}
-          </p>
-        </div>
-      </header>
+    <ClientBrandScope accent={job.company.customerAccentColor}>
+      <div className="min-h-screen bg-muted/30">
+        <header className="bg-primary text-primary-foreground">
+          <div className="max-w-3xl mx-auto px-6 py-8">
+            <CompanyBrand
+              companyName={job.company.companyName}
+              companyLogoUrl={job.company.companyLogoUrl}
+              className="mb-5"
+            />
+            <h1 className="text-2xl md:text-3xl font-semibold mt-1">
+              Your Flooring Project
+            </h1>
+            <p className="opacity-90 mt-1">
+              {job.jobNumber} · {job.customerName}
+            </p>
+          </div>
+        </header>
 
-      <main className="max-w-3xl mx-auto px-6 py-8">
-        <Tabs defaultValue="progress" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 h-auto">
-            <TabsTrigger value="progress" className="py-2">Progress</TabsTrigger>
-            <TabsTrigger value="quote" className="py-2 gap-1.5">
-              Quote
-              {quotePending && (
-                <span className="inline-block w-2 h-2 rounded-full bg-primary" />
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="invoices" className="py-2">Invoices</TabsTrigger>
-            <TabsTrigger value="documents" className="py-2">Documents</TabsTrigger>
-          </TabsList>
+        <main className="max-w-3xl mx-auto px-6 py-8">
+          <Tabs defaultValue="progress" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-4 h-auto">
+              <TabsTrigger value="progress" className="py-2">
+                Progress
+              </TabsTrigger>
+              <TabsTrigger value="quote" className="py-2 gap-1.5">
+                Quote
+                {quotePending && (
+                  <span className="inline-block w-2 h-2 rounded-full bg-primary" />
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="invoices" className="py-2">
+                Invoices
+              </TabsTrigger>
+              <TabsTrigger value="documents" className="py-2">
+                Documents
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="progress" className="space-y-6 mt-0">
-            <ProgressTab job={job} />
-          </TabsContent>
+            <TabsContent value="progress" className="space-y-6 mt-0">
+              <ProgressTab job={job} />
+            </TabsContent>
 
-          <TabsContent value="quote" className="space-y-6 mt-0">
-            <QuoteTab job={job} quote={quote} token={token ?? ""} />
-          </TabsContent>
+            <TabsContent value="quote" className="space-y-6 mt-0">
+              <QuoteTab job={job} quote={quote} token={token ?? ""} />
+            </TabsContent>
 
-          <TabsContent value="invoices" className="space-y-6 mt-0">
-            <InvoicesTab job={job} invoices={invoices} outstanding={outstanding} token={token ?? ""} />
-          </TabsContent>
+            <TabsContent value="invoices" className="space-y-6 mt-0">
+              <InvoicesTab
+                job={job}
+                invoices={invoices}
+                outstanding={outstanding}
+                token={token ?? ""}
+              />
+            </TabsContent>
 
-          <TabsContent value="documents" className="space-y-6 mt-0">
-            <DocumentsTab job={job} quote={quote} invoices={invoices} token={token ?? ""} />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="documents" className="space-y-6 mt-0">
+              <DocumentsTab
+                job={job}
+                quote={quote}
+                invoices={invoices}
+                token={token ?? ""}
+              />
+            </TabsContent>
+          </Tabs>
 
-        <ContactFooter job={job} />
-      </main>
-    </div>
+          <ContactFooter job={job} />
+        </main>
+      </div>
+    </ClientBrandScope>
   );
 }
 
@@ -151,7 +184,9 @@ function ProgressTab({ job }: { job: PublicJob }) {
     <>
       <Card>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-foreground">Current Status</h2>
+          <h2 className="text-lg font-semibold text-foreground">
+            Current Status
+          </h2>
           <span className="text-sm font-medium text-primary">{job.status}</span>
         </div>
         <StagePipeline current={job.status} />
@@ -175,18 +210,24 @@ function ProgressTab({ job }: { job: PublicJob }) {
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Wallet className="w-4 h-4" /> Outstanding balance
           </div>
-          <div className="text-lg font-semibold text-foreground">{money(outstanding)}</div>
+          <div className="text-lg font-semibold text-foreground">
+            {money(outstanding)}
+          </div>
         </div>
       )}
 
       <Card>
-        <h2 className="text-lg font-semibold text-foreground mb-3">Project Details</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-3">
+          Project Details
+        </h2>
         <div className="grid sm:grid-cols-2 gap-y-3 gap-x-6 text-sm">
           <Detail label="Flooring Type" value={job.flooringType} />
           {job.squareFootage ? (
             <Detail label="Area" value={`${job.squareFootage} sq ft`} />
           ) : null}
-          {job.crewAssigned ? <Detail label="Crew" value={job.crewAssigned} /> : null}
+          {job.crewAssigned ? (
+            <Detail label="Crew" value={job.crewAssigned} />
+          ) : null}
           {job.estStartDate ? (
             <Detail
               label="Estimated Schedule"
@@ -196,7 +237,10 @@ function ProgressTab({ job }: { job: PublicJob }) {
             />
           ) : null}
           {job.address ? (
-            <Detail label="Location" value={`${job.address}, ${job.city}, TN`} />
+            <Detail
+              label="Location"
+              value={`${job.address}, ${job.city}, TN`}
+            />
           ) : (
             <Detail label="Location" value={`${job.city}, TN`} />
           )}
@@ -205,7 +249,9 @@ function ProgressTab({ job }: { job: PublicJob }) {
 
       {photos.length > 0 && (
         <Card>
-          <h2 className="text-lg font-semibold text-foreground mb-4">Progress Photos</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">
+            Progress Photos
+          </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {photos.map((photo) => (
               <figure
@@ -219,7 +265,9 @@ function ProgressTab({ job }: { job: PublicJob }) {
                   loading="lazy"
                 />
                 <figcaption className="p-2 text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">{photo.stage}</span>
+                  <span className="font-medium text-foreground">
+                    {photo.stage}
+                  </span>
                   {photo.caption ? ` · ${photo.caption}` : ""}
                 </figcaption>
               </figure>
@@ -249,11 +297,26 @@ function QuoteTab({
 }) {
   const queryClient = useQueryClient();
   const queryKey = getGetPublicJobQueryKey(token);
-  const acceptMutation = useAcceptPublicQuote();
-  const declineMutation = useDeclinePublicQuote();
-  const [fullName, setFullName] = useState("");
-  const [agreed, setAgreed] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    fullName,
+    setFullName,
+    agreed,
+    setAgreed,
+    error,
+    termsChanged,
+    refreshing,
+    submitting,
+    accepting,
+    declining,
+    handleAccept,
+    handleDecline,
+    refreshTerms,
+  } = usePublicQuoteResponse(quote?.shareToken ?? "", quote?.revision, () =>
+    queryClient.refetchQueries(
+      { queryKey, exact: true },
+      { throwOnError: true },
+    ),
+  );
 
   if (!quote) {
     return (
@@ -271,39 +334,6 @@ function QuoteTab({
   const isAccepted = quote.status === "Accepted";
   const isDeclined = quote.status === "Declined";
   const canRespond = quote.status === "Sent" || quote.status === "Viewed";
-  const submitting = acceptMutation.isPending || declineMutation.isPending;
-
-  const handleAccept = async () => {
-    setError(null);
-    if (!fullName.trim()) {
-      setError("Please type your full name to sign.");
-      return;
-    }
-    if (!agreed) {
-      setError("Please check the box to confirm your acceptance.");
-      return;
-    }
-    try {
-      await acceptMutation.mutateAsync({
-        token: quote.shareToken,
-        data: { signature: fullName.trim() },
-      });
-      await queryClient.invalidateQueries({ queryKey });
-    } catch {
-      setError("Something went wrong. Please refresh and try again.");
-    }
-  };
-
-  const handleDecline = async () => {
-    setError(null);
-    try {
-      await declineMutation.mutateAsync({ token: quote.shareToken });
-      await queryClient.invalidateQueries({ queryKey });
-    } catch {
-      setError("Something went wrong. Please refresh and try again.");
-    }
-  };
-
   return (
     <>
       {isAccepted && (
@@ -349,7 +379,9 @@ function QuoteTab({
               <div className="text-muted-foreground flex items-center gap-1">
                 <Wallet className="w-3.5 h-3.5" /> Deposit Due
               </div>
-              <div className="font-semibold text-base">{money(quote.depositAmount)}</div>
+              <div className="font-semibold text-base">
+                {money(quote.depositAmount)}
+              </div>
             </div>
             <div className="text-right">
               <div className="text-muted-foreground">Balance</div>
@@ -364,7 +396,10 @@ function QuoteTab({
           </p>
         )}
         <div className="mt-4">
-          <DownloadLink href={printUrl(token, "quote")} label="View / download quote (PDF)" />
+          <DownloadLink
+            href={printUrl(token, "quote")}
+            label="View / download quote (PDF)"
+          />
         </div>
       </Card>
 
@@ -372,9 +407,16 @@ function QuoteTab({
         <h2 className="font-semibold flex items-center gap-2">
           <FileText className="w-4 h-4 text-primary" /> Scope of Work
         </h2>
-        <p className="text-sm text-muted-foreground whitespace-pre-line">{quote.scopeOfWork}</p>
+        <p className="text-sm text-muted-foreground whitespace-pre-line">
+          {quote.scopeOfWork}
+        </p>
       </Card>
 
+      <SellingQuoteLines
+        lines={quote.lineItems}
+        total={quote.estimatedPrice}
+        className="rounded-lg border bg-card p-6"
+      />
       {quote.roomList.length > 0 && (
         <Card className="space-y-2">
           <h2 className="font-semibold flex items-center gap-2">
@@ -382,10 +424,14 @@ function QuoteTab({
           </h2>
           <div className="rounded-md border divide-y">
             {quote.roomList.map((room) => (
-              <div key={room.id} className="flex justify-between px-3 py-2 text-sm">
+              <div
+                key={room.id}
+                className="flex justify-between px-3 py-2 text-sm"
+              >
                 <span className="text-foreground">{room.name}</span>
                 <span className="text-muted-foreground">
-                  {room.length} × {room.width} ft · {Math.round(room.length * room.width)} sq ft
+                  {room.length} × {room.width} ft ·{" "}
+                  {Math.round(room.length * room.width)} sq ft
                 </span>
               </div>
             ))}
@@ -399,13 +445,17 @@ function QuoteTab({
             <h2 className="font-semibold flex items-center gap-2">
               <Clock className="w-4 h-4 text-primary" /> Expected Timeline
             </h2>
-            <p className="text-sm text-muted-foreground">{quote.expectedTimeline}</p>
+            <p className="text-sm text-muted-foreground">
+              {quote.expectedTimeline}
+            </p>
           </div>
         )}
         {quote.materialAssumptions && (
           <div className="space-y-1">
             <h2 className="font-semibold">Material Assumptions</h2>
-            <p className="text-sm text-muted-foreground">{quote.materialAssumptions}</p>
+            <p className="text-sm text-muted-foreground">
+              {quote.materialAssumptions}
+            </p>
           </div>
         )}
         {quote.exclusions && (
@@ -421,7 +471,9 @@ function QuoteTab({
             <h2 className="font-semibold flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-green-600" /> Warranty
             </h2>
-            <p className="text-sm text-muted-foreground">{quote.warrantyNote}</p>
+            <p className="text-sm text-muted-foreground">
+              {quote.warrantyNote}
+            </p>
           </div>
         )}
       </Card>
@@ -432,8 +484,8 @@ function QuoteTab({
             <PenLine className="w-4 h-4 text-primary" /> Review & Sign
           </h2>
           <p className="text-sm text-muted-foreground">
-            By typing your full name and accepting below, you agree to the scope, pricing,
-            and terms in this quote.
+            By typing your full name and accepting below, you agree to the
+            scope, pricing, and terms in this quote.
           </p>
           <div className="space-y-2">
             <Label htmlFor="fullName">Type your full name to sign</Label>
@@ -448,24 +500,42 @@ function QuoteTab({
             <Checkbox
               id="agree"
               checked={agreed}
-              onCheckedChange={(c) => setAgreed(Boolean(c))}
+              disabled={submitting || termsChanged}
+              onCheckedChange={(c) => setAgreed(c === true)}
             />
             <Label htmlFor="agree" className="text-sm font-normal leading-snug">
               I have reviewed and accept this quote and its terms.
             </Label>
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
+          {termsChanged && (
+            <Button
+              variant="outline"
+              onClick={refreshTerms}
+              disabled={submitting}
+            >
+              {refreshing ? "Refreshing…" : "Refresh current terms"}
+            </Button>
+          )}
           <div className="flex flex-wrap gap-2 pt-1">
-            <Button className="flex-1 min-w-[160px]" onClick={handleAccept} disabled={submitting}>
-              {acceptMutation.isPending ? "Submitting…" : "Accept & Sign Quote"}
+            <Button
+              className="flex-1 min-w-[160px]"
+              onClick={handleAccept}
+              disabled={submitting || termsChanged}
+            >
+              {accepting ? "Submitting…" : "Accept & Sign Quote"}
             </Button>
             <Button
               variant="outline"
               className="flex-1 min-w-[160px]"
               onClick={handleDecline}
-              disabled={submitting}
+              disabled={submitting || termsChanged}
             >
-              {declineMutation.isPending ? "Submitting…" : "Decline"}
+              {declining ? "Submitting…" : "Decline"}
             </Button>
           </div>
         </Card>
@@ -504,7 +574,9 @@ function InvoicesTab({
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Wallet className="w-4 h-4" /> Outstanding balance
         </div>
-        <div className={`text-2xl font-bold ${outstanding > 0 ? "text-foreground" : "text-green-600"}`}>
+        <div
+          className={`text-2xl font-bold ${outstanding > 0 ? "text-foreground" : "text-green-600"}`}
+        >
           {outstanding > 0 ? money(outstanding) : "Paid in full"}
         </div>
       </div>
@@ -515,21 +587,33 @@ function InvoicesTab({
           <Card key={inv.id} className="space-y-3">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="font-semibold text-foreground">{inv.invoiceNumber}</div>
+                <div className="font-semibold text-foreground">
+                  {inv.invoiceNumber}
+                </div>
                 <div className="text-xs text-muted-foreground mt-0.5">
-                  Issued {formatDate(inv.issueDate)} · Due {formatDate(inv.dueDate)}
+                  Issued {formatDate(inv.issueDate)} · Due{" "}
+                  {formatDate(inv.dueDate)}
                 </div>
               </div>
-              <Badge variant={publicInvoiceVariant(inv.status)}>{inv.status}</Badge>
+              <Badge variant={publicInvoiceVariant(inv.status)}>
+                {inv.status}
+              </Badge>
             </div>
             <div className="rounded-md border divide-y text-sm">
               <Row label="Total" value={money(inv.total)} bold />
               {inv.depositAmount > 0 && (
-                <>
-                  <Row label="Deposit" value={`- ${money(inv.depositAmount)}`} />
-                  <Row label="Balance Due" value={money(balanceDue)} bold />
-                </>
+                <Row
+                  label="Deposit applied"
+                  value={`− ${money(inv.depositAmount)}`}
+                />
               )}
+              {inv.paidAmount > 0 && (
+                <Row
+                  label="Payments applied"
+                  value={`− ${money(inv.paidAmount)}`}
+                />
+              )}
+              <Row label="Balance Due" value={money(balanceDue)} bold />
             </div>
             <DownloadLink
               href={printUrl(token, `invoice/${inv.id}`)}
@@ -630,19 +714,30 @@ function ContactFooter({ job }: { job: PublicJob }) {
   return (
     <>
       <footer className="bg-card rounded-lg border shadow-sm p-6 mt-6">
-        <h2 className="text-lg font-semibold text-foreground mb-3">Questions?</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-3">
+          Questions?
+        </h2>
         <p className="text-sm text-muted-foreground mb-4">
           Reach out to {job.company.companyName} anytime.
         </p>
         <div className="space-y-2 text-sm">
           {job.company.phone && (
-            <ContactRow icon={<Phone className="w-4 h-4" />} value={job.company.phone} />
+            <ContactRow
+              icon={<Phone className="w-4 h-4" />}
+              value={job.company.phone}
+            />
           )}
           {job.company.email && (
-            <ContactRow icon={<Mail className="w-4 h-4" />} value={job.company.email} />
+            <ContactRow
+              icon={<Mail className="w-4 h-4" />}
+              value={job.company.email}
+            />
           )}
           {job.company.website && (
-            <ContactRow icon={<Globe className="w-4 h-4" />} value={job.company.website} />
+            <ContactRow
+              icon={<Globe className="w-4 h-4" />}
+              value={job.company.website}
+            />
           )}
         </div>
       </footer>
@@ -677,13 +772,27 @@ function Detail({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+function Row({
+  label,
+  value,
+  bold,
+}: {
+  label: string;
+  value: string;
+  bold?: boolean;
+}) {
   return (
     <div className="flex justify-between px-4 py-2">
-      <span className={bold ? "font-semibold text-foreground" : "text-muted-foreground"}>
+      <span
+        className={
+          bold ? "font-semibold text-foreground" : "text-muted-foreground"
+        }
+      >
         {label}
       </span>
-      <span className={bold ? "font-semibold text-foreground" : "text-foreground"}>
+      <span
+        className={bold ? "font-semibold text-foreground" : "text-foreground"}
+      >
         {value}
       </span>
     </div>
@@ -755,7 +864,9 @@ function EmptyState({
         {icon}
       </div>
       <h3 className="font-semibold text-foreground">{title}</h3>
-      <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">{body}</p>
+      <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
+        {body}
+      </p>
     </div>
   );
 }

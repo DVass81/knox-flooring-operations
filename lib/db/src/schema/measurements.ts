@@ -1,4 +1,5 @@
-import { pgTable, text, real, boolean, jsonb } from "drizzle-orm/pg-core";
+import { jobsTable } from "./jobs";
+import { index, pgTable, text, real, boolean, jsonb } from "drizzle-orm/pg-core";
 
 export interface MeasurementRoom {
   name: string;
@@ -25,7 +26,7 @@ export interface MeasurementProduct {
 export const measurementsTable = pgTable("measurements", {
   id: text("id").primaryKey(),
   leadId: text("lead_id"),
-  jobId: text("job_id"),
+  jobId: text("job_id").references(() => jobsTable.id, { onDelete: "restrict" }),
   externalId: text("external_id"),
   label: text("label").notNull(),
   rooms: jsonb("rooms").$type<MeasurementRoom[]>().notNull().default([]),
@@ -41,7 +42,7 @@ export const measurementsTable = pgTable("measurements", {
   notes: text("notes").notNull().default(""),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
-});
+}, (table) => [index("measurements_job_id_idx").on(table.jobId)]);
 
 export type MeasurementRow = typeof measurementsTable.$inferSelect;
 export type MeasurementInsert = typeof measurementsTable.$inferInsert;

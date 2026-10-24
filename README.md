@@ -1,6 +1,6 @@
-# Knox Flooring Operations
+# Catalyst Works
 
-Operations, estimating, invoicing, job costing, and approval-based QuickBooks Online synchronization for Knox Flooring.
+Operations, estimating, invoicing, job costing, and approval-based QuickBooks Online synchronization by Catalyst Innovations. Company branding is configured for the workspace and customer documents.
 
 ## Secure first-owner setup
 
@@ -23,9 +23,13 @@ QuickBooks tokens are encrypted with AES-256-GCM. Webhooks are signature checked
 ## Verification
 
 ```sh
-pnpm typecheck
+pnpm typecheck:libs
+pnpm --filter @workspace/knox-flooring typecheck
+pnpm --filter @workspace/api-server typecheck
 pnpm --filter @workspace/knox-flooring build
 pnpm --filter @workspace/api-server build
 ```
 
-The container runs the Drizzle schema synchronization before starting the server. Review production database backups before deploying schema changes.
+The container applies versioned SQL migrations under an exclusive database lock before starting the server. Startup never inserts demo records or rewrites historical dates. The readiness endpoint requires a reachable database at the expected migration version.
+
+See [the release and recovery runbook](docs/catalyst-release.md) for backup verification, migration rehearsal, deployment and rollback. Initialize a new isolated demo explicitly with `DEMO_MODE=true ALLOW_DEMO_SEED=true pnpm --filter @workspace/api-server seed:demo` after migrations and the API build. This command refuses an occupied workspace.

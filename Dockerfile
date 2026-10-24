@@ -11,7 +11,7 @@ RUN corepack enable && corepack prepare pnpm@11.19.0 --activate
 WORKDIR /app
 COPY . .
 
-RUN pnpm install --frozen-lockfile --config.strict-dep-builds=false \
+RUN pnpm install --frozen-lockfile --prod=false --config.strict-dep-builds=false \
     && pnpm rebuild esbuild
 RUN pnpm --filter @workspace/knox-flooring build
 RUN pnpm --filter @workspace/api-server build
@@ -30,4 +30,4 @@ COPY --from=build /app /app
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "pnpm --filter @workspace/db push-force && exec node --enable-source-maps artifacts/api-server/dist/index.mjs"]
+CMD ["sh", "-c", "pnpm --filter @workspace/db migrate && exec node --enable-source-maps artifacts/api-server/dist/index.mjs"]

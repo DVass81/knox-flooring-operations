@@ -49,16 +49,7 @@ export const RiskLevel = {
   High: 'High',
 } as const;
 
-export type CrewAssigned = typeof CrewAssigned[keyof typeof CrewAssigned];
-
-
-export const CrewAssigned = {
-  Crew_A: 'Crew A',
-  Crew_B: 'Crew B',
-  Crew_C: 'Crew C',
-  Crew_D: 'Crew D',
-  Unassigned: 'Unassigned',
-} as const;
+export type CrewAssigned = string;
 
 export type FlooringType = typeof FlooringType[keyof typeof FlooringType];
 
@@ -79,6 +70,7 @@ export type MaterialStatusBadge = typeof MaterialStatusBadge[keyof typeof Materi
 
 
 export const MaterialStatusBadge = {
+  Not_Ordered: 'Not Ordered',
   Ordered: 'Ordered',
   In_Transit: 'In Transit',
   Received: 'Received',
@@ -213,18 +205,23 @@ export interface JobMaterial {
   quantity: number;
   unit: string;
   createdAt: string;
+  productId?: string | null;
 }
 
 export interface JobMaterialInput {
   name: string;
+  /** @minimum 0.000001 */
   quantity: number;
   unit: string;
+  productId?: string | null;
 }
 
 export interface JobMaterialUpdate {
   name?: string;
+  /** @minimum 0.000001 */
   quantity?: number;
   unit?: string;
+  productId?: string | null;
 }
 
 export type LaborEntryWorkerType = typeof LaborEntryWorkerType[keyof typeof LaborEntryWorkerType];
@@ -248,6 +245,9 @@ export interface LaborEntry {
   notes: string;
   accountingStatus: string;
   createdAt: string;
+  crewId?: string | null;
+  bookingId?: string | null;
+  callbackId?: string | null;
 }
 
 export type LaborEntryInputWorkerType = typeof LaborEntryInputWorkerType[keyof typeof LaborEntryInputWorkerType];
@@ -265,9 +265,13 @@ export interface LaborEntryInput {
   workerType?: LaborEntryInputWorkerType;
   workerExternalId?: string;
   hourlyCost?: number;
+  /** @minimum 0.01 */
   hours: number;
   notes?: string;
   accountingStatus?: string;
+  crewId?: string | null;
+  bookingId?: string | null;
+  callbackId?: string | null;
 }
 
 export type LaborEntryUpdateWorkerType = typeof LaborEntryUpdateWorkerType[keyof typeof LaborEntryUpdateWorkerType];
@@ -285,9 +289,13 @@ export interface LaborEntryUpdate {
   workerType?: LaborEntryUpdateWorkerType;
   workerExternalId?: string;
   hourlyCost?: number;
+  /** @minimum 0.01 */
   hours?: number;
   notes?: string;
   accountingStatus?: string;
+  crewId?: string | null;
+  bookingId?: string | null;
+  callbackId?: string | null;
 }
 
 export interface MaterialUsage {
@@ -303,11 +311,16 @@ export interface MaterialUsage {
   accountingStatus: string;
   notes: string;
   createdAt: string;
+  productId?: string | null;
+  movementId?: string | null;
+  callbackId?: string | null;
 }
 
 export interface MaterialUsageInput {
   material: string;
+  /** @minimum 0.000001 */
   quantity: number;
+  /** @minimum 0 */
   cost: number;
   vendorName?: string;
   vendorExternalId?: string;
@@ -315,11 +328,15 @@ export interface MaterialUsageInput {
   transactionDate?: string;
   accountingStatus?: string;
   notes?: string;
+  productId?: string | null;
+  callbackId?: string | null;
 }
 
 export interface MaterialUsageUpdate {
   material?: string;
+  /** @minimum 0.000001 */
   quantity?: number;
+  /** @minimum 0 */
   cost?: number;
   vendorName?: string;
   vendorExternalId?: string;
@@ -327,6 +344,8 @@ export interface MaterialUsageUpdate {
   transactionDate?: string;
   accountingStatus?: string;
   notes?: string;
+  productId?: string | null;
+  callbackId?: string | null;
 }
 
 export interface PublicCompany {
@@ -334,9 +353,26 @@ export interface PublicCompany {
   phone: string;
   email: string;
   website: string;
+  companyLogoUrl?: string | null;
+  customerAccentColor?: string;
+  address?: string;
+}
+
+export interface ProposalLineItem {
+  id: string;
+  productId?: string;
+  name: string;
+  category?: string;
+  sku?: string;
+  unit: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal?: number;
 }
 
 export interface PublicPortalQuote {
+  /** @minimum 1 */
+  revision: number;
   shareToken: string;
   customerName: string;
   projectLocation: string;
@@ -357,6 +393,7 @@ export interface PublicPortalQuote {
   acceptedAt?: string;
   declinedAt?: string;
   signature: string;
+  lineItems?: ProposalLineItem[];
 }
 
 export interface InvoiceLineItem {
@@ -444,6 +481,10 @@ export interface ErrorEnvelope {
   error: string;
 }
 
+export type JobEstimateSnapshot = { [key: string]: unknown } | null;
+
+export type JobCompletionChecklist = {[key: string]: boolean};
+
 export interface Job {
   id: string;
   jobNumber: string;
@@ -479,6 +520,15 @@ export interface Job {
   shareToken: string;
   createdAt: string;
   updatedAt: string;
+  customerId?: string | null;
+  siteId?: string | null;
+  /** @minimum 1 */
+  revision?: number;
+  estimateSnapshot?: JobEstimateSnapshot;
+  soldAt?: string | null;
+  completedAt?: string | null;
+  eventDateSource?: string | null;
+  completionChecklist?: JobCompletionChecklist;
 }
 
 export interface JobInput {
@@ -510,7 +560,11 @@ export interface JobInput {
   priorityLevel: PriorityLevel;
   riskLevel: RiskLevel;
   status: JobStatus;
+  customerId?: string | null;
+  siteId?: string | null;
 }
+
+export type JobUpdateCompletionChecklist = {[key: string]: boolean};
 
 export interface JobUpdate {
   customerName?: string;
@@ -541,6 +595,11 @@ export interface JobUpdate {
   priorityLevel?: PriorityLevel;
   riskLevel?: RiskLevel;
   status?: JobStatus;
+  customerId?: string | null;
+  siteId?: string | null;
+  /** @minimum 1 */
+  revision?: number;
+  completionChecklist?: JobUpdateCompletionChecklist;
 }
 
 export interface MaterialRecord {
@@ -561,16 +620,7 @@ export interface MaterialRecord {
   status: MaterialStatusBadge;
 }
 
-export interface ProposalLineItem {
-  id: string;
-  productId?: string;
-  name: string;
-  category?: string;
-  sku?: string;
-  unit: string;
-  quantity: number;
-  unitPrice: number;
-}
+export type ProposalEstimateSnapshot = { [key: string]: unknown } | null;
 
 export interface Proposal {
   id: string;
@@ -601,6 +651,11 @@ export interface Proposal {
   convertedJobId?: string | null;
   convertedInvoiceId?: string | null;
   createdAt: string;
+  customerId?: string | null;
+  siteId?: string | null;
+  /** @minimum 1 */
+  revision?: number;
+  estimateSnapshot?: ProposalEstimateSnapshot;
 }
 
 export interface ProposalInput {
@@ -622,6 +677,8 @@ export interface ProposalInput {
   depositValue?: number;
   paymentTerms?: string;
   status: ProposalStatus;
+  customerId?: string | null;
+  siteId?: string | null;
 }
 
 export interface ProposalUpdate {
@@ -638,9 +695,15 @@ export interface ProposalUpdate {
   status?: ProposalStatus;
   lineItems?: ProposalLineItem[];
   salespersonId?: string | null;
+  customerId?: string | null;
+  siteId?: string | null;
+  /** @minimum 1 */
+  revision?: number;
 }
 
 export interface PublicQuote {
+  /** @minimum 1 */
+  revision: number;
   customerName: string;
   projectLocation: string;
   flooringType: FlooringType;
@@ -661,11 +724,19 @@ export interface PublicQuote {
   declinedAt?: string;
   signature: string;
   company: PublicCompany;
+  lineItems?: ProposalLineItem[];
 }
 
 export interface QuoteAcceptInput {
+  /** @minimum 1 */
+  revision: number;
   /** @minLength 1 */
   signature: string;
+}
+
+export interface QuoteResponseInput {
+  /** @minimum 1 */
+  revision: number;
 }
 
 export interface Invoice {
@@ -693,6 +764,7 @@ export interface Invoice {
   notes: string;
   createdAt: string;
   updatedAt: string;
+  customerId?: string | null;
 }
 
 export interface ConvertProposalResult {
@@ -902,6 +974,10 @@ export interface Lead {
   convertedJobId?: string;
   createdAt: string;
   updatedAt: string;
+  customerId?: string | null;
+  siteId?: string | null;
+  /** @minimum 1 */
+  revision?: number;
 }
 
 export interface InvoiceInput {
@@ -917,6 +993,7 @@ export interface InvoiceInput {
   issueDate?: string;
   dueDate?: string;
   notes?: string;
+  customerId?: string | null;
 }
 
 export interface InvoiceUpdate {
@@ -930,6 +1007,7 @@ export interface InvoiceUpdate {
   issueDate?: string;
   dueDate?: string;
   notes?: string;
+  customerId?: string | null;
 }
 
 export interface Product {
@@ -940,8 +1018,11 @@ export interface Product {
   supplier: string;
   color: string;
   unit: ProductUnit;
+  /** @minimum 0 */
   cost: number;
+  /** @minimum 0 */
   price: number;
+  /** @minimum 0 */
   quantityOnHand: number;
   inventoryType: ProductInventoryType;
   active: boolean;
@@ -949,6 +1030,17 @@ export interface Product {
   imageUrl?: string | null;
   createdAt: string;
   updatedAt: string;
+  /** @minimum 1 */
+  revision?: number;
+  /** @exclusiveMinimum 0 */
+  coveragePerUnit?: number | null;
+  coverageUnit?: string | null;
+  /** @exclusiveMinimum 0 */
+  orderMultiple?: number | null;
+  /** @minimum 0 */
+  minimumOrderQty?: number | null;
+  /** @minimum 0 */
+  reorderPoint?: number | null;
 }
 
 export interface ProductInput {
@@ -958,13 +1050,25 @@ export interface ProductInput {
   supplier?: string;
   color?: string;
   unit: ProductUnit;
+  /** @minimum 0 */
   cost?: number;
+  /** @minimum 0 */
   price?: number;
+  /** @minimum 0 */
   quantityOnHand?: number;
   inventoryType?: ProductInventoryType;
   active?: boolean;
   notes?: string;
   imageUrl?: string | null;
+  /** @exclusiveMinimum 0 */
+  coveragePerUnit?: number | null;
+  coverageUnit?: string | null;
+  /** @exclusiveMinimum 0 */
+  orderMultiple?: number | null;
+  /** @minimum 0 */
+  minimumOrderQty?: number | null;
+  /** @minimum 0 */
+  reorderPoint?: number | null;
 }
 
 export interface ProductUpdate {
@@ -974,13 +1078,27 @@ export interface ProductUpdate {
   supplier?: string;
   color?: string;
   unit?: ProductUnit;
+  /** @minimum 0 */
   cost?: number;
+  /** @minimum 0 */
   price?: number;
+  /** @minimum 0 */
   quantityOnHand?: number;
   inventoryType?: ProductInventoryType;
   active?: boolean;
   notes?: string;
   imageUrl?: string | null;
+  /** @minimum 1 */
+  revision?: number;
+  /** @exclusiveMinimum 0 */
+  coveragePerUnit?: number | null;
+  coverageUnit?: string | null;
+  /** @exclusiveMinimum 0 */
+  orderMultiple?: number | null;
+  /** @minimum 0 */
+  minimumOrderQty?: number | null;
+  /** @minimum 0 */
+  reorderPoint?: number | null;
 }
 
 export interface LeadInput {
@@ -1027,6 +1145,8 @@ export interface LeadInput {
   notes?: string;
   lostReason?: string;
   convertedJobId?: string;
+  customerId?: string | null;
+  siteId?: string | null;
 }
 
 export interface LeadUpdate {
@@ -1073,7 +1193,15 @@ export interface LeadUpdate {
   notes?: string;
   lostReason?: string | null;
   convertedJobId?: string | null;
+  customerId?: string | null;
+  siteId?: string | null;
+  /** @minimum 1 */
+  revision?: number;
 }
+
+export type SettingsEstimatePolicy = { [key: string]: unknown } | null;
+
+export type SettingsTransitionPolicy = { [key: string]: unknown } | null;
 
 export interface Settings {
   ownerName: string;
@@ -1093,6 +1221,11 @@ export interface Settings {
   leadStages?: string[];
   googleCalendarSyncToken?: string | null;
   googleCalendarLastSyncedAt?: string | null;
+  companyLogoUrl?: string | null;
+  /** @pattern ^#[0-9a-fA-F]{6}$ */
+  customerAccentColor?: string;
+  estimatePolicy?: SettingsEstimatePolicy;
+  transitionPolicy?: SettingsTransitionPolicy;
 }
 
 export type TaskStatus = typeof TaskStatus[keyof typeof TaskStatus];
@@ -1101,6 +1234,7 @@ export type TaskStatus = typeof TaskStatus[keyof typeof TaskStatus];
 export const TaskStatus = {
   Open: 'Open',
   Done: 'Done',
+  Cancelled: 'Cancelled',
 } as const;
 
 export interface Task {
@@ -1117,6 +1251,7 @@ export interface Task {
   googleEventId?: string | null;
   createdAt: string;
   updatedAt: string;
+  bookingId?: string | null;
 }
 
 export interface TaskInput {
@@ -1317,6 +1452,10 @@ export interface SyncMeasurementsResult {
   syncedAt?: string | null;
 }
 
+export type SettingsUpdateEstimatePolicy = { [key: string]: unknown } | null;
+
+export type SettingsUpdateTransitionPolicy = { [key: string]: unknown } | null;
+
 export interface SettingsUpdate {
   ownerName?: string;
   ownerRole?: string;
@@ -1335,6 +1474,266 @@ export interface SettingsUpdate {
   leadStages?: string[];
   googleCalendarSyncToken?: string | null;
   googleCalendarLastSyncedAt?: string | null;
+  companyLogoUrl?: string | null;
+  /** @pattern ^#[0-9a-fA-F]{6}$ */
+  customerAccentColor?: string;
+  estimatePolicy?: SettingsUpdateEstimatePolicy;
+  transitionPolicy?: SettingsUpdateTransitionPolicy;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  notes: string;
+  mergedIntoId: string | null;
+  revision: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustomerSite {
+  id: string;
+  customerId: string;
+  label: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Crew {
+  id: string;
+  name: string;
+  active: boolean;
+  timezone: string;
+  size: number | null;
+  dailyCapacityHours: number | null;
+  workingDays: number[];
+  unavailableDates: string[];
+  revision: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CrewBookingStatus = typeof CrewBookingStatus[keyof typeof CrewBookingStatus];
+
+
+export const CrewBookingStatus = {
+  Confirmed: 'Confirmed',
+  Cancelled: 'Cancelled',
+} as const;
+
+export type CrewBookingCalendarSyncStatus = typeof CrewBookingCalendarSyncStatus[keyof typeof CrewBookingCalendarSyncStatus];
+
+
+export const CrewBookingCalendarSyncStatus = {
+  pending: 'pending',
+  synced: 'synced',
+  conflict: 'conflict',
+} as const;
+
+export interface CrewBooking {
+  id: string;
+  crewId: string;
+  jobId: string;
+  taskId: string | null;
+  startAt: string;
+  endAt: string;
+  plannedLaborHours: number;
+  status: CrewBookingStatus;
+  notes: string;
+  revision: number;
+  createdAt: string;
+  updatedAt: string;
+  calendarSyncStatus?: CrewBookingCalendarSyncStatus;
+  calendarSyncError?: string | null;
+}
+
+export type JobCallbackStatus = typeof JobCallbackStatus[keyof typeof JobCallbackStatus];
+
+
+export const JobCallbackStatus = {
+  Open: 'Open',
+  Resolved: 'Resolved',
+} as const;
+
+export interface JobCallback {
+  id: string;
+  jobId: string;
+  reason: string;
+  status: JobCallbackStatus;
+  assignedTo: string;
+  notes: string;
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InventoryMovement {
+  id: string;
+  productId: string;
+  jobId: string | null;
+  quantity: number;
+  kind: string;
+  reason: string;
+  actorUserId: string | null;
+  idempotencyKey: string;
+  createdAt: string;
+}
+
+export type InventoryReservationStatus = typeof InventoryReservationStatus[keyof typeof InventoryReservationStatus];
+
+
+export const InventoryReservationStatus = {
+  Active: 'Active',
+  Released: 'Released',
+  Consumed: 'Consumed',
+} as const;
+
+export interface InventoryReservation {
+  id: string;
+  productId: string;
+  jobId: string;
+  quantity: number;
+  status: InventoryReservationStatus;
+  idempotencyKey: string;
+  revision: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InventorySummary {
+  productId: string;
+  onHand: number;
+  reserved: number;
+  available: number;
+  reorderPoint: number | null;
+  status: string;
+}
+
+export type EstimateDraftInputs = { [key: string]: unknown };
+
+export type EstimateDraftSnapshot = { [key: string]: unknown } | null;
+
+export type EstimateDraftState = typeof EstimateDraftState[keyof typeof EstimateDraftState];
+
+
+export const EstimateDraftState = {
+  Draft: 'Draft',
+  Converted: 'Converted',
+} as const;
+
+export interface EstimateDraft {
+  id: string;
+  ownerUserId: string;
+  title: string;
+  customerId: string | null;
+  siteId: string | null;
+  leadId: string | null;
+  inputs: EstimateDraftInputs;
+  snapshot: EstimateDraftSnapshot;
+  schemaVersion: number;
+  revision: number;
+  state: EstimateDraftState;
+  convertedProposalId: string | null;
+  convertedJobId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReadinessIssue {
+  code: string;
+  message: string;
+  href: string;
+}
+
+export interface JobReadiness {
+  jobId: string;
+  targetStage: string;
+  revision: number;
+  ready: boolean;
+  blockers: ReadinessIssue[];
+  warnings: ReadinessIssue[];
+}
+
+export interface WorkspaceBrand {
+  companyName: string;
+  companyLogoUrl: string | null;
+  customerAccentColor: string;
+  phone: string;
+  email: string;
+  website: string;
+  address: string;
+}
+
+export interface OperationalMetrics {
+  from: string;
+  to: string;
+  timezone: string;
+  soldRevenue: number;
+  jobsSold: number;
+  completedRevenue: number;
+  invoicedRevenue: number;
+  outstanding: number;
+  capacityHours: number | null;
+  plannedLaborHours: number;
+  actualLaborHours: number;
+  scheduledUtilization: number | null;
+  actualUtilization: number | null;
+  callbacksOpened: number;
+  callbacksOpen: number;
+  missingSoldDates: number;
+  missingCompletionDates: number;
+  unassignedLaborEntries: number;
+  sourceJobIds: string[];
+  definition: string;
+}
+
+export interface DraftConversion {
+  draft: EstimateDraft;
+  proposalId?: string;
+  jobId?: string;
+}
+
+export interface MaterialReadinessInput {
+  received?: boolean;
+  damaged?: boolean;
+  missingItems?: string;
+  status?: MaterialStatusBadge;
+  supplier?: string;
+  orderedDate?: string | null;
+  expectedDeliveryDate?: string | null;
+  actualDeliveryDate?: string | null;
+  notes?: string;
+}
+
+export type JobEntryContextCrewsItem = {
+  id: string;
+  name: string;
+};
+
+export type JobEntryContextBookingsItem = {
+  id: string;
+  crewId: string;
+  startAt: string;
+  endAt: string;
+  status: string;
+};
+
+export type JobEntryContextCallbacksItem = {
+  id: string;
+  reason: string;
+  status: string;
+};
+
+export interface JobEntryContext {
+  crews: JobEntryContextCrewsItem[];
+  bookings: JobEntryContextBookingsItem[];
+  callbacks: JobEntryContextCallbacksItem[];
 }
 
 export type ListCommunicationsParams = {
@@ -1345,5 +1744,202 @@ customerKey?: string;
 export type ListMeasurementsParams = {
 leadId?: string;
 jobId?: string;
+};
+
+export type CreateCustomerBody = {
+  name: string;
+  email?: string;
+  phone?: string;
+  notes?: string;
+};
+
+export type UpdateCustomerBody = {
+  name?: string;
+  email?: string;
+  phone?: string;
+  notes?: string;
+  /** @minimum 1 */
+  revision: number;
+};
+
+export type CreateCustomerSiteBody = {
+  label?: string;
+  address: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+};
+
+export type MergeCustomerBody = {
+  targetId: string;
+  /** @minimum 1 */
+  revision: number;
+};
+
+export type MergeCustomer200 = {
+  customer: Customer;
+  integrationReconciliationRequired: boolean;
+};
+
+export type CreateCrewBody = {
+  name: string;
+  active?: boolean;
+  timezone?: string;
+  size?: number | null;
+  dailyCapacityHours?: number | null;
+  workingDays?: number[];
+  unavailableDates?: string[];
+};
+
+export type UpdateCrewBody = {
+  name?: string;
+  active?: boolean;
+  timezone?: string;
+  size?: number | null;
+  dailyCapacityHours?: number | null;
+  workingDays?: number[];
+  unavailableDates?: string[];
+  /** @minimum 1 */
+  revision: number;
+};
+
+export type ListCrewBookingsParams = {
+from?: string;
+to?: string;
+jobId?: string;
+};
+
+export type CreateCrewBookingBody = {
+  crewId: string;
+  jobId: string;
+  startAt: string;
+  endAt: string;
+  plannedLaborHours: number;
+  status?: string;
+  notes?: string;
+};
+
+export type UpdateCrewBookingBody = {
+  crewId?: string;
+  jobId?: string;
+  startAt?: string;
+  endAt?: string;
+  plannedLaborHours?: number;
+  status?: string;
+  notes?: string;
+  /** @minimum 1 */
+  revision: number;
+};
+
+export type CreateJobCallbackBody = {
+  jobId: string;
+  reason: string;
+  status?: string;
+  assignedTo?: string;
+  notes?: string;
+};
+
+export type UpdateJobCallbackBody = {
+  jobId?: string;
+  reason?: string;
+  status?: string;
+  assignedTo?: string;
+  notes?: string;
+};
+
+export type ListInventoryMovementsParams = {
+productId?: string;
+};
+
+export type CreateInventoryMovementBody = {
+  productId: string;
+  jobId?: string;
+  kind: string;
+  quantity: number;
+  reason: string;
+  idempotencyKey: string;
+  overrideReason?: string;
+  callbackId?: string;
+};
+
+export type ListInventoryReservationsParams = {
+productId?: string;
+};
+
+export type CreateInventoryReservationBody = {
+  productId: string;
+  jobId: string;
+  quantity: number;
+  idempotencyKey: string;
+};
+
+export type CloseInventoryReservationBodyStatus = typeof CloseInventoryReservationBodyStatus[keyof typeof CloseInventoryReservationBodyStatus];
+
+
+export const CloseInventoryReservationBodyStatus = {
+  Released: 'Released',
+  Consumed: 'Consumed',
+} as const;
+
+export type CloseInventoryReservationBody = {
+  /** @minimum 1 */
+  revision: number;
+  status: CloseInventoryReservationBodyStatus;
+  callbackId?: string;
+};
+
+export type CreateEstimateDraftBodyInputs = { [key: string]: unknown };
+
+export type CreateEstimateDraftBody = {
+  id?: string;
+  title?: string;
+  inputs: CreateEstimateDraftBodyInputs;
+};
+
+export type UpdateEstimateDraftBodyInputs = { [key: string]: unknown };
+
+export type UpdateEstimateDraftBody = {
+  title?: string;
+  inputs?: UpdateEstimateDraftBodyInputs;
+  /** @minimum 1 */
+  revision: number;
+};
+
+export type ConvertEstimateDraftBodyTarget = typeof ConvertEstimateDraftBodyTarget[keyof typeof ConvertEstimateDraftBodyTarget];
+
+
+export const ConvertEstimateDraftBodyTarget = {
+  proposal: 'proposal',
+  job: 'job',
+} as const;
+
+export type ConvertEstimateDraftBody = {
+  /** @minimum 1 */
+  revision: number;
+  target: ConvertEstimateDraftBodyTarget;
+};
+
+export type ConvertLeadBody = {
+  /** @minimum 1 */
+  revision?: number;
+};
+
+export type GetJobReadinessParams = {
+targetStage?: string;
+};
+
+export type TransitionJobBodyCompletionChecklist = {[key: string]: boolean};
+
+export type TransitionJobBody = {
+  /** @minimum 1 */
+  revision: number;
+  targetStage: JobStatus;
+  overrideReason?: string;
+  completionChecklist?: TransitionJobBodyCompletionChecklist;
+};
+
+export type GetOperationalMetricsParams = {
+from?: string;
+to?: string;
 };
 

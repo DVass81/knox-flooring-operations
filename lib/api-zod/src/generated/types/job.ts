@@ -7,6 +7,8 @@
  */
 import type { CrewAssigned } from './crewAssigned';
 import type { FlooringType } from './flooringType';
+import type { JobCompletionChecklist } from './jobCompletionChecklist';
+import type { JobEstimateSnapshot } from './jobEstimateSnapshot';
 import type { JobStatus } from './jobStatus';
 import type { MaterialStatusBadge } from './materialStatusBadge';
 import type { PriorityLevel } from './priorityLevel';
@@ -49,4 +51,13 @@ export interface Job {
   shareToken: string;
   createdAt: string;
   updatedAt: string;
+  customerId?: string | null;
+  siteId?: string | null;
+  /** @minimum 1 */
+  revision?: number;
+  estimateSnapshot?: JobEstimateSnapshot;
+  soldAt?: string | null;
+  completedAt?: string | null;
+  eventDateSource?: string | null;
+  completionChecklist?: JobCompletionChecklist;
 }

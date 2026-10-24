@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { db, tasksTable, settingsTable, type TaskRow } from "@workspace/db";
+import { db, tasksTable, settingsTable, crewBookingsTable, type TaskRow } from "@workspace/db";
 import {
   GetGoogleCalendarStatusResponse,
   SyncGoogleCalendarResponse,
@@ -9,6 +9,8 @@ import {
 import {
   isGoogleCalendarConnected,
   gcalInsertEvent,
+  gcalPatchEvent,
+  gcalDeleteEvent,
   gcalListChanges,
   GoogleCalendarError,
   eventToTaskFields,
@@ -71,7 +73,17 @@ router.post("/calendar/google/sync", async (_req, res): Promise<void> => {
     // --- PUSH: send local tasks that were never mirrored to Google. ---
     const localTasks = await db.select().from(tasksTable);
     for (const task of localTasks) {
-      if (task.googleEventId) continue;
+      if (task.bookingId) {
+        const [booking] = await db.select().from(crewBookingsTable).where(eq(crewBookingsTable.id, task.bookingId));
+        if (booking?.calendarSyncStatus === "pending" && task.googleEventId) {
+          try {
+            if (task.status === "Cancelled") await gcalDeleteEvent(task.googleEventId);
+            else await gcalPatchEvent(task.googleEventId, toTaskLike(task));
+            await db.update(crewBookingsTable).set({ calendarSyncStatus: "synced", calendarSyncError: null }).where(eq(crewBookingsTable.id, task.bookingId)); pushed++;
+          } catch { /* Retry on the next sync. */ }
+        }
+      }
+      if (task.googleEventId || task.status === "Cancelled") continue;
       try {
         const eventId = await gcalInsertEvent(toTaskLike(task));
         await db
@@ -79,6 +91,7 @@ router.post("/calendar/google/sync", async (_req, res): Promise<void> => {
           .set({ googleEventId: eventId })
           .where(eq(tasksTable.id, task.id));
         task.googleEventId = eventId;
+        if (task.bookingId) await db.update(crewBookingsTable).set({ calendarSyncStatus: "synced", calendarSyncError: null }).where(eq(crewBookingsTable.id, task.bookingId));
         pushed++;
       } catch {
         // Skip this one; it will retry on the next sync.
@@ -116,6 +129,13 @@ router.post("/calendar/google/sync", async (_req, res): Promise<void> => {
       pulled++;
       const existing = byEventId.get(event.id);
 
+      if (existing?.bookingId) {
+        const fields = event.status === "cancelled" ? null : eventToTaskFields(event);
+        if ((event.status === "cancelled" && existing.status !== "Cancelled") || (fields && (Date.parse(fields.startAt) !== Date.parse(existing.startAt) || Date.parse(fields.endAt) !== Date.parse(existing.endAt)))) {
+          await db.update(crewBookingsTable).set({ calendarSyncStatus: "conflict", calendarSyncError: fields ? `External calendar requested ${fields.startAt} to ${fields.endAt}. Review and resave the booking in Crew Schedule.` : "External calendar requested cancellation. Review and cancel the booking in Crew Schedule." }).where(eq(crewBookingsTable.id, existing.bookingId));
+        }
+        continue;
+      }
       if (event.status === "cancelled") {
         if (existing) {
           await db.delete(tasksTable).where(eq(tasksTable.id, existing.id));

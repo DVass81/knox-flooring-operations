@@ -19,4 +19,7 @@ export interface MaterialUsage {
   accountingStatus: string;
   notes: string;
   createdAt: string;
+  productId?: string | null;
+  movementId?: string | null;
+  callbackId?: string | null;
 }

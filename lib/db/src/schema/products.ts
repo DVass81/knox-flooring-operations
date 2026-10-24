@@ -1,7 +1,13 @@
-import { pgTable, text, real, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, real, boolean, integer } from "drizzle-orm/pg-core";
 
 export const productsTable = pgTable("products", {
   id: text("id").primaryKey(),
+  coveragePerUnit: real("coverage_per_unit"),
+  coverageUnit: text("coverage_unit"),
+  orderMultiple: real("order_multiple"),
+  minimumOrderQty: real("minimum_order_qty"),
+  reorderPoint: real("reorder_point"),
+  revision: integer("revision").notNull().default(1),
   name: text("name").notNull(),
   category: text("category").notNull(),
   sku: text("sku").notNull().default(""),

@@ -13,4 +13,5 @@ export interface JobMaterial {
   quantity: number;
   unit: string;
   createdAt: string;
+  productId?: string | null;
 }

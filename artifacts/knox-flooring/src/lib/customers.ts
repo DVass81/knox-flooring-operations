@@ -1,104 +1,77 @@
-import type { Job, Proposal, Invoice } from "@/lib/types";
+import type { Job, Proposal, Invoice, Lead } from "@/lib/types";
+import type { Customer } from "@/lib/operations";
 import { invoiceBalance } from "@/lib/invoices";
 
 export interface CustomerRecord {
-  /** URL-safe key derived from the normalized name */
+  id: string;
   key: string;
   name: string;
   phone: string;
   email: string;
   city: string;
+  profile?: Customer;
   jobs: Job[];
   proposals: Proposal[];
   invoices: Invoice[];
-  /** Sum of paid invoice totals */
+  leads: Lead[];
   lifetimeValue: number;
-  /** Remaining balance on sent, partially paid, and overdue invoices. */
   outstanding: number;
-  /** A customer is "repeat" when they have more than one job */
   isRepeat: boolean;
-  /** Most recent activity date across all records (ISO) */
   lastActivity: string;
 }
 
-function normalizeName(name: string): string {
-  return name.trim().toLowerCase().replace(/\s+/g, " ");
+const normalizeName = (name: string) => name.trim().toLowerCase().replace(/\s+/g, " ");
+/** Compatibility for previously shared name-based links. New links use the customer ID. */
+export const customerKey = (name: string) => encodeURIComponent(normalizeName(name));
+export function decodeCustomerKey(key: string) {
+  try { return decodeURIComponent(key); } catch { return key; }
+}
+export function resolveCustomerCandidates(records: CustomerRecord[], key: string): CustomerRecord[] {
+  const decoded = decodeCustomerKey(key);
+  const exact = records.find(customer => customer.id === decoded || customer.key === key);
+  if (exact) return [exact];
+  const name = normalizeName(decoded);
+  return records.filter(customer => [customer.name, ...customer.jobs.map(j => j.customerName), ...customer.proposals.map(p => p.customerName), ...customer.invoices.map(i => i.customerName), ...customer.leads.map(l => l.customerName)].some(value => normalizeName(value) === name));
 }
 
-export function customerKey(name: string): string {
-  return encodeURIComponent(normalizeName(name));
-}
-
-const PAID = "Paid";
-const OUTSTANDING_STATUSES = ["Sent", "Partial", "Overdue"];
-
-export function aggregateCustomers(
-  jobs: Job[],
-  proposals: Proposal[],
-  invoices: Invoice[],
-): CustomerRecord[] {
-  const map = new Map<string, CustomerRecord>();
-
-  const ensure = (name: string): CustomerRecord => {
-    const key = normalizeName(name);
-    let rec = map.get(key);
-    if (!rec) {
-      rec = {
-        key: encodeURIComponent(key),
-        name: name.trim(),
-        phone: "",
-        email: "",
-        city: "",
-        jobs: [],
-        proposals: [],
-        invoices: [],
-        lifetimeValue: 0,
-        outstanding: 0,
-        isRepeat: false,
-        lastActivity: "",
-      };
-      map.set(key, rec);
-    }
-    return rec;
+/** Group by stable identity or an explicit job relationship; matching names never establish identity. */
+export function aggregateCustomers(jobs: Job[], proposals: Proposal[], invoices: Invoice[], directory: Customer[] = [], leads: Lead[] = []): CustomerRecord[] {
+  const records = new Map<string, CustomerRecord>();
+  const ensure = (id: string, name: string): CustomerRecord => {
+    if (!records.has(id)) records.set(id, { id, key: encodeURIComponent(id), name: name.trim() || "Unnamed customer", phone: "", email: "", city: "", jobs: [], proposals: [], invoices: [], leads: [], lifetimeValue: 0, outstanding: 0, isRepeat: false, lastActivity: "" });
+    return records.get(id)!;
   };
-
-  const bumpActivity = (rec: CustomerRecord, iso?: string) => {
-    if (iso && iso > rec.lastActivity) rec.lastActivity = iso;
-  };
-
+  const bump = (record: CustomerRecord, date?: string) => { if (date && date > record.lastActivity) record.lastActivity = date; };
+  for (const profile of directory) {
+    if (profile.mergedIntoId) continue;
+    Object.assign(ensure(profile.id, profile.name), { profile, phone: profile.phone, email: profile.email });
+  }
+  const jobIds = new Map(jobs.map(job => [job.id, job.customerId || `legacy:job:${job.id}`]));
   for (const job of jobs) {
-    if (!job.customerName) continue;
-    const rec = ensure(job.customerName);
-    rec.jobs.push(job);
-    if (job.phone) rec.phone ||= job.phone;
-    if (job.email) rec.email ||= job.email;
-    if (job.city) rec.city ||= job.city;
-    bumpActivity(rec, job.updatedAt || job.createdAt);
+    const record = ensure(jobIds.get(job.id)!, job.customerName);
+    record.jobs.push(job);
+    if (!record.profile) { record.phone ||= job.phone; record.email ||= job.email; }
+    record.city ||= job.city;
+    bump(record, job.updatedAt || job.createdAt);
   }
-
   for (const proposal of proposals) {
-    if (!proposal.customerName) continue;
-    const rec = ensure(proposal.customerName);
-    rec.proposals.push(proposal);
-    if (!rec.city && proposal.projectLocation) rec.city = proposal.projectLocation;
-    bumpActivity(rec, proposal.createdAt);
+    const linkedJob = (!proposal.jobId || !proposal.convertedJobId || proposal.jobId === proposal.convertedJobId) ? jobIds.get(proposal.convertedJobId || proposal.jobId || "") : undefined;
+    const record = ensure(proposal.customerId || linkedJob || `legacy:proposal:${proposal.id}`, proposal.customerName);
+    record.proposals.push(proposal); record.city ||= proposal.projectLocation; bump(record, proposal.createdAt);
   }
-
   for (const invoice of invoices) {
-    if (!invoice.customerName) continue;
-    const rec = ensure(invoice.customerName);
-    rec.invoices.push(invoice);
-    if (invoice.status === PAID) rec.lifetimeValue += invoice.total;
-    if (OUTSTANDING_STATUSES.includes(invoice.status))
-      rec.outstanding += invoiceBalance(invoice);
-    bumpActivity(rec, invoice.updatedAt || invoice.createdAt);
+    const record = ensure(invoice.customerId || jobIds.get(invoice.jobId) || `legacy:invoice:${invoice.id}`, invoice.customerName);
+    record.invoices.push(invoice);
+    if (invoice.status === "Paid") record.lifetimeValue += invoice.total;
+    if (["Sent", "Partial", "Overdue"].includes(invoice.status)) record.outstanding += invoiceBalance(invoice);
+    bump(record, invoice.updatedAt || invoice.createdAt);
   }
-
-  for (const rec of map.values()) {
-    rec.isRepeat = rec.jobs.length > 1;
+  for (const lead of leads) {
+    const record = ensure(lead.customerId || jobIds.get(lead.convertedJobId || "") || `legacy:lead:${lead.id}`, lead.customerName);
+    record.leads.push(lead);
+    if (!record.profile) { record.phone ||= lead.phone; record.email ||= lead.email; }
+    record.city ||= lead.city; bump(record, lead.updatedAt || lead.createdAt);
   }
-
-  return Array.from(map.values()).sort(
-    (a, b) => b.lifetimeValue - a.lifetimeValue || a.name.localeCompare(b.name),
-  );
+  for (const record of records.values()) record.isRepeat = record.jobs.length > 1;
+  return [...records.values()].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 }

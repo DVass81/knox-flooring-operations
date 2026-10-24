@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import {
   db,
   invoicesTable,
+  jobsTable,
   type InvoiceInsert,
   type InvoiceLineItem,
 } from "@workspace/db";
@@ -17,6 +18,9 @@ import {
 } from "@workspace/api-zod";
 import { stripNulls } from "../lib/strip-nulls";
 import { queueQuickBooksReview } from "../lib/quickbooks-queue";
+import { nextDocumentNumber } from "../lib/conversions";
+import { domainRoute } from "../lib/domain-http";
+import { DomainError } from "../lib/operations-rules";
 
 const router: IRouter = Router();
 
@@ -48,7 +52,7 @@ router.get("/invoices", async (_req, res): Promise<void> => {
   res.json(ListInvoicesResponse.parse(invoices.map(stripNulls)));
 });
 
-router.post("/invoices", async (req, res): Promise<void> => {
+router.post("/invoices", domainRoute(async (req, res) => {
   const parsed = CreateInvoiceBody.safeParse(req.body);
   if (!parsed.success) {
     req.log.warn({ errors: parsed.error.message }, "Invalid invoice body");
@@ -56,9 +60,7 @@ router.post("/invoices", async (req, res): Promise<void> => {
     return;
   }
 
-  const existing = await db
-    .select({ invoiceNumber: invoicesTable.invoiceNumber })
-    .from(invoicesTable);
+
   const now = new Date().toISOString();
   const lineItems = parsed.data.lineItems as InvoiceLineItem[];
   const { subtotal, taxableAmount, total, balanceAmount } = computeTotals(lineItems, parsed.data.taxAmount ?? 0, parsed.data.discountAmount ?? 0, parsed.data.depositAmount ?? 0);
@@ -66,7 +68,7 @@ router.post("/invoices", async (req, res): Promise<void> => {
   const values: InvoiceInsert = {
     ...parsed.data,
     id: randomUUID(),
-    invoiceNumber: nextInvoiceNumber(existing.map((i) => i.invoiceNumber)),
+    invoiceNumber: "",
     lineItems,
     subtotal,
     taxableAmount,
@@ -76,10 +78,14 @@ router.post("/invoices", async (req, res): Promise<void> => {
     updatedAt: now,
   };
 
-  const [invoice] = await db.insert(invoicesTable).values(values).returning();
+  const invoice = await db.transaction(async tx => {
+    const [job] = await tx.select().from(jobsTable).where(eq(jobsTable.id, parsed.data.jobId));
+    if (!job) throw new DomainError(400, "Choose an existing job for this invoice.");
+    const [row] = await tx.insert(invoicesTable).values({ ...values, customerId: job.customerId, invoiceNumber: await nextDocumentNumber(tx, "invoice") }).returning(); return row;
+  });
   await queueQuickBooksReview("invoice", invoice.id, "create", stripNulls(invoice), invoice.taxCode ? [] : ["Confirm the QuickBooks tax code before approval"]);
   res.status(201).json(UpdateInvoiceResponse.parse(stripNulls(invoice)));
-});
+}));
 
 router.patch("/invoices/:id", async (req, res): Promise<void> => {
   const params = UpdateInvoiceParams.safeParse(req.params);

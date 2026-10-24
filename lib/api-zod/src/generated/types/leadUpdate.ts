@@ -61,4 +61,8 @@ export interface LeadUpdate {
   notes?: string;
   lostReason?: string | null;
   convertedJobId?: string | null;
+  customerId?: string | null;
+  siteId?: string | null;
+  /** @minimum 1 */
+  revision?: number;
 }

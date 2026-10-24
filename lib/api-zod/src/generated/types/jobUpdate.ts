@@ -8,6 +8,7 @@
 import type { CrewAssigned } from './crewAssigned';
 import type { FlooringType } from './flooringType';
 import type { JobStatus } from './jobStatus';
+import type { JobUpdateCompletionChecklist } from './jobUpdateCompletionChecklist';
 import type { MaterialStatusBadge } from './materialStatusBadge';
 import type { PriorityLevel } from './priorityLevel';
 import type { RiskLevel } from './riskLevel';
@@ -42,4 +43,9 @@ export interface JobUpdate {
   priorityLevel?: PriorityLevel;
   riskLevel?: RiskLevel;
   status?: JobStatus;
+  customerId?: string | null;
+  siteId?: string | null;
+  /** @minimum 1 */
+  revision?: number;
+  completionChecklist?: JobUpdateCompletionChecklist;
 }

@@ -5,6 +5,7 @@ import {
   db,
   jobMaterialsTable,
   jobsTable,
+  productsTable,
   type JobMaterialInsert,
 } from "@workspace/db";
 import {
@@ -16,8 +17,17 @@ import {
   UpdateJobMaterialBody,
   DeleteJobMaterialParams,
 } from "@workspace/api-zod";
+import { domainRoute } from "../lib/domain-http";
+import { DomainError } from "../lib/operations-rules";
 
 const router: IRouter = Router();
+async function validateProduct(data: { productId?: string | null; unit?: string; quantity?: number }) {
+  if (data.quantity !== undefined && (!Number.isFinite(data.quantity) || data.quantity <= 0)) throw new DomainError(400, "Quantity must be greater than zero.");
+  if (!data.productId) return;
+  const [product] = await db.select().from(productsTable).where(eq(productsTable.id, data.productId));
+  if (!product) throw new DomainError(400, "Product not found.");
+  if (data.unit !== product.unit) throw new DomainError(400, "Use the catalog product’s unit when recording a linked material.");
+}
 
 router.get("/jobs/:id/materials", async (req, res): Promise<void> => {
   const params = ListJobMaterialsParams.safeParse(req.params);
@@ -34,7 +44,7 @@ router.get("/jobs/:id/materials", async (req, res): Promise<void> => {
   res.json(ListJobMaterialsResponse.parse(rows));
 });
 
-router.post("/jobs/:id/materials", async (req, res): Promise<void> => {
+router.post("/jobs/:id/materials", domainRoute(async (req, res) => {
   const params = CreateJobMaterialParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -62,18 +72,20 @@ router.post("/jobs/:id/materials", async (req, res): Promise<void> => {
     id: randomUUID(),
     jobId: params.data.id,
     name: parsed.data.name,
+    productId: parsed.data.productId,
     quantity: parsed.data.quantity,
     unit: parsed.data.unit,
     createdAt: new Date().toISOString(),
   };
+  await validateProduct(values);
 
   const [row] = await db.insert(jobMaterialsTable).values(values).returning();
   res.status(201).json(row);
-});
+}));
 
 router.patch(
   "/jobs/:id/materials/:materialId",
-  async (req, res): Promise<void> => {
+  domainRoute(async (req, res) => {
     const params = UpdateJobMaterialParams.safeParse(req.params);
     if (!params.success) {
       res.status(400).json({ error: params.error.message });
@@ -90,6 +102,9 @@ router.patch(
       return;
     }
 
+    const [existing] = await db.select().from(jobMaterialsTable).where(and(eq(jobMaterialsTable.id, params.data.materialId), eq(jobMaterialsTable.jobId, params.data.id)));
+    if (!existing) { res.status(404).json({ error: "Job material not found" }); return; }
+    await validateProduct({ ...existing, ...parsed.data });
     const [row] = await db
       .update(jobMaterialsTable)
       .set(parsed.data)
@@ -107,7 +122,7 @@ router.patch(
     }
 
     res.json(row);
-  },
+  }),
 );
 
 router.delete(

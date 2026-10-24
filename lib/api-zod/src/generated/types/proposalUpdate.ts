@@ -23,4 +23,8 @@ export interface ProposalUpdate {
   status?: ProposalStatus;
   lineItems?: ProposalLineItem[];
   salespersonId?: string | null;
+  customerId?: string | null;
+  siteId?: string | null;
+  /** @minimum 1 */
+  revision?: number;
 }

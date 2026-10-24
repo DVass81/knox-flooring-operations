@@ -2,12 +2,12 @@ import type { JobStatus } from "@/lib/types";
 import type { InvoiceStatus } from "@/lib/types";
 
 export function money(n: number | undefined | null): string {
-  return `$${Math.round(n ?? 0).toLocaleString()}`;
+  return n == null ? "—" : n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
 export function formatDate(iso?: string): string {
   if (!iso) return "—";
-  const d = new Date(iso);
+  const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T12:00:00` : iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString("en-US", {
     month: "long",

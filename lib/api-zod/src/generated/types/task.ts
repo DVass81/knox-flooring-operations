@@ -21,4 +21,5 @@ export interface Task {
   googleEventId?: string | null;
   createdAt: string;
   updatedAt: string;
+  bookingId?: string | null;
 }

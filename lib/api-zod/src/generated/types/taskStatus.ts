@@ -12,4 +12,5 @@ export type TaskStatus = typeof TaskStatus[keyof typeof TaskStatus];
 export const TaskStatus = {
   Open: 'Open',
   Done: 'Done',
+  Cancelled: 'Cancelled',
 } as const;

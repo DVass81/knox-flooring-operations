@@ -44,7 +44,7 @@ paths:
   /healthz:
     get:
       operationId: healthCheck
-      tags: [health]
+      tags: [ health ]
       summary: Health check
       description: Returns server health status
       responses:
@@ -57,7 +57,7 @@ paths:
   /jobs:
     get:
       operationId: listJobs
-      tags: [jobs]
+      tags: [ jobs ]
       summary: List all jobs
       responses:
         "200":
@@ -70,7 +70,7 @@ paths:
                   $ref: "#/components/schemas/Job"
     post:
       operationId: createJob
-      tags: [jobs]
+      tags: [ jobs ]
       summary: Create a job
       requestBody:
         required: true
@@ -88,7 +88,7 @@ paths:
   /jobs/{id}:
     get:
       operationId: getJob
-      tags: [jobs]
+      tags: [ jobs ]
       summary: Get a job by id
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -107,7 +107,7 @@ paths:
                 $ref: "#/components/schemas/Error"
     patch:
       operationId: updateJob
-      tags: [jobs]
+      tags: [ jobs ]
       summary: Update a job
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -132,7 +132,7 @@ paths:
                 $ref: "#/components/schemas/Error"
     delete:
       operationId: deleteJob
-      tags: [jobs]
+      tags: [ jobs ]
       summary: Delete a job
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -148,7 +148,7 @@ paths:
   /materials:
     get:
       operationId: listMaterials
-      tags: [materials]
+      tags: [ materials ]
       summary: List all materials
       responses:
         "200":
@@ -162,7 +162,7 @@ paths:
   /proposals:
     get:
       operationId: listProposals
-      tags: [proposals]
+      tags: [ proposals ]
       summary: List all proposals
       responses:
         "200":
@@ -175,7 +175,7 @@ paths:
                   $ref: "#/components/schemas/Proposal"
     post:
       operationId: createProposal
-      tags: [proposals]
+      tags: [ proposals ]
       summary: Create a proposal
       requestBody:
         required: true
@@ -193,7 +193,7 @@ paths:
   /proposals/{id}:
     patch:
       operationId: updateProposal
-      tags: [proposals]
+      tags: [ proposals ]
       summary: Update a proposal
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -219,7 +219,7 @@ paths:
   /proposals/{id}/convert:
     post:
       operationId: convertProposal
-      tags: [proposals]
+      tags: [ proposals ]
       summary: Convert an accepted quote into a job and a draft invoice
       description: |
         Creates a job (with per-job materials and a material-readiness record)
@@ -256,7 +256,7 @@ paths:
   /leads:
     get:
       operationId: listLeads
-      tags: [leads]
+      tags: [ leads ]
       summary: List all leads
       responses:
         "200":
@@ -269,7 +269,7 @@ paths:
                   $ref: "#/components/schemas/Lead"
     post:
       operationId: createLead
-      tags: [leads]
+      tags: [ leads ]
       summary: Create a lead
       requestBody:
         required: true
@@ -287,7 +287,7 @@ paths:
   /leads/{id}:
     get:
       operationId: getLead
-      tags: [leads]
+      tags: [ leads ]
       summary: Get a lead by id
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -306,7 +306,7 @@ paths:
                 $ref: "#/components/schemas/Error"
     patch:
       operationId: updateLead
-      tags: [leads]
+      tags: [ leads ]
       summary: Update a lead
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -331,7 +331,7 @@ paths:
                 $ref: "#/components/schemas/Error"
     delete:
       operationId: deleteLead
-      tags: [leads]
+      tags: [ leads ]
       summary: Delete a lead
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -347,7 +347,7 @@ paths:
   /communications:
     get:
       operationId: listCommunications
-      tags: [communications]
+      tags: [ communications ]
       summary: List communications, optionally filtered by lead or customer
       parameters:
         - name: leadId
@@ -372,7 +372,7 @@ paths:
   /communications/email:
     post:
       operationId: sendEmail
-      tags: [communications]
+      tags: [ communications ]
       summary: Send an email and log it as a communication
       requestBody:
         required: true
@@ -408,7 +408,7 @@ paths:
   /communications/sms:
     post:
       operationId: sendSms
-      tags: [communications]
+      tags: [ communications ]
       summary: Send an SMS and log it as a communication
       requestBody:
         required: true
@@ -444,7 +444,7 @@ paths:
   /measurements:
     get:
       operationId: listMeasurements
-      tags: [measurements]
+      tags: [ measurements ]
       summary: List measurements, optionally filtered by lead or job
       parameters:
         - name: leadId
@@ -468,7 +468,7 @@ paths:
                   $ref: "#/components/schemas/Measurement"
     post:
       operationId: createMeasurement
-      tags: [measurements]
+      tags: [ measurements ]
       summary: Create a measurement
       requestBody:
         required: true
@@ -486,7 +486,7 @@ paths:
   /measurements/{id}:
     patch:
       operationId: updateMeasurement
-      tags: [measurements]
+      tags: [ measurements ]
       summary: Update a measurement
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -511,7 +511,7 @@ paths:
                 $ref: "#/components/schemas/Error"
     delete:
       operationId: deleteMeasurement
-      tags: [measurements]
+      tags: [ measurements ]
       summary: Delete a measurement
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -527,7 +527,7 @@ paths:
   /measurements/sync:
     post:
       operationId: syncMeasurements
-      tags: [measurements]
+      tags: [ measurements ]
       summary: Run a two-way sync with Measure Square
       description: |
         Pulls measurements from Measure Square (upserting by external id) and
@@ -551,7 +551,7 @@ paths:
   /measure-square/status:
     get:
       operationId: getMeasureSquareStatus
-      tags: [measurements]
+      tags: [ measurements ]
       summary: Get the Measure Square connection status
       responses:
         "200":
@@ -563,7 +563,7 @@ paths:
   /settings:
     get:
       operationId: getSettings
-      tags: [settings]
+      tags: [ settings ]
       summary: Get settings
       responses:
         "200":
@@ -574,7 +574,7 @@ paths:
                 $ref: "#/components/schemas/Settings"
     patch:
       operationId: updateSettings
-      tags: [settings]
+      tags: [ settings ]
       summary: Update settings
       requestBody:
         required: true
@@ -592,7 +592,7 @@ paths:
   /jobs/{id}/photos:
     get:
       operationId: listJobPhotos
-      tags: [photos]
+      tags: [ photos ]
       summary: List photos for a job
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -607,7 +607,7 @@ paths:
                   $ref: "#/components/schemas/JobPhoto"
     post:
       operationId: createJobPhoto
-      tags: [photos]
+      tags: [ photos ]
       summary: Attach a photo to a job stage
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -633,7 +633,7 @@ paths:
   /jobs/{id}/photos/{photoId}:
     delete:
       operationId: deleteJobPhoto
-      tags: [photos]
+      tags: [ photos ]
       summary: Delete a job photo
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -654,7 +654,7 @@ paths:
   /salespeople:
     get:
       operationId: listSalespeople
-      tags: [salespeople]
+      tags: [ salespeople ]
       summary: List all sales team members
       responses:
         "200":
@@ -667,7 +667,7 @@ paths:
                   $ref: "#/components/schemas/Salesperson"
     post:
       operationId: createSalesperson
-      tags: [salespeople]
+      tags: [ salespeople ]
       summary: Create a sales team member
       requestBody:
         required: true
@@ -685,7 +685,7 @@ paths:
   /salespeople/{id}:
     patch:
       operationId: updateSalesperson
-      tags: [salespeople]
+      tags: [ salespeople ]
       summary: Update a sales team member
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -710,7 +710,7 @@ paths:
                 $ref: "#/components/schemas/Error"
     delete:
       operationId: deleteSalesperson
-      tags: [salespeople]
+      tags: [ salespeople ]
       summary: Delete a sales team member
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -726,7 +726,7 @@ paths:
   /invoices:
     get:
       operationId: listInvoices
-      tags: [invoices]
+      tags: [ invoices ]
       summary: List all invoices
       responses:
         "200":
@@ -739,7 +739,7 @@ paths:
                   $ref: "#/components/schemas/Invoice"
     post:
       operationId: createInvoice
-      tags: [invoices]
+      tags: [ invoices ]
       summary: Create an invoice
       requestBody:
         required: true
@@ -757,7 +757,7 @@ paths:
   /invoices/{id}:
     patch:
       operationId: updateInvoice
-      tags: [invoices]
+      tags: [ invoices ]
       summary: Update an invoice
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -782,7 +782,7 @@ paths:
                 $ref: "#/components/schemas/Error"
     delete:
       operationId: deleteInvoice
-      tags: [invoices]
+      tags: [ invoices ]
       summary: Delete an invoice
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -798,7 +798,7 @@ paths:
   /products:
     get:
       operationId: listProducts
-      tags: [products]
+      tags: [ products ]
       summary: List all catalog products
       responses:
         "200":
@@ -811,7 +811,7 @@ paths:
                   $ref: "#/components/schemas/Product"
     post:
       operationId: createProduct
-      tags: [products]
+      tags: [ products ]
       summary: Create a catalog product
       requestBody:
         required: true
@@ -829,7 +829,7 @@ paths:
   /products/{id}:
     patch:
       operationId: updateProduct
-      tags: [products]
+      tags: [ products ]
       summary: Update a catalog product
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -854,7 +854,7 @@ paths:
                 $ref: "#/components/schemas/Error"
     delete:
       operationId: deleteProduct
-      tags: [products]
+      tags: [ products ]
       summary: Delete a catalog product
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -870,7 +870,7 @@ paths:
   /jobs/{id}/materials:
     get:
       operationId: listJobMaterials
-      tags: [jobs]
+      tags: [ jobs ]
       summary: List materials needed for a job
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -885,7 +885,7 @@ paths:
                   $ref: "#/components/schemas/JobMaterial"
     post:
       operationId: createJobMaterial
-      tags: [jobs]
+      tags: [ jobs ]
       summary: Add a material line item to a job
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -911,7 +911,7 @@ paths:
   /jobs/{id}/materials/{materialId}:
     patch:
       operationId: updateJobMaterial
-      tags: [jobs]
+      tags: [ jobs ]
       summary: Update a job material line item
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -941,7 +941,7 @@ paths:
                 $ref: "#/components/schemas/Error"
     delete:
       operationId: deleteJobMaterial
-      tags: [jobs]
+      tags: [ jobs ]
       summary: Delete a job material line item
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -962,7 +962,7 @@ paths:
   /jobs/{id}/labor:
     get:
       operationId: listLaborEntries
-      tags: [jobs]
+      tags: [ jobs ]
       summary: List actual labor-hour entries for a job
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -977,7 +977,7 @@ paths:
                   $ref: "#/components/schemas/LaborEntry"
     post:
       operationId: createLaborEntry
-      tags: [jobs]
+      tags: [ jobs ]
       summary: Log actual labor hours against a job
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -1003,7 +1003,7 @@ paths:
   /jobs/{id}/labor/{entryId}:
     patch:
       operationId: updateLaborEntry
-      tags: [jobs]
+      tags: [ jobs ]
       summary: Update a labor-hour entry
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -1033,7 +1033,7 @@ paths:
                 $ref: "#/components/schemas/Error"
     delete:
       operationId: deleteLaborEntry
-      tags: [jobs]
+      tags: [ jobs ]
       summary: Delete a labor-hour entry
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -1054,7 +1054,7 @@ paths:
   /jobs/{id}/material-usage:
     get:
       operationId: listMaterialUsage
-      tags: [jobs]
+      tags: [ jobs ]
       summary: List actual material-usage entries for a job
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -1069,7 +1069,7 @@ paths:
                   $ref: "#/components/schemas/MaterialUsage"
     post:
       operationId: createMaterialUsage
-      tags: [jobs]
+      tags: [ jobs ]
       summary: Log actual materials used against a job
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -1095,7 +1095,7 @@ paths:
   /jobs/{id}/material-usage/{usageId}:
     patch:
       operationId: updateMaterialUsage
-      tags: [jobs]
+      tags: [ jobs ]
       summary: Update a material-usage entry
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -1125,7 +1125,7 @@ paths:
                 $ref: "#/components/schemas/Error"
     delete:
       operationId: deleteMaterialUsage
-      tags: [jobs]
+      tags: [ jobs ]
       summary: Delete a material-usage entry
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -1146,7 +1146,7 @@ paths:
   /public/jobs/{token}:
     get:
       operationId: getPublicJob
-      tags: [public]
+      tags: [ public ]
       summary: Get a customer-facing job status by share token
       parameters:
         - name: token
@@ -1170,7 +1170,7 @@ paths:
   /public/quotes/{token}:
     get:
       operationId: getPublicQuote
-      tags: [public]
+      tags: [ public ]
       summary: Get a customer-facing quote by share token
       description: |
         Returns the quote for the public acceptance page. The first time a Sent
@@ -1197,7 +1197,7 @@ paths:
   /public/quotes/{token}/accept:
     post:
       operationId: acceptPublicQuote
-      tags: [public]
+      tags: [ public ]
       summary: Accept and e-sign a quote from the public link
       parameters:
         - name: token
@@ -1224,6 +1224,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "409":
+          description: Quote changed since the displayed revision; review its current terms
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Not found
           content:
@@ -1233,7 +1239,7 @@ paths:
   /public/quotes/{token}/decline:
     post:
       operationId: declinePublicQuote
-      tags: [public]
+      tags: [ public ]
       summary: Decline a quote from the public link
       parameters:
         - name: token
@@ -1241,6 +1247,12 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuoteResponseInput"
       responses:
         "200":
           description: Declined quote
@@ -1254,6 +1266,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "409":
+          description: Quote changed since the displayed revision; review its current terms
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Not found
           content:
@@ -1262,7 +1280,7 @@ paths:
                 $ref: "#/components/schemas/Error"
   /storage/uploads/request-url:
     post:
-      tags: [Storage]
+      tags: [ Storage ]
       operationId: requestUploadUrl
       summary: Request a presigned URL for file upload
       description: |
@@ -1295,7 +1313,7 @@ paths:
                 $ref: '#/components/schemas/ErrorEnvelope'
   /storage/public-objects/{filePath}:
     get:
-      tags: [Storage]
+      tags: [ Storage ]
       operationId: getPublicObject
       summary: Serve a public asset from PUBLIC_OBJECT_SEARCH_PATHS
       description: |
@@ -1330,7 +1348,7 @@ paths:
                 $ref: '#/components/schemas/ErrorEnvelope'
   /storage/objects/{objectPath}:
     get:
-      tags: [Storage]
+      tags: [ Storage ]
       operationId: getStorageObject
       summary: Serve an object entity from PRIVATE_OBJECT_DIR
       description: |
@@ -1366,7 +1384,7 @@ paths:
   /tasks:
     get:
       operationId: listTasks
-      tags: [tasks]
+      tags: [ tasks ]
       summary: List all internal tasks
       responses:
         "200":
@@ -1379,7 +1397,7 @@ paths:
                   $ref: "#/components/schemas/Task"
     post:
       operationId: createTask
-      tags: [tasks]
+      tags: [ tasks ]
       summary: Create an internal task
       requestBody:
         required: true
@@ -1397,7 +1415,7 @@ paths:
   /tasks/{id}:
     patch:
       operationId: updateTask
-      tags: [tasks]
+      tags: [ tasks ]
       summary: Update an internal task
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -1422,7 +1440,7 @@ paths:
                 $ref: "#/components/schemas/Error"
     delete:
       operationId: deleteTask
-      tags: [tasks]
+      tags: [ tasks ]
       summary: Delete an internal task
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -1438,7 +1456,7 @@ paths:
   /calendar/google/status:
     get:
       operationId: getGoogleCalendarStatus
-      tags: [calendar]
+      tags: [ calendar ]
       summary: Check Google Calendar connection status
       responses:
         "200":
@@ -1450,7 +1468,7 @@ paths:
   /calendar/google/sync:
     post:
       operationId: syncGoogleCalendar
-      tags: [calendar]
+      tags: [ calendar ]
       summary: Run a two-way sync between internal tasks and Google Calendar
       description: |
         Pushes any unsynced local task changes to Google Calendar and pulls
@@ -1463,6 +1481,1109 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GoogleSyncResult"
+  /workspace-brand:
+    get:
+      operationId: getWorkspaceBrand
+      tags:
+        - operations
+      summary: get Workspace Brand
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceBrand"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+  /customers:
+    get:
+      operationId: listCustomers
+      tags:
+        - operations
+      summary: list Customers
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Customer"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+    post:
+      operationId: createCustomer
+      tags:
+        - operations
+      summary: create Customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: &a1
+                  type: string
+                email: *a1
+                phone: *a1
+                notes: *a1
+              required:
+                - name
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+  /customers/{id}:
+    get:
+      operationId: getCustomer
+      tags:
+        - operations
+      summary: get Customer
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+    patch:
+      operationId: updateCustomer
+      tags:
+        - operations
+      summary: update Customer
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: &a1
+                  type: string
+                email: *a1
+                phone: *a1
+                notes: *a1
+                revision:
+                  type: integer
+                  minimum: 1
+              required:
+                - revision
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+  /customers/{id}/sites:
+    get:
+      operationId: listCustomerSites
+      tags:
+        - operations
+      summary: list Customer Sites
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CustomerSite"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+    post:
+      operationId: createCustomerSite
+      tags:
+        - operations
+      summary: create Customer Site
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label: &a1
+                  type: string
+                address: *a1
+                city: *a1
+                state: *a1
+                zip: *a1
+              required:
+                - address
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerSite"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+  /customers/{id}/merge:
+    post:
+      operationId: mergeCustomer
+      tags:
+        - operations
+      summary: merge Customer
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                targetId:
+                  type: string
+                revision:
+                  type: integer
+                  minimum: 1
+              required:
+                - targetId
+                - revision
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  customer:
+                    $ref: "#/components/schemas/Customer"
+                  integrationReconciliationRequired:
+                    type: boolean
+                required:
+                  - customer
+                  - integrationReconciliationRequired
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+  /crews:
+    get:
+      operationId: listCrews
+      tags:
+        - operations
+      summary: list Crews
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Crew"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+    post:
+      operationId: createCrew
+      tags:
+        - operations
+      summary: create Crew
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: &a1
+                  type: string
+                active:
+                  type: boolean
+                timezone: *a1
+                size: &a2
+                  type: number
+                  nullable: true
+                dailyCapacityHours: *a2
+                workingDays:
+                  type: array
+                  items:
+                    type: integer
+                unavailableDates:
+                  type: array
+                  items: *a1
+              required:
+                - name
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Crew"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+  /crews/{id}:
+    patch:
+      operationId: updateCrew
+      tags:
+        - operations
+      summary: update Crew
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                active:
+                  type: boolean
+                timezone:
+                  type: string
+                size:
+                  type: number
+                  nullable: true
+                dailyCapacityHours:
+                  type: number
+                  nullable: true
+                workingDays:
+                  type: array
+                  items:
+                    type: integer
+                unavailableDates:
+                  type: array
+                  items:
+                    type: string
+                revision:
+                  type: integer
+                  minimum: 1
+              required:
+                - revision
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Crew"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+  /bookings:
+    get:
+      operationId: listCrewBookings
+      tags:
+        - operations
+      summary: list Crew Bookings
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: jobId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CrewBooking"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+    post:
+      operationId: createCrewBooking
+      tags:
+        - operations
+      summary: create Crew Booking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                crewId: &a1
+                  type: string
+                jobId: *a1
+                startAt: *a1
+                endAt: *a1
+                plannedLaborHours:
+                  type: number
+                status: *a1
+                notes: *a1
+              required:
+                - crewId
+                - jobId
+                - startAt
+                - endAt
+                - plannedLaborHours
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CrewBooking"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+  /bookings/{id}:
+    patch:
+      operationId: updateCrewBooking
+      tags:
+        - operations
+      summary: update Crew Booking
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                crewId:
+                  type: string
+                jobId:
+                  type: string
+                startAt:
+                  type: string
+                endAt:
+                  type: string
+                plannedLaborHours:
+                  type: number
+                status:
+                  type: string
+                notes:
+                  type: string
+                revision:
+                  type: integer
+                  minimum: 1
+              required:
+                - revision
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CrewBooking"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+  /callbacks:
+    get:
+      operationId: listJobCallbacks
+      tags:
+        - operations
+      summary: list Job Callbacks
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JobCallback"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+    post:
+      operationId: createJobCallback
+      tags:
+        - operations
+      summary: create Job Callback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                jobId: &a1
+                  type: string
+                reason: *a1
+                status: *a1
+                assignedTo: *a1
+                notes: *a1
+              required:
+                - jobId
+                - reason
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobCallback"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+  /callbacks/{id}:
+    patch:
+      operationId: updateJobCallback
+      tags:
+        - operations
+      summary: update Job Callback
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                jobId:
+                  type: string
+                reason:
+                  type: string
+                status:
+                  type: string
+                assignedTo:
+                  type: string
+                notes:
+                  type: string
+              required: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobCallback"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+  /inventory/summary:
+    get:
+      operationId: getInventorySummary
+      tags:
+        - operations
+      summary: get Inventory Summary
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventorySummary"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+  /inventory/movements:
+    get:
+      operationId: listInventoryMovements
+      tags:
+        - operations
+      summary: list Inventory Movements
+      parameters:
+        - name: productId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventoryMovement"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+    post:
+      operationId: createInventoryMovement
+      tags:
+        - operations
+      summary: create Inventory Movement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                productId: &a1
+                  type: string
+                jobId: *a1
+                kind: *a1
+                quantity:
+                  type: number
+                reason: *a1
+                idempotencyKey: *a1
+                overrideReason: *a1
+                callbackId:
+                  type: string
+              required:
+                - productId
+                - kind
+                - quantity
+                - reason
+                - idempotencyKey
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryMovement"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+  /inventory/reservations:
+    get:
+      operationId: listInventoryReservations
+      tags:
+        - operations
+      summary: list Inventory Reservations
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventoryReservation"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+      parameters:
+        - name: productId
+          in: query
+          schema:
+            type: string
+    post:
+      operationId: createInventoryReservation
+      tags:
+        - operations
+      summary: create Inventory Reservation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                productId: &a1
+                  type: string
+                jobId: *a1
+                quantity:
+                  type: number
+                idempotencyKey: *a1
+              required:
+                - productId
+                - jobId
+                - quantity
+                - idempotencyKey
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryReservation"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+  /inventory/reservations/{id}:
+    patch:
+      operationId: closeInventoryReservation
+      tags:
+        - operations
+      summary: close Inventory Reservation
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revision:
+                  type: integer
+                  minimum: 1
+                status:
+                  type: string
+                  enum:
+                    - Released
+                    - Consumed
+                callbackId:
+                  type: string
+              required:
+                - revision
+                - status
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryReservation"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+  /estimate-drafts:
+    get:
+      operationId: listEstimateDrafts
+      tags:
+        - operations
+      summary: list Estimate Drafts
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EstimateDraft"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+    post:
+      operationId: createEstimateDraft
+      tags:
+        - operations
+      summary: create Estimate Draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id: &a1
+                  type: string
+                title: *a1
+                inputs:
+                  type: object
+                  additionalProperties: true
+              required:
+                - inputs
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EstimateDraft"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+  /estimate-drafts/{id}:
+    get:
+      operationId: getEstimateDraft
+      tags:
+        - operations
+      summary: get Estimate Draft
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EstimateDraft"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+    patch:
+      operationId: updateEstimateDraft
+      tags:
+        - operations
+      summary: update Estimate Draft
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                inputs:
+                  type: object
+                  additionalProperties: true
+                revision:
+                  type: integer
+                  minimum: 1
+              required:
+                - revision
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EstimateDraft"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+  /estimate-drafts/{id}/convert:
+    post:
+      operationId: convertEstimateDraft
+      tags:
+        - operations
+      summary: convert Estimate Draft
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revision:
+                  type: integer
+                  minimum: 1
+                target:
+                  type: string
+                  enum:
+                    - proposal
+                    - job
+              required:
+                - revision
+                - target
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DraftConversion"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+  /leads/{id}/convert:
+    post:
+      operationId: convertLead
+      tags:
+        - operations
+      summary: convert Lead
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revision:
+                  type: integer
+                  minimum: 1
+              required: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+  /jobs/{id}/readiness:
+    get:
+      operationId: getJobReadiness
+      tags:
+        - operations
+      summary: get Job Readiness
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - name: targetStage
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobReadiness"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+  /jobs/{id}/transition:
+    post:
+      operationId: transitionJob
+      tags:
+        - operations
+      summary: transition Job
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revision:
+                  type: integer
+                  minimum: 1
+                targetStage:
+                  $ref: "#/components/schemas/JobStatus"
+                overrideReason:
+                  type: string
+                completionChecklist:
+                  type: object
+                  additionalProperties:
+                    type: boolean
+              required:
+                - revision
+                - targetStage
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+  /metrics:
+    get:
+      operationId: getOperationalMetrics
+      tags:
+        - operations
+      summary: get Operational Metrics
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperationalMetrics"
+        "400":
+          description: Invalid input
+        "403":
+          description: Not authorized
+        "409":
+          description: Revision conflict or unmet requirements
+  /materials/{id}:
+    patch:
+      operationId: updateMaterialReadiness
+      tags:
+        - materials
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MaterialReadinessInput"
+      responses:
+        "200":
+          description: Saved readiness
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaterialRecord"
+        "409":
+          description: Conflict
+  /jobs/{id}/material-readiness:
+    post:
+      operationId: recordJobMaterialReadiness
+      tags:
+        - materials
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MaterialReadinessInput"
+      responses:
+        "201":
+          description: Saved readiness
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaterialRecord"
+        "409":
+          description: Conflict
+  /jobs/{id}/entry-context:
+    get:
+      operationId: getJobEntryContext
+      tags:
+        - Jobs
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Permitted job entry reference data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobEntryContext"
 components:
   parameters:
     IdParam:
@@ -1503,13 +2624,12 @@ components:
         - Invoiced
     PriorityLevel:
       type: string
-      enum: [Low, Medium, High]
+      enum: [ Low, Medium, High ]
     RiskLevel:
       type: string
-      enum: [Low, Medium, High]
+      enum: [ Low, Medium, High ]
     CrewAssigned:
       type: string
-      enum: [Crew A, Crew B, Crew C, Crew D, Unassigned]
     FlooringType:
       type: string
       enum:
@@ -1525,6 +2645,7 @@ components:
     MaterialStatusBadge:
       type: string
       enum:
+        - Not Ordered
         - Ordered
         - In Transit
         - Received
@@ -1533,16 +2654,16 @@ components:
         - Missing Items
     ProposalStatus:
       type: string
-      enum: [Draft, Sent, Viewed, Accepted, Declined, Expired]
+      enum: [ Draft, Sent, Viewed, Accepted, Declined, Expired ]
     DepositType:
       type: string
-      enum: [none, percent, amount]
+      enum: [ none, percent, amount ]
     InvoiceStatus:
       type: string
-      enum: [Draft, Sent, Partial, Paid, Overdue, Credited, Refunded, Voided]
+      enum: [ Draft, Sent, Partial, Paid, Overdue, Credited, Refunded, Voided ]
     InvoiceLineCategory:
       type: string
-      enum: [Labor, Materials, Add-on]
+      enum: [ Labor, Materials, Add-on ]
     ProductCategory:
       type: string
       enum:
@@ -1575,10 +2696,10 @@ components:
         - Service
     CommissionBasis:
       type: string
-      enum: [Revenue, Gross Profit]
+      enum: [ Revenue, Gross Profit ]
     Room:
       type: object
-      required: [id, name, length, width]
+      required: [ id, name, length, width ]
       properties:
         id:
           type: string
@@ -1592,7 +2713,7 @@ components:
           type: string
     StageEvent:
       type: object
-      required: [stage, at]
+      required: [ stage, at ]
       properties:
         stage:
           $ref: "#/components/schemas/JobStatus"
@@ -1600,7 +2721,7 @@ components:
           type: string
     JobPhoto:
       type: object
-      required: [id, jobId, stage, objectPath, caption, createdAt]
+      required: [ id, jobId, stage, objectPath, caption, createdAt ]
       properties:
         id:
           type: string
@@ -1616,7 +2737,7 @@ components:
           type: string
     JobPhotoInput:
       type: object
-      required: [stage, objectPath]
+      required: [ stage, objectPath ]
       properties:
         stage:
           $ref: "#/components/schemas/JobStatus"
@@ -1626,7 +2747,7 @@ components:
           type: string
     JobMaterial:
       type: object
-      required: [id, jobId, name, quantity, unit, createdAt]
+      required: [ id, jobId, name, quantity, unit, createdAt ]
       properties:
         id:
           type: string
@@ -1640,16 +2761,23 @@ components:
           type: string
         createdAt:
           type: string
+        productId:
+          type: string
+          nullable: true
     JobMaterialInput:
       type: object
-      required: [name, quantity, unit]
+      required: [ name, quantity, unit ]
       properties:
         name:
           type: string
         quantity:
           type: number
+          minimum: 0.000001
         unit:
           type: string
+        productId:
+          type: string
+          nullable: true
     JobMaterialUpdate:
       type: object
       properties:
@@ -1657,11 +2785,15 @@ components:
           type: string
         quantity:
           type: number
+          minimum: 0.000001
         unit:
           type: string
+        productId:
+          type: string
+          nullable: true
     LaborEntry:
       type: object
-      required: [id, jobId, date, crew, workerType, hourlyCost, hours, notes, accountingStatus, createdAt]
+      required: [ id, jobId, date, crew, workerType, hourlyCost, hours, notes, accountingStatus, createdAt ]
       properties:
         id:
           type: string
@@ -1673,7 +2805,7 @@ components:
           type: string
         workerType:
           type: string
-          enum: [unmapped, employee, contractor]
+          enum: [ unmapped, employee, contractor ]
         workerExternalId:
           type: string
         hourlyCost:
@@ -1686,9 +2818,18 @@ components:
           type: string
         createdAt:
           type: string
+        crewId:
+          type: string
+          nullable: true
+        bookingId:
+          type: string
+          nullable: true
+        callbackId:
+          type: string
+          nullable: true
     LaborEntryInput:
       type: object
-      required: [date, crew, hours]
+      required: [ date, crew, hours ]
       properties:
         date:
           type: string
@@ -1696,17 +2837,27 @@ components:
           type: string
         workerType:
           type: string
-          enum: [unmapped, employee, contractor]
+          enum: [ unmapped, employee, contractor ]
         workerExternalId:
           type: string
         hourlyCost:
           type: number
         hours:
           type: number
+          minimum: 0.01
         notes:
           type: string
         accountingStatus:
           type: string
+        crewId:
+          type: string
+          nullable: true
+        bookingId:
+          type: string
+          nullable: true
+        callbackId:
+          type: string
+          nullable: true
     LaborEntryUpdate:
       type: object
       properties:
@@ -1716,20 +2867,30 @@ components:
           type: string
         workerType:
           type: string
-          enum: [unmapped, employee, contractor]
+          enum: [ unmapped, employee, contractor ]
         workerExternalId:
           type: string
         hourlyCost:
           type: number
         hours:
           type: number
+          minimum: 0.01
         notes:
           type: string
         accountingStatus:
           type: string
+        crewId:
+          type: string
+          nullable: true
+        bookingId:
+          type: string
+          nullable: true
+        callbackId:
+          type: string
+          nullable: true
     MaterialUsage:
       type: object
-      required: [id, jobId, material, quantity, cost, vendorName, accountingStatus, notes, createdAt]
+      required: [ id, jobId, material, quantity, cost, vendorName, accountingStatus, notes, createdAt ]
       properties:
         id:
           type: string
@@ -1755,16 +2916,27 @@ components:
           type: string
         createdAt:
           type: string
+        productId:
+          type: string
+          nullable: true
+        movementId:
+          type: string
+          nullable: true
+        callbackId:
+          type: string
+          nullable: true
     MaterialUsageInput:
       type: object
-      required: [material, quantity, cost]
+      required: [ material, quantity, cost ]
       properties:
         material:
           type: string
         quantity:
           type: number
+          minimum: 0.000001
         cost:
           type: number
+          minimum: 0
         vendorName:
           type: string
         vendorExternalId:
@@ -1777,6 +2949,12 @@ components:
           type: string
         notes:
           type: string
+        productId:
+          type: string
+          nullable: true
+        callbackId:
+          type: string
+          nullable: true
     MaterialUsageUpdate:
       type: object
       properties:
@@ -1784,8 +2962,10 @@ components:
           type: string
         quantity:
           type: number
+          minimum: 0.000001
         cost:
           type: number
+          minimum: 0
         vendorName:
           type: string
         vendorExternalId:
@@ -1798,9 +2978,15 @@ components:
           type: string
         notes:
           type: string
+        productId:
+          type: string
+          nullable: true
+        callbackId:
+          type: string
+          nullable: true
     PublicCompany:
       type: object
-      required: [companyName, phone, email, website]
+      required: [ companyName, phone, email, website ]
       properties:
         companyName:
           type: string
@@ -1809,6 +2995,13 @@ components:
         email:
           type: string
         website:
+          type: string
+        companyLogoUrl:
+          type: string
+          nullable: true
+        customerAccentColor:
+          type: string
+        address:
           type: string
     PublicJob:
       type: object
@@ -1939,6 +3132,7 @@ components:
     PublicPortalQuote:
       type: object
       required:
+        - revision
         - shareToken
         - customerName
         - projectLocation
@@ -1958,6 +3152,9 @@ components:
         - status
         - signature
       properties:
+        revision:
+          type: integer
+          minimum: 1
         shareToken:
           type: string
         customerName:
@@ -2000,9 +3197,13 @@ components:
           type: string
         signature:
           type: string
+        lineItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProposalLineItem"
     UploadUrlRequest:
       type: object
-      required: [name, size, contentType]
+      required: [ name, size, contentType ]
       properties:
         name:
           type: string
@@ -2018,7 +3219,7 @@ components:
           description: MIME type of the file (e.g. `image/jpeg`).
     UploadUrlResponse:
       type: object
-      required: [uploadURL, objectPath]
+      required: [ uploadURL, objectPath ]
       properties:
         uploadURL:
           type: string
@@ -2031,7 +3232,7 @@ components:
           $ref: '#/components/schemas/UploadUrlRequest'
     ErrorEnvelope:
       type: object
-      required: [error]
+      required: [ error ]
       properties:
         error:
           type: string
@@ -2139,6 +3340,32 @@ components:
           type: string
         updatedAt:
           type: string
+        customerId:
+          type: string
+          nullable: true
+        siteId:
+          type: string
+          nullable: true
+        revision:
+          type: integer
+          minimum: 1
+        estimateSnapshot:
+          type: object
+          additionalProperties: true
+          nullable: true
+        soldAt:
+          type: string
+          nullable: true
+        completedAt:
+          type: string
+          nullable: true
+        eventDateSource:
+          type: string
+          nullable: true
+        completionChecklist:
+          type: object
+          additionalProperties:
+            type: boolean
     JobInput:
       type: object
       required:
@@ -2221,6 +3448,12 @@ components:
           $ref: "#/components/schemas/RiskLevel"
         status:
           $ref: "#/components/schemas/JobStatus"
+        customerId:
+          type: string
+          nullable: true
+        siteId:
+          type: string
+          nullable: true
     JobUpdate:
       type: object
       properties:
@@ -2283,6 +3516,19 @@ components:
           $ref: "#/components/schemas/RiskLevel"
         status:
           $ref: "#/components/schemas/JobStatus"
+        customerId:
+          type: string
+          nullable: true
+        siteId:
+          type: string
+          nullable: true
+        revision:
+          type: integer
+          minimum: 1
+        completionChecklist:
+          type: object
+          additionalProperties:
+            type: boolean
     MaterialRecord:
       type: object
       required:
@@ -2414,6 +3660,19 @@ components:
           nullable: true
         createdAt:
           type: string
+        customerId:
+          type: string
+          nullable: true
+        siteId:
+          type: string
+          nullable: true
+        revision:
+          type: integer
+          minimum: 1
+        estimateSnapshot:
+          type: object
+          additionalProperties: true
+          nullable: true
     ProposalLineItem:
       type: object
       required:
@@ -2438,6 +3697,8 @@ components:
         quantity:
           type: number
         unitPrice:
+          type: number
+        lineTotal:
           type: number
     ProposalInput:
       type: object
@@ -2495,6 +3756,12 @@ components:
           type: string
         status:
           $ref: "#/components/schemas/ProposalStatus"
+        customerId:
+          type: string
+          nullable: true
+        siteId:
+          type: string
+          nullable: true
     ProposalUpdate:
       type: object
       properties:
@@ -2527,9 +3794,19 @@ components:
         salespersonId:
           type: string
           nullable: true
+        customerId:
+          type: string
+          nullable: true
+        siteId:
+          type: string
+          nullable: true
+        revision:
+          type: integer
+          minimum: 1
     PublicQuote:
       type: object
       required:
+        - revision
         - customerName
         - projectLocation
         - flooringType
@@ -2549,6 +3826,9 @@ components:
         - signature
         - company
       properties:
+        revision:
+          type: integer
+          minimum: 1
         customerName:
           type: string
         projectLocation:
@@ -2591,16 +3871,30 @@ components:
           type: string
         company:
           $ref: "#/components/schemas/PublicCompany"
+        lineItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProposalLineItem"
     QuoteAcceptInput:
       type: object
-      required: [signature]
+      required: [ signature, revision ]
       properties:
+        revision:
+          type: integer
+          minimum: 1
         signature:
           type: string
           minLength: 1
+    QuoteResponseInput:
+      type: object
+      required: [ revision ]
+      properties:
+        revision:
+          type: integer
+          minimum: 1
     ConvertProposalResult:
       type: object
-      required: [job, invoice, materialsCreated]
+      required: [ job, invoice, materialsCreated ]
       properties:
         job:
           $ref: "#/components/schemas/Job"
@@ -2610,7 +3904,7 @@ components:
           type: integer
     Salesperson:
       type: object
-      required: [id, name, email, phone, active, createdAt]
+      required: [ id, name, email, phone, active, createdAt ]
       properties:
         id:
           type: string
@@ -2632,7 +3926,7 @@ components:
           type: string
     SalespersonInput:
       type: object
-      required: [name]
+      required: [ name ]
       properties:
         name:
           type: string
@@ -2667,7 +3961,7 @@ components:
           nullable: true
     InvoiceLineItem:
       type: object
-      required: [id, description, category, quantity, unitPrice]
+      required: [ id, description, category, quantity, unitPrice ]
       properties:
         id:
           type: string
@@ -2756,6 +4050,9 @@ components:
           type: string
         updatedAt:
           type: string
+        customerId:
+          type: string
+          nullable: true
     LeadStage:
       type: string
       enum:
@@ -2779,7 +4076,7 @@ components:
         - Other
     LeadActivity:
       type: object
-      required: [id, date, type, note]
+      required: [ id, date, type, note ]
       properties:
         id:
           type: string
@@ -2787,12 +4084,12 @@ components:
           type: string
         type:
           type: string
-          enum: [Note, Call, Email, Stage Change, Follow-up]
+          enum: [ Note, Call, Email, Stage Change, Follow-up ]
         note:
           type: string
     LeadNote:
       type: object
-      required: [id, body, createdAt]
+      required: [ id, body, createdAt ]
       properties:
         id:
           type: string
@@ -2804,7 +4101,7 @@ components:
           type: string
     LeadContact:
       type: object
-      required: [id, name, createdAt]
+      required: [ id, name, createdAt ]
       properties:
         id:
           type: string
@@ -2822,7 +4119,7 @@ components:
           type: string
     LeadAddress:
       type: object
-      required: [id, createdAt]
+      required: [ id, createdAt ]
       properties:
         id:
           type: string
@@ -2846,7 +4143,7 @@ components:
           type: string
     LeadSample:
       type: object
-      required: [id, productName, createdAt]
+      required: [ id, productName, createdAt ]
       properties:
         id:
           type: string
@@ -2868,7 +4165,7 @@ components:
           type: string
     LeadTask:
       type: object
-      required: [id, title, completed, createdAt]
+      required: [ id, title, completed, createdAt ]
       properties:
         id:
           type: string
@@ -2886,7 +4183,7 @@ components:
           type: string
     LeadInteraction:
       type: object
-      required: [id, type, summary, date, createdAt]
+      required: [ id, type, summary, date, createdAt ]
       properties:
         id:
           type: string
@@ -2900,7 +4197,7 @@ components:
           type: string
     LeadDocument:
       type: object
-      required: [id, name, objectPath, createdAt]
+      required: [ id, name, objectPath, createdAt ]
       properties:
         id:
           type: string
@@ -2916,7 +4213,7 @@ components:
           type: string
     LeadMeasurement:
       type: object
-      required: [id, label, createdAt]
+      required: [ id, label, createdAt ]
       properties:
         id:
           type: string
@@ -3063,6 +4360,15 @@ components:
           type: string
         updatedAt:
           type: string
+        customerId:
+          type: string
+          nullable: true
+        siteId:
+          type: string
+          nullable: true
+        revision:
+          type: integer
+          minimum: 1
     InvoiceInput:
       type: object
       required:
@@ -3097,6 +4403,9 @@ components:
           type: string
         notes:
           type: string
+        customerId:
+          type: string
+          nullable: true
     InvoiceUpdate:
       type: object
       properties:
@@ -3122,6 +4431,9 @@ components:
           type: string
         notes:
           type: string
+        customerId:
+          type: string
+          nullable: true
     Product:
       type: object
       required:
@@ -3157,10 +4469,13 @@ components:
           $ref: "#/components/schemas/ProductUnit"
         cost:
           type: number
+          minimum: 0
         price:
           type: number
+          minimum: 0
         quantityOnHand:
           type: number
+          minimum: 0
         inventoryType:
           $ref: "#/components/schemas/ProductInventoryType"
         active:
@@ -3174,6 +4489,28 @@ components:
           type: string
         updatedAt:
           type: string
+        revision:
+          type: integer
+          minimum: 1
+        coveragePerUnit:
+          type: number
+          nullable: true
+          exclusiveMinimum: 0
+        coverageUnit:
+          type: string
+          nullable: true
+        orderMultiple:
+          type: number
+          nullable: true
+          exclusiveMinimum: 0
+        minimumOrderQty:
+          type: number
+          nullable: true
+          minimum: 0
+        reorderPoint:
+          type: number
+          nullable: true
+          minimum: 0
     ProductInput:
       type: object
       required:
@@ -3195,10 +4532,13 @@ components:
           $ref: "#/components/schemas/ProductUnit"
         cost:
           type: number
+          minimum: 0
         price:
           type: number
+          minimum: 0
         quantityOnHand:
           type: number
+          minimum: 0
         inventoryType:
           $ref: "#/components/schemas/ProductInventoryType"
         active:
@@ -3208,6 +4548,25 @@ components:
         imageUrl:
           type: string
           nullable: true
+        coveragePerUnit:
+          type: number
+          nullable: true
+          exclusiveMinimum: 0
+        coverageUnit:
+          type: string
+          nullable: true
+        orderMultiple:
+          type: number
+          nullable: true
+          exclusiveMinimum: 0
+        minimumOrderQty:
+          type: number
+          nullable: true
+          minimum: 0
+        reorderPoint:
+          type: number
+          nullable: true
+          minimum: 0
     ProductUpdate:
       type: object
       properties:
@@ -3225,10 +4584,13 @@ components:
           $ref: "#/components/schemas/ProductUnit"
         cost:
           type: number
+          minimum: 0
         price:
           type: number
+          minimum: 0
         quantityOnHand:
           type: number
+          minimum: 0
         inventoryType:
           $ref: "#/components/schemas/ProductInventoryType"
         active:
@@ -3238,6 +4600,28 @@ components:
         imageUrl:
           type: string
           nullable: true
+        revision:
+          type: integer
+          minimum: 1
+        coveragePerUnit:
+          type: number
+          nullable: true
+          exclusiveMinimum: 0
+        coverageUnit:
+          type: string
+          nullable: true
+        orderMultiple:
+          type: number
+          nullable: true
+          exclusiveMinimum: 0
+        minimumOrderQty:
+          type: number
+          nullable: true
+          minimum: 0
+        reorderPoint:
+          type: number
+          nullable: true
+          minimum: 0
     LeadInput:
       type: object
       required:
@@ -3351,6 +4735,12 @@ components:
           type: string
         convertedJobId:
           type: string
+        customerId:
+          type: string
+          nullable: true
+        siteId:
+          type: string
+          nullable: true
     LeadUpdate:
       type: object
       properties:
@@ -3461,6 +4851,15 @@ components:
         convertedJobId:
           type: string
           nullable: true
+        customerId:
+          type: string
+          nullable: true
+        siteId:
+          type: string
+          nullable: true
+        revision:
+          type: integer
+          minimum: 1
     Settings:
       type: object
       required:
@@ -3517,12 +4916,29 @@ components:
         googleCalendarLastSyncedAt:
           type: string
           nullable: true
+        companyLogoUrl:
+          type: string
+          nullable: true
+        customerAccentColor:
+          type: string
+          pattern: ^#[0-9a-fA-F]{6}$
+        estimatePolicy:
+          type: object
+          additionalProperties: true
+          nullable: true
+        transitionPolicy:
+          type: object
+          additionalProperties: true
+          nullable: true
     TaskStatus:
       type: string
-      enum: [Open, Done]
+      enum:
+        - Open
+        - Done
+        - Cancelled
     Task:
       type: object
-      required: [id, title, description, startAt, endAt, allDay, status, createdAt, updatedAt]
+      required: [ id, title, description, startAt, endAt, allDay, status, createdAt, updatedAt ]
       properties:
         id:
           type: string
@@ -3554,9 +4970,12 @@ components:
           type: string
         updatedAt:
           type: string
+        bookingId:
+          type: string
+          nullable: true
     TaskInput:
       type: object
-      required: [title, startAt, endAt]
+      required: [ title, startAt, endAt ]
       properties:
         title:
           type: string
@@ -3605,7 +5024,7 @@ components:
           nullable: true
     GoogleCalendarStatus:
       type: object
-      required: [connected]
+      required: [ connected ]
       properties:
         connected:
           type: boolean
@@ -3620,7 +5039,7 @@ components:
           nullable: true
     GoogleSyncResult:
       type: object
-      required: [connected, pulled, created, updated, deleted, pushed]
+      required: [ connected, pulled, created, updated, deleted, pushed ]
       properties:
         connected:
           type: boolean
@@ -3642,13 +5061,13 @@ components:
           nullable: true
     CommunicationChannel:
       type: string
-      enum: [email, sms]
+      enum: [ email, sms ]
     CommunicationDirection:
       type: string
-      enum: [outbound, inbound]
+      enum: [ outbound, inbound ]
     CommunicationStatus:
       type: string
-      enum: [queued, sent, delivered, failed, received]
+      enum: [ queued, sent, delivered, failed, received ]
     Communication:
       type: object
       required:
@@ -3731,10 +5150,10 @@ components:
           type: string
     MeasurementSyncStatus:
       type: string
-      enum: [local, pending, synced, error]
+      enum: [ local, pending, synced, error ]
     MeasurementRoom:
       type: object
-      required: [name, sqft]
+      required: [ name, sqft ]
       properties:
         name:
           type: string
@@ -3748,7 +5167,7 @@ components:
           type: string
     MeasurementProduct:
       type: object
-      required: [name]
+      required: [ name ]
       properties:
         name:
           type: string
@@ -3880,7 +5299,7 @@ components:
           type: string
     MeasureSquareStatus:
       type: object
-      required: [connected, configured, message]
+      required: [ connected, configured, message ]
       properties:
         connected:
           type: boolean
@@ -3900,7 +5319,7 @@ components:
           type: string
     SyncMeasurementsResult:
       type: object
-      required: [connected, configured, pulled, pushed, errors, message]
+      required: [ connected, configured, pulled, pushed, errors, message ]
       properties:
         connected:
           type: boolean
@@ -3960,3 +5379,497 @@ components:
         googleCalendarLastSyncedAt:
           type: string
           nullable: true
+        companyLogoUrl:
+          type: string
+          nullable: true
+        customerAccentColor:
+          type: string
+          pattern: ^#[0-9a-fA-F]{6}$
+        estimatePolicy:
+          type: object
+          additionalProperties: true
+          nullable: true
+        transitionPolicy:
+          type: object
+          additionalProperties: true
+          nullable: true
+    Customer:
+      type: object
+      required:
+        - id
+        - name
+        - email
+        - phone
+        - notes
+        - mergedIntoId
+        - revision
+        - createdAt
+        - updatedAt
+      properties:
+        id: &a1
+          type: string
+        name: *a1
+        email: *a1
+        phone: *a1
+        notes: *a1
+        mergedIntoId:
+          type: string
+          nullable: true
+        revision:
+          type: integer
+        createdAt: *a1
+        updatedAt: *a1
+    CustomerSite:
+      type: object
+      required:
+        - id
+        - customerId
+        - label
+        - address
+        - city
+        - state
+        - zip
+        - createdAt
+        - updatedAt
+      properties:
+        id: &a1
+          type: string
+        customerId: *a1
+        label: *a1
+        address: *a1
+        city: *a1
+        state: *a1
+        zip: *a1
+        createdAt: *a1
+        updatedAt: *a1
+    Crew:
+      type: object
+      required:
+        - id
+        - name
+        - active
+        - timezone
+        - size
+        - dailyCapacityHours
+        - workingDays
+        - unavailableDates
+        - revision
+        - createdAt
+        - updatedAt
+      properties:
+        id: &a1
+          type: string
+        name: *a1
+        active:
+          type: boolean
+        timezone: *a1
+        size: &a2
+          type: number
+          nullable: true
+        dailyCapacityHours: *a2
+        workingDays:
+          type: array
+          items:
+            type: integer
+        unavailableDates:
+          type: array
+          items: *a1
+        revision:
+          type: integer
+        createdAt: *a1
+        updatedAt: *a1
+    CrewBooking:
+      type: object
+      required:
+        - id
+        - crewId
+        - jobId
+        - taskId
+        - startAt
+        - endAt
+        - plannedLaborHours
+        - status
+        - notes
+        - revision
+        - createdAt
+        - updatedAt
+      properties:
+        id: &a1
+          type: string
+        crewId: *a1
+        jobId: *a1
+        taskId:
+          type: string
+          nullable: true
+        startAt: *a1
+        endAt: *a1
+        plannedLaborHours:
+          type: number
+        status:
+          type: string
+          enum:
+            - Confirmed
+            - Cancelled
+        notes: *a1
+        revision:
+          type: integer
+        createdAt: *a1
+        updatedAt: *a1
+        calendarSyncStatus:
+          type: string
+          enum:
+            - pending
+            - synced
+            - conflict
+        calendarSyncError:
+          type: string
+          nullable: true
+    JobCallback:
+      type: object
+      required:
+        - id
+        - jobId
+        - reason
+        - status
+        - assignedTo
+        - notes
+        - resolvedAt
+        - createdAt
+        - updatedAt
+      properties:
+        id: &a1
+          type: string
+        jobId: *a1
+        reason: *a1
+        status:
+          type: string
+          enum:
+            - Open
+            - Resolved
+        assignedTo: *a1
+        notes: *a1
+        resolvedAt:
+          type: string
+          nullable: true
+        createdAt: *a1
+        updatedAt: *a1
+    InventoryMovement:
+      type: object
+      required:
+        - id
+        - productId
+        - jobId
+        - quantity
+        - kind
+        - reason
+        - actorUserId
+        - idempotencyKey
+        - createdAt
+      properties:
+        id: &a1
+          type: string
+        productId: *a1
+        jobId: &a2
+          type: string
+          nullable: true
+        quantity:
+          type: number
+        kind: *a1
+        reason: *a1
+        actorUserId: *a2
+        idempotencyKey: *a1
+        createdAt: *a1
+    InventoryReservation:
+      type: object
+      required:
+        - id
+        - productId
+        - jobId
+        - quantity
+        - status
+        - idempotencyKey
+        - revision
+        - createdAt
+        - updatedAt
+      properties:
+        id: &a1
+          type: string
+        productId: *a1
+        jobId: *a1
+        quantity:
+          type: number
+        status:
+          type: string
+          enum:
+            - Active
+            - Released
+            - Consumed
+        idempotencyKey: *a1
+        revision:
+          type: integer
+        createdAt: *a1
+        updatedAt: *a1
+    InventorySummary:
+      type: object
+      required:
+        - productId
+        - onHand
+        - reserved
+        - available
+        - reorderPoint
+        - status
+      properties:
+        productId: &a2
+          type: string
+        onHand: &a1
+          type: number
+        reserved: *a1
+        available: *a1
+        reorderPoint:
+          type: number
+          nullable: true
+        status: *a2
+    EstimateDraft:
+      type: object
+      required:
+        - id
+        - ownerUserId
+        - title
+        - customerId
+        - siteId
+        - leadId
+        - inputs
+        - snapshot
+        - schemaVersion
+        - revision
+        - state
+        - convertedProposalId
+        - convertedJobId
+        - createdAt
+        - updatedAt
+      properties:
+        id: &a1
+          type: string
+        ownerUserId: *a1
+        title: *a1
+        customerId: &a2
+          type: string
+          nullable: true
+        siteId: *a2
+        leadId: *a2
+        inputs:
+          type: object
+          additionalProperties: true
+        snapshot:
+          type: object
+          additionalProperties: true
+          nullable: true
+        schemaVersion:
+          type: integer
+        revision:
+          type: integer
+        state:
+          type: string
+          enum:
+            - Draft
+            - Converted
+        convertedProposalId: *a2
+        convertedJobId: *a2
+        createdAt: *a1
+        updatedAt: *a1
+    ReadinessIssue:
+      type: object
+      required:
+        - code
+        - message
+        - href
+      properties:
+        code: &a1
+          type: string
+        message: *a1
+        href: *a1
+    JobReadiness:
+      type: object
+      required:
+        - jobId
+        - targetStage
+        - revision
+        - ready
+        - blockers
+        - warnings
+      properties:
+        jobId: &a1
+          type: string
+        targetStage: *a1
+        revision:
+          type: integer
+        ready:
+          type: boolean
+        blockers:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReadinessIssue"
+        warnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReadinessIssue"
+    WorkspaceBrand:
+      type: object
+      required:
+        - companyName
+        - companyLogoUrl
+        - customerAccentColor
+        - phone
+        - email
+        - website
+        - address
+      properties:
+        companyName: &a1
+          type: string
+        companyLogoUrl:
+          type: string
+          nullable: true
+        customerAccentColor: *a1
+        phone: *a1
+        email: *a1
+        website: *a1
+        address: *a1
+    OperationalMetrics:
+      type: object
+      required:
+        - from
+        - to
+        - timezone
+        - soldRevenue
+        - jobsSold
+        - completedRevenue
+        - invoicedRevenue
+        - outstanding
+        - capacityHours
+        - plannedLaborHours
+        - actualLaborHours
+        - scheduledUtilization
+        - actualUtilization
+        - callbacksOpened
+        - callbacksOpen
+        - missingSoldDates
+        - missingCompletionDates
+        - unassignedLaborEntries
+        - sourceJobIds
+        - definition
+      properties:
+        from: &a1
+          type: string
+        to: *a1
+        timezone: *a1
+        soldRevenue: &a2
+          type: number
+        jobsSold: *a2
+        completedRevenue: *a2
+        invoicedRevenue: *a2
+        outstanding: *a2
+        capacityHours: &a3
+          type: number
+          nullable: true
+        plannedLaborHours: *a2
+        actualLaborHours: *a2
+        scheduledUtilization: *a3
+        actualUtilization: *a3
+        callbacksOpened: *a2
+        callbacksOpen: *a2
+        missingSoldDates: *a2
+        missingCompletionDates: *a2
+        unassignedLaborEntries: *a2
+        sourceJobIds:
+          type: array
+          items: *a1
+        definition: *a1
+    DraftConversion:
+      type: object
+      required:
+        - draft
+      properties:
+        draft:
+          $ref: "#/components/schemas/EstimateDraft"
+        proposalId: &a1
+          type: string
+        jobId: *a1
+    MaterialReadinessInput:
+      type: object
+      properties:
+        received:
+          type: boolean
+        damaged:
+          type: boolean
+        missingItems:
+          type: string
+        status:
+          $ref: "#/components/schemas/MaterialStatusBadge"
+        supplier:
+          type: string
+        orderedDate:
+          type: string
+          nullable: true
+        expectedDeliveryDate:
+          type: string
+          nullable: true
+        actualDeliveryDate:
+          type: string
+          nullable: true
+        notes:
+          type: string
+    JobEntryContext:
+      type: object
+      required:
+        - crews
+        - bookings
+        - callbacks
+      properties:
+        crews:
+          type: array
+          items:
+            type: object
+            required:
+              - id
+              - name
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+        bookings:
+          type: array
+          items:
+            type: object
+            required:
+              - id
+              - crewId
+              - startAt
+              - endAt
+              - status
+            properties:
+              id:
+                type: string
+              crewId:
+                type: string
+              startAt:
+                type: string
+              endAt:
+                type: string
+              status:
+                type: string
+        callbacks:
+          type: array
+          items:
+            type: object
+            required:
+              - id
+              - reason
+              - status
+            properties:
+              id:
+                type: string
+              reason:
+                type: string
+              status:
+                type: string

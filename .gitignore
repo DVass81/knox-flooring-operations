@@ -2,6 +2,7 @@
 
 # compiled output
 dist
+dist-test
 tmp
 out-tsc
 *.tsbuildinfo
@@ -48,3 +49,11 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Local credentials and protected database exports
+.env
+.env.*
+!.env.example
+*.private.*
+*.dump
+*.backup

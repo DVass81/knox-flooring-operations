@@ -6,13 +6,4 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type CrewAssigned = typeof CrewAssigned[keyof typeof CrewAssigned];
-
-
-export const CrewAssigned = {
-  Crew_A: 'Crew A',
-  Crew_B: 'Crew B',
-  Crew_C: 'Crew C',
-  Crew_D: 'Crew D',
-  Unassigned: 'Unassigned',
-} as const;
+export type CrewAssigned = string;

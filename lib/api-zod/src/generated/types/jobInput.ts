@@ -42,4 +42,6 @@ export interface JobInput {
   priorityLevel: PriorityLevel;
   riskLevel: RiskLevel;
   status: JobStatus;
+  customerId?: string | null;
+  siteId?: string | null;
 }

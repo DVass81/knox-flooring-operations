@@ -5,6 +5,7 @@ import path from "node:path";
 import cookieParser from "cookie-parser";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { recoveryReadOnly } from "./middlewares/recovery";
 
 const app: Express = express();
 
@@ -33,7 +34,7 @@ app.use(express.json({ limit: "1mb", verify: (req, _res, buffer) => { (req as ex
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-app.use("/api", router);
+app.use("/api", recoveryReadOnly, router);
 
 if (process.env.NODE_ENV === "production") {
   const frontendDir = path.resolve(

@@ -8,6 +8,8 @@
 
 export interface JobMaterialUpdate {
   name?: string;
+  /** @minimum 0.000001 */
   quantity?: number;
   unit?: string;
+  productId?: string | null;
 }

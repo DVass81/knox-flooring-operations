@@ -1,4 +1,9 @@
-import { useRef, useState } from "react";
+import { DataBoundary } from "@/components/layout/DataBoundary";
+import { useUnsavedForm } from "@/hooks/use-unsaved-changes";
+import { useCreateContext } from "@/hooks/use-create-context";
+import { useEffect, useRef, useState } from "react";
+import { useUrlState, useQueryControls } from "@/hooks/use-url-state";
+import { FilterSummary } from "@/components/layout/FilterSummary";
 import { useStore } from "@/hooks/use-store";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -114,6 +119,8 @@ function stageAccent(stage: string, index: number): string {
 }
 
 const emptyForm = {
+  customerId: undefined as string | undefined,
+  siteId: undefined as string | undefined,
   customerName: "",
   company: "",
   contactType: "Residential",
@@ -142,7 +149,7 @@ const emptyForm = {
   taxExempt: false,
   source: "Website" as LeadSource,
   stage: "New" as LeadStage,
-  salesperson: "Will Knox",
+  salesperson: "",
   followUpDate: "",
   notes: "",
 };
@@ -150,7 +157,8 @@ const emptyForm = {
 type FormState = typeof emptyForm;
 
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 }
 
 export function getFollowUpStatus(
@@ -173,28 +181,54 @@ function byStageOrder(a: Lead, b: Lead): number {
 }
 
 export default function Leads() {
-  const { leads, settings, addLead, updateLead, addJob } = useStore();
+  const { queryState, leads, settings, addLead, updateLead, addJob } = useStore();
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
+  const unsaved = useUnsavedForm(isFormOpen, form);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<LeadStage | null>(null);
   const [lostLead, setLostLead] = useState<Lead | null>(null);
   const [lostReason, setLostReason] = useState("");
   const boardRef = useRef<HTMLDivElement>(null);
+  const [search, setSearch] = useUrlState<string>("q", "");
+  const [stageFilter, setStageFilter] = useUrlState<string>("stage", "All");
+  const [followUpFilter, setFollowUpFilter] = useUrlState<string>("followUp", "All");
+  const [view, setView] = useUrlState<string>("view", "list");
+  const query = useQueryControls();
+  const createRequested = query.params.get("create") === "1";
+  const context = useCreateContext(query.params.toString(), createRequested);
+  const initializedCreate = useRef<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  useEffect(() => {
+    if (!createRequested) { initializedCreate.current = null; return; }
+    if (context.loading || initializedCreate.current === context.key) return;
+    initializedCreate.current = context.key;
+    const initial = context.found ? { ...emptyForm, customerId: context.customerId, siteId: context.siteId ?? undefined, customerName: context.customerName, phone: context.phone, email: context.email, address: context.address, street: context.address, city: context.city || emptyForm.city, flooringInterest: context.flooringType ?? emptyForm.flooringInterest, source: "Repeat Customer" as LeadSource } : emptyForm;
+    setForm(initial); unsaved.reset(initial); setSaveError(""); setIsFormOpen(true);
+  }, [createRequested, context.loading, context.key]);
+  const closeForm = (open: boolean) => { if (saving || (!open && !unsaved.confirmDiscard())) return; setIsFormOpen(open); if (!open) query.update({ create: null }); };
+  const clearFilters = () => query.update({ q: null, stage: null, followUp: null });
+  const filteredLeads = leads.filter((lead) => (stageFilter === "All" || lead.stage === stageFilter) && (followUpFilter === "All" || (followUpFilter === "due" ? ["overdue", "today"].includes(getFollowUpStatus(lead)) : getFollowUpStatus(lead) === followUpFilter)) && [lead.customerName, lead.city, lead.phone, lead.email, lead.salesperson].some((value) => value?.toLowerCase().includes(search.trim().toLowerCase())));
 
   const stages = resolveStages(settings.leadStages);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
-    setForm((f) => ({ ...f, [key]: value }));
+    setForm((f) => ({ ...f, [key]: value, ...(key === "customerName" ? { customerId: undefined, siteId: undefined } : key === "address" || key === "street" ? { siteId: undefined } : {}) }));
 
   const openAdd = () => {
+    unsaved.reset(emptyForm);
+    setSaveError("");
     setForm(emptyForm);
     setIsFormOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
+    setSaving(true); setSaveError("");
+    try {
     await addLead({
       ...form,
       followUpDate: form.followUpDate || undefined,
@@ -211,6 +245,9 @@ export default function Leads() {
     setIsFormOpen(false);
     setForm(emptyForm);
     toast({ title: "Lead created" });
+    query.update({ create: null });
+    } catch (error) { setSaveError(error instanceof Error ? error.message : "Unable to save this lead. Your changes are still here."); }
+    finally { setSaving(false); }
   };
 
   /** Move/reorder the dragged lead into `stage` at position `index`. */
@@ -295,11 +332,12 @@ export default function Leads() {
     .reduce((acc, l) => acc + (l.estimatedValue || 0), 0);
 
   return (
+    <DataBoundary query={queryState.leads} name="leads">
     <div className="min-w-0 max-w-full space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
-            Lead Pipeline
+            Leads
           </h1>
           <p className="text-muted-foreground mt-1">
             Capture leads and work them to a close.
@@ -373,7 +411,10 @@ export default function Leads() {
         </Card>
       </div>
 
-      <div className="space-y-2">
+      <div className="flex flex-col gap-3 rounded-lg border bg-white p-4 lg:flex-row"><Input aria-label="Search leads" placeholder="Search name, city, phone, email, salesperson" value={search} onChange={(event) => setSearch(event.target.value)} className="lg:flex-1" /><Select value={stageFilter} onValueChange={setStageFilter}><SelectTrigger aria-label="Filter leads by stage" className="lg:w-48"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="All">All stages</SelectItem>{stages.map((stage) => <SelectItem key={stage} value={stage}>{stage}</SelectItem>)}</SelectContent></Select><Select value={followUpFilter} onValueChange={setFollowUpFilter}><SelectTrigger aria-label="Filter leads by follow-up" className="lg:w-48"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="All">All follow-ups</SelectItem><SelectItem value="due">Due now</SelectItem><SelectItem value="overdue">Overdue</SelectItem><SelectItem value="today">Due today</SelectItem><SelectItem value="upcoming">Upcoming</SelectItem><SelectItem value="none">No follow-up</SelectItem></SelectContent></Select><div className="flex gap-1" role="group" aria-label="Lead view"><Button variant={view !== "board" ? "secondary" : "ghost"} aria-pressed={view !== "board"} onClick={() => setView("list")}>List</Button><Button variant={view === "board" ? "secondary" : "ghost"} aria-pressed={view === "board"} onClick={() => setView("board")}>Board</Button></div></div>
+      <FilterSummary count={filteredLeads.length} noun="leads" filters={[...(search ? [{ label: `Search: ${search}`, clear: () => setSearch("") }] : []), ...(stageFilter !== "All" ? [{ label: stageFilter, clear: () => setStageFilter("All") }] : []), ...(followUpFilter !== "All" ? [{ label: `Follow-up: ${followUpFilter}`, clear: () => setFollowUpFilter("All") }] : [])]} onClear={clearFilters} />
+      {view !== "board" && <div className="overflow-hidden rounded-lg border bg-white"><div className="hidden grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-4 border-b bg-muted/40 px-4 py-3 text-xs font-medium text-muted-foreground md:grid"><span>Customer / location</span><span>Stage</span><span>Salesperson</span><span>Follow-up</span><span className="text-right">Estimated value</span></div>{[...filteredLeads].sort((a, b) => (a.followUpDate || "9999").localeCompare(b.followUpDate || "9999")).map((lead) => <Link key={lead.id} href={`/leads/${lead.id}`} className="grid gap-3 border-b px-4 py-4 last:border-0 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:grid-cols-[2fr_1fr_1fr_1fr_1fr] md:items-center"><div><span className="font-medium text-primary">{lead.customerName}</span><p className="mt-1 text-xs text-muted-foreground">{lead.city} · {lead.flooringInterest}</p></div><span><Badge variant="outline">{lead.stage}</Badge></span><span className="text-sm text-muted-foreground">{lead.salesperson || "Unassigned"}</span><span className={cn("text-sm", getFollowUpStatus(lead) === "overdue" ? "text-destructive font-medium" : "text-muted-foreground")}>{getFollowUpStatus(lead) === "overdue" ? "Overdue · " : ""}{lead.followUpDate || "No follow-up set"}</span><span className="text-sm tabular-nums md:text-right">${lead.estimatedValue.toLocaleString()}</span></Link>)}{filteredLeads.length === 0 && <div className="p-8 text-center"><p className="font-medium">{leads.length ? "No matching leads" : "No leads yet"}</p><p className="mt-1 text-sm text-muted-foreground">{leads.length ? "Clear the filters to see your leads." : "Add an inquiry to start tracking the next step."}</p><Button variant="outline" className="mt-4" onClick={leads.length ? clearFilters : openAdd}>{leads.length ? "Clear filters" : "New lead"}</Button></div>}</div>}
+      {view === "board" && <div className="space-y-2">
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">Move across the stages to view Won and Lost.</p>
           <div className="flex shrink-0 gap-1">
@@ -387,8 +428,8 @@ export default function Leads() {
         </div>
         <div ref={boardRef} tabIndex={0} aria-label="Lead pipeline stages" className="h-[calc(100dvh-23rem)] min-h-[340px] max-h-[680px] w-full max-w-full overflow-auto overscroll-contain pb-4">
           <div className="flex w-max min-w-full gap-4 pr-4">
-          {stages.map((stage, stageIndex) => {
-            const stageLeads = leads
+          {stages.filter((stage) => stageFilter === "All" || stage === stageFilter).map((stage, stageIndex) => {
+            const stageLeads = filteredLeads
               .filter((l) => l.stage === stage)
               .sort(byStageOrder);
             const stageValue = stageLeads.reduce(
@@ -504,7 +545,7 @@ export default function Leads() {
           })}
           </div>
         </div>
-      </div>
+      </div>}
 
       <Dialog
         open={lostLead !== null}
@@ -524,8 +565,8 @@ export default function Leads() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label>Reason</Label>
-            <Textarea
+            <Label htmlFor="leads-field-1">Reason</Label>
+            <Textarea id="leads-field-1"
               value={lostReason}
               onChange={(e) => setLostReason(e.target.value)}
               placeholder="e.g. Went with a competitor on price, project postponed..."
@@ -549,7 +590,7 @@ export default function Leads() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+      <Dialog open={isFormOpen} onOpenChange={closeForm}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Lead</DialogTitle>
@@ -564,16 +605,16 @@ export default function Leads() {
               </h3>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Customer Name *</Label>
-                  <Input
+                  <Label htmlFor="leads-field-2">Customer Name *</Label>
+                  <Input id="leads-field-2"
                     value={form.customerName}
                     onChange={(e) => set("customerName", e.target.value)}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Company</Label>
-                  <Input
+                  <Label htmlFor="leads-field-3">Company</Label>
+                  <Input id="leads-field-3"
                     value={form.company}
                     onChange={(e) => set("company", e.target.value)}
                   />
@@ -584,7 +625,7 @@ export default function Leads() {
                     value={form.contactType}
                     onValueChange={(v) => set("contactType", v)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger aria-label="Contact Type">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -597,45 +638,45 @@ export default function Leads() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Branch / Location</Label>
-                  <Input
+                  <Label htmlFor="leads-field-4">Branch / Location</Label>
+                  <Input id="leads-field-4"
                     value={form.branch}
                     onChange={(e) => set("branch", e.target.value)}
                     placeholder="e.g. Knoxville Showroom"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Cell Phone</Label>
-                  <Input
+                  <Label htmlFor="leads-field-5">Cell Phone</Label>
+                  <Input id="leads-field-5"
                     value={form.phone}
                     onChange={(e) => set("phone", e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Main / Home Phone</Label>
-                  <Input
+                  <Label htmlFor="leads-field-6">Main / Home Phone</Label>
+                  <Input id="leads-field-6"
                     value={form.mainPhone}
                     onChange={(e) => set("mainPhone", e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Spouse Phone</Label>
-                  <Input
+                  <Label htmlFor="leads-field-7">Spouse Phone</Label>
+                  <Input id="leads-field-7"
                     value={form.spousePhone}
                     onChange={(e) => set("spousePhone", e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input
+                  <Label htmlFor="leads-field-8">Email</Label>
+                  <Input id="leads-field-8"
                     type="email"
                     value={form.email}
                     onChange={(e) => set("email", e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>CC Email</Label>
-                  <Input
+                  <Label htmlFor="leads-field-9">CC Email</Label>
+                  <Input id="leads-field-9"
                     type="email"
                     value={form.ccEmail}
                     onChange={(e) => set("ccEmail", e.target.value)}
@@ -644,21 +685,18 @@ export default function Leads() {
               </div>
             </section>
 
-            <section className="space-y-3">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Property Address
-              </h3>
+            <details className="space-y-3 rounded-lg border p-4"><summary className="cursor-pointer text-sm font-semibold">Property Address <span className="ml-2 text-xs font-normal text-muted-foreground">Optional details</span></summary>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Address Title</Label>
-                  <Input
+                  <Label htmlFor="leads-field-10">Address Title</Label>
+                  <Input id="leads-field-10"
                     value={form.addressTitle}
                     onChange={(e) => set("addressTitle", e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Street Address</Label>
-                  <Input
+                  <Label htmlFor="leads-field-11">Street Address</Label>
+                  <Input id="leads-field-11"
                     value={form.street}
                     onChange={(e) => {
                       set("street", e.target.value);
@@ -673,7 +711,7 @@ export default function Leads() {
                     value={form.city}
                     onValueChange={(v) => set("city", v)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger aria-label="City">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -696,8 +734,8 @@ export default function Leads() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>ZIP</Label>
-                  <Input
+                  <Label htmlFor="leads-field-12">ZIP</Label>
+                  <Input id="leads-field-12"
                     value={form.zip}
                     onChange={(e) => set("zip", e.target.value)}
                   />
@@ -713,19 +751,16 @@ export default function Leads() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Subdivision</Label>
-                  <Input
+                  <Label htmlFor="leads-field-13">Subdivision</Label>
+                  <Input id="leads-field-13"
                     value={form.subdivision}
                     onChange={(e) => set("subdivision", e.target.value)}
                   />
                 </div>
               </div>
-            </section>
+            </details>
 
-            <section className="space-y-3">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Project
-              </h3>
+            <details className="space-y-3 rounded-lg border p-4"><summary className="cursor-pointer text-sm font-semibold">Project <span className="ml-2 text-xs font-normal text-muted-foreground">Optional details</span></summary>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Flooring Interest</Label>
@@ -735,7 +770,7 @@ export default function Leads() {
                       set("flooringInterest", v)
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger aria-label="Flooring Interest">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -748,16 +783,16 @@ export default function Leads() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Desired Services</Label>
-                  <Input
+                  <Label htmlFor="leads-field-14">Desired Services</Label>
+                  <Input id="leads-field-14"
                     value={form.desiredServices}
                     onChange={(e) => set("desiredServices", e.target.value)}
                     placeholder="e.g. Demo, install, trim"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Estimated Sq Ft</Label>
-                  <Input
+                  <Label htmlFor="leads-field-15">Estimated Sq Ft</Label>
+                  <Input id="leads-field-15"
                     type="number"
                     value={form.estimatedSqft}
                     onChange={(e) =>
@@ -771,7 +806,7 @@ export default function Leads() {
                     value={form.interestLevel}
                     onValueChange={(v) => set("interestLevel", v)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger aria-label="Interest Level">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -784,24 +819,21 @@ export default function Leads() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Requested Install Date</Label>
-                  <Input
+                  <Label htmlFor="leads-field-16">Requested Install Date</Label>
+                  <Input id="leads-field-16"
                     type="date"
                     value={form.installRequest}
                     onChange={(e) => set("installRequest", e.target.value)}
                   />
                 </div>
               </div>
-            </section>
+            </details>
 
-            <section className="space-y-3">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Financial
-              </h3>
+            <details className="space-y-3 rounded-lg border p-4"><summary className="cursor-pointer text-sm font-semibold">Financial <span className="ml-2 text-xs font-normal text-muted-foreground">Optional details</span></summary>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Estimated Value ($)</Label>
-                  <Input
+                  <Label htmlFor="leads-field-17">Estimated Value ($)</Label>
+                  <Input id="leads-field-17"
                     type="number"
                     value={form.estimatedValue}
                     onChange={(e) =>
@@ -810,16 +842,16 @@ export default function Leads() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Lead Cost ($)</Label>
-                  <Input
+                  <Label htmlFor="leads-field-18">Lead Cost ($)</Label>
+                  <Input id="leads-field-18"
                     type="number"
                     value={form.leadCost}
                     onChange={(e) => set("leadCost", Number(e.target.value))}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Financing Amount ($)</Label>
-                  <Input
+                  <Label htmlFor="leads-field-19">Financing Amount ($)</Label>
+                  <Input id="leads-field-19"
                     type="number"
                     value={form.financingAmount}
                     onChange={(e) =>
@@ -840,7 +872,7 @@ export default function Leads() {
                   />
                 </div>
               </div>
-            </section>
+            </details>
 
             <section className="space-y-3">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
@@ -853,7 +885,7 @@ export default function Leads() {
                     value={form.source}
                     onValueChange={(v: LeadSource) => set("source", v)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger aria-label="Lead Source">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -871,7 +903,7 @@ export default function Leads() {
                     value={form.stage}
                     onValueChange={(v) => set("stage", v)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger aria-label="Stage">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -884,15 +916,15 @@ export default function Leads() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Salesperson</Label>
-                  <Input
+                  <Label htmlFor="leads-field-20">Salesperson</Label>
+                  <Input id="leads-field-20"
                     value={form.salesperson}
                     onChange={(e) => set("salesperson", e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Follow-up Date</Label>
-                  <Input
+                  <Label htmlFor="leads-field-21">Follow-up Date</Label>
+                  <Input id="leads-field-21"
                     type="date"
                     value={form.followUpDate}
                     onChange={(e) => set("followUpDate", e.target.value)}
@@ -900,8 +932,8 @@ export default function Leads() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Notes</Label>
-                <Textarea
+                <Label htmlFor="leads-field-22">Notes</Label>
+                <Textarea id="leads-field-22"
                   value={form.notes}
                   onChange={(e) => set("notes", e.target.value)}
                 />
@@ -909,11 +941,14 @@ export default function Leads() {
             </section>
 
             <DialogFooter>
-              <Button type="submit">Create Lead</Button>
+              {saveError && <p role="alert" className="mr-auto text-sm text-destructive">{saveError}</p>}
+              <Button type="button" variant="outline" disabled={saving} onClick={() => closeForm(false)}>Cancel</Button>
+              <Button type="submit" disabled={saving}>{saving ? "Saving…" : "Create Lead"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
     </div>
+    </DataBoundary>
   );
 }

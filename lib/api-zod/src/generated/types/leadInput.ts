@@ -61,4 +61,6 @@ export interface LeadInput {
   notes?: string;
   lostReason?: string;
   convertedJobId?: string;
+  customerId?: string | null;
+  siteId?: string | null;
 }

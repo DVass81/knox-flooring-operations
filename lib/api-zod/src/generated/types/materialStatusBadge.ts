@@ -10,6 +10,7 @@ export type MaterialStatusBadge = typeof MaterialStatusBadge[keyof typeof Materi
 
 
 export const MaterialStatusBadge = {
+  Not_Ordered: 'Not Ordered',
   Ordered: 'Ordered',
   In_Transit: 'In Transit',
   Received: 'Received',

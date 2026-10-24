@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 
 export type FieldType = "text" | "number" | "date" | "textarea" | "select";
 
@@ -85,11 +86,23 @@ export function CollectionTab<T extends CollectionItem>({
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const fieldPrefix = useId();
+  const confirmDiscard = useUnsavedChanges(open && Object.values(values).some((value) => value !== ""));
+  const close = (next: boolean) => { if (!saving && (next || confirmDiscard())) setOpen(next); };
+  const saveItems = async (next: T[]) => {
+    if (saving) return false;
+    setSaving(true); setError("");
+    try { await onSave(next); return true; }
+    catch (cause) { const message = cause instanceof Error ? cause.message : "Unable to save these changes. Please try again."; setError(message); toast({ title: "Changes were not saved", description: message, variant: "destructive" }); return false; }
+    finally { setSaving(false); }
+  };
 
   const helpers: ItemHelpers<T> = {
-    remove: (id) => onSave(items.filter((i) => i.id !== id)),
+    remove: (id) => { void saveItems(items.filter((i) => i.id !== id)); },
     patch: (id, partial) =>
-      onSave(items.map((i) => (i.id === id ? { ...i, ...partial } : i))),
+      { void saveItems(items.map((i) => (i.id === id ? { ...i, ...partial } : i))); },
   };
 
   const reset = () => setValues({});
@@ -106,7 +119,7 @@ export function CollectionTab<T extends CollectionItem>({
       return;
     }
     const item = buildItem<T>(fields, values);
-    await onSave([...items, item]);
+    if (!await saveItems([...items, item])) return;
     reset();
     setOpen(false);
     toast({ title: "Saved" });
@@ -128,6 +141,7 @@ export function CollectionTab<T extends CollectionItem>({
           size="sm"
           onClick={() => {
             reset();
+            setError("");
             setOpen(true);
           }}
         >
@@ -175,6 +189,7 @@ export function CollectionTab<T extends CollectionItem>({
                   className="shrink-0 text-muted-foreground hover:text-destructive"
                   onClick={() => helpers.remove(item.id)}
                   aria-label="Delete"
+                  disabled={saving}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -184,13 +199,11 @@ export function CollectionTab<T extends CollectionItem>({
         </div>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={close}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{addLabel}</DialogTitle>
-            {description && (
-              <DialogDescription>{description}</DialogDescription>
-            )}
+            <DialogDescription>{description || "Add details to this record. Fields marked * are required."}</DialogDescription>
           </DialogHeader>
           <div className="grid sm:grid-cols-2 gap-4">
             {fields.map((f) => (
@@ -198,12 +211,13 @@ export function CollectionTab<T extends CollectionItem>({
                 key={f.key}
                 className={f.fullWidth ? "sm:col-span-2 space-y-2" : "space-y-2"}
               >
-                <Label>
+                <Label htmlFor={`${fieldPrefix}-${f.key}`}>
                   {f.label}
                   {f.required ? " *" : ""}
                 </Label>
                 {f.type === "textarea" ? (
                   <Textarea
+                    id={`${fieldPrefix}-${f.key}`}
                     value={values[f.key] ?? ""}
                     placeholder={f.placeholder}
                     onChange={(e) =>
@@ -217,7 +231,7 @@ export function CollectionTab<T extends CollectionItem>({
                       setValues((v) => ({ ...v, [f.key]: val }))
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id={`${fieldPrefix}-${f.key}`}>
                       <SelectValue placeholder="Select..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -230,6 +244,7 @@ export function CollectionTab<T extends CollectionItem>({
                   </Select>
                 ) : (
                   <Input
+                    id={`${fieldPrefix}-${f.key}`}
                     type={
                       f.type === "number"
                         ? "number"
@@ -247,11 +262,12 @@ export function CollectionTab<T extends CollectionItem>({
               </div>
             ))}
           </div>
+          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>
+            <Button variant="outline" disabled={saving} onClick={() => close(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAdd}>{addLabel}</Button>
+            <Button disabled={saving} onClick={handleAdd}>{saving ? "Saving…" : addLabel}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

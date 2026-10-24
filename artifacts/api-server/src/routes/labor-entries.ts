@@ -1,3 +1,4 @@
+import { stripNulls } from "../lib/strip-nulls";
 import { Router, type IRouter } from "express";
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
@@ -5,6 +6,8 @@ import {
   db,
   laborEntriesTable,
   jobsTable,
+  crewsTable,
+  crewBookingsTable,
   type LaborEntryInsert,
 } from "@workspace/db";
 import {
@@ -17,6 +20,8 @@ import {
   DeleteLaborEntryParams,
 } from "@workspace/api-zod";
 
+import { domainRoute } from "../lib/domain-http";
+import { validateLaborReferences } from "../lib/entry-references";
 const router: IRouter = Router();
 
 router.get("/jobs/:id/labor", async (req, res): Promise<void> => {
@@ -31,10 +36,10 @@ router.get("/jobs/:id/labor", async (req, res): Promise<void> => {
     .from(laborEntriesTable)
     .where(eq(laborEntriesTable.jobId, params.data.id));
 
-  res.json(ListLaborEntriesResponse.parse(rows));
+  res.json(ListLaborEntriesResponse.parse(rows.map(stripNulls)));
 });
 
-router.post("/jobs/:id/labor", async (req, res): Promise<void> => {
+router.post("/jobs/:id/labor", domainRoute(async (req, res) => {
   const params = CreateLaborEntryParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -58,11 +63,15 @@ router.post("/jobs/:id/labor", async (req, res): Promise<void> => {
     return;
   }
 
+  await validateLaborReferences(params.data.id, parsed.data, req.auth!.role);
   const values: LaborEntryInsert = {
     id: randomUUID(),
     jobId: params.data.id,
     date: parsed.data.date,
     crew: parsed.data.crew,
+    crewId: parsed.data.crewId,
+    bookingId: parsed.data.bookingId,
+    callbackId: parsed.data.callbackId,
     hours: parsed.data.hours,
     notes: parsed.data.notes ?? "",
     createdAt: new Date().toISOString(),
@@ -70,9 +79,9 @@ router.post("/jobs/:id/labor", async (req, res): Promise<void> => {
 
   const [row] = await db.insert(laborEntriesTable).values(values).returning();
   res.status(201).json(row);
-});
+}));
 
-router.patch("/jobs/:id/labor/:entryId", async (req, res): Promise<void> => {
+router.patch("/jobs/:id/labor/:entryId", domainRoute(async (req, res) => {
   const params = UpdateLaborEntryParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -89,6 +98,9 @@ router.patch("/jobs/:id/labor/:entryId", async (req, res): Promise<void> => {
     return;
   }
 
+  const [existing] = await db.select().from(laborEntriesTable).where(and(eq(laborEntriesTable.id, params.data.entryId), eq(laborEntriesTable.jobId, params.data.id)));
+  if (!existing) { res.status(404).json({ error: "Labor entry not found" }); return; }
+  await validateLaborReferences(params.data.id, { ...existing, ...parsed.data }, req.auth!.role);
   const [row] = await db
     .update(laborEntriesTable)
     .set(parsed.data)
@@ -106,7 +118,7 @@ router.patch("/jobs/:id/labor/:entryId", async (req, res): Promise<void> => {
   }
 
   res.json(row);
-});
+}));
 
 router.delete("/jobs/:id/labor/:entryId", async (req, res): Promise<void> => {
   const params = DeleteLaborEntryParams.safeParse(req.params);
